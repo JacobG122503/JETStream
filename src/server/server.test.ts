@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { ServerConfig } from './config'
 import * as databases from './db/database'
-import { startServer } from './server'
+import { applyMigrations } from './db/migrations'
+import { people } from './db/schema'
+import { prepareData, startServer } from './server'
+import { makeRecords } from './testing/records'
 import { findFreePort } from './testing/serverProcess'
 
 // Stands in for a real PostgreSQL server, which tests do not have: production start decides by
@@ -27,4 +30,25 @@ it('refuses to start in production with pending migrations, and does not apply t
   expect(runMigrations).not.toHaveBeenCalled()
   expect(close).toHaveBeenCalledOnce()
   close.mockRestore()
+})
+
+it('seeds the demo once, says how to use it, and never erases', { timeout: 30_000 }, async () => {
+  await applyMigrations(database)
+  const first = (await prepareData({ mode: 'demo' }, database)).join('\n')
+  for (const text of ['Demo data made for 20', 'admin@jet.demo', 'lead@jet.demo', 'employee@jet.demo', 'npm run demo:reset']) {
+    expect(first).toContain(text)
+  }
+  await makeRecords(database.db).person()
+  expect((await prepareData({ mode: 'demo' }, database)).join('\n')).toBe(first)
+  expect(await database.db.select().from(people)).toHaveLength(12)
+})
+
+it('does not seed development or production', async () => {
+  await applyMigrations(database)
+  expect((await prepareData({ mode: 'development' }, database)).join()).toContain('npm run db:seed')
+  expect(await prepareData({ mode: 'production' }, database)).toEqual([])
+  expect(await database.db.select().from(people)).toEqual([])
+  await makeRecords(database.db).person()
+  expect(await prepareData({ mode: 'development' }, database)).toEqual([])
+  expect(await prepareData({ mode: 'demo' }, database)).toEqual([])
 })

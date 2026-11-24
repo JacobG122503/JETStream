@@ -30,7 +30,8 @@ export interface ServerProcess {
  */
 export function startServerProcess(args: string[], settings: Record<string, string> = {}, ownGroup = false): ServerProcess {
   const env: NodeJS.ProcessEnv = { ...process.env }
-  for (const name of ['DATABASE_URL', 'HOST', 'PORT', 'BASE_PATH', 'NODE_ENV', 'NODE_OPTIONS']) delete env[name]
+  const ours = ['DATABASE_URL', 'TEST_DATABASE_URL', 'HOST', 'PORT', 'BASE_PATH', 'ALLOW_DEMO_DATA']
+  for (const name of [...ours, 'NODE_ENV', 'NODE_OPTIONS']) delete env[name]
   const child = spawn(process.execPath, args, { cwd: projectRoot, env: { ...env, ...settings }, detached: ownGroup })
 
   // So that nothing is left running if the test process exits early.

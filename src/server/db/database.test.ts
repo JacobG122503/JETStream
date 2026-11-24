@@ -2,22 +2,12 @@ import { cp, readdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { eq, sql } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { errorCode } from '../errors'
 import { migrationsDir } from '../paths'
-import { createTempDir, createTestDatabase } from '../testing/testDatabase'
+import { createTempDir, createTestDatabase, queryRows, sqlState } from '../testing/testDatabase'
 import { type Database, openDatabase } from './database'
 import { lockDataDir } from './dataDirLock'
 import { applyMigrations, countPendingMigrations } from './migrations'
 import { appMeta } from './schema'
-
-async function sqlState(action: Promise<unknown>): Promise<string | undefined> {
-  try {
-    await action
-  } catch (error) {
-    return errorCode(error)
-  }
-  throw new Error('Expected the query to fail')
-}
 
 describe('embedded database', () => {
   let database: Database
@@ -97,13 +87,22 @@ describe('embedded database folder', () => {
 })
 
 describe('migrations', () => {
-  async function tables(database: Database) {
-    const rows = await database.db.execute(
-      sql`select table_schema || '.' || table_name as name from information_schema.tables
-          where table_schema not in ('pg_catalog', 'information_schema') order by 1`,
-    )
-    const records = await database.db.execute(sql`select hash from drizzle.__drizzle_migrations`)
-    return JSON.stringify([rows, records])
+  /** Tables, columns, constraints, applied migrations and reference data. */
+  async function tables({ db }: Database) {
+    const parts = [
+      sql`select table_schema || '.' || table_name as "table", column_name, data_type, column_default
+          from information_schema.columns
+          where table_schema not in ('pg_catalog', 'information_schema') order by 1, 2`,
+      sql`select conname, pg_get_constraintdef(oid) from pg_constraint order by 1, 2`,
+      sql`select hash from drizzle.__drizzle_migrations order by id`,
+      sql`select * from roles order by id`,
+      sql`select * from company_settings`,
+      sql`select * from number_sequences order by kind`,
+      sql`select * from item_categories order by id`,
+    ]
+    const rows = []
+    for (const part of parts) rows.push(await queryRows(db, part))
+    return JSON.stringify(rows)
   }
 
   it('changes nothing when applied twice', async () => {
@@ -119,6 +118,31 @@ describe('migrations', () => {
     await database.runMigrations(migrationsDir)
     expect(await tables(database)).toBe(before)
     await database.close()
+  })
+
+  it('brings a database with only the first migration to the same schema', async () => {
+    const folder = join(await createTempDir(), 'drizzle')
+    await cp(migrationsDir, folder, { recursive: true })
+    const journalFile = join(folder, 'meta', '_journal.json')
+    const journal = JSON.parse(await readFile(journalFile, 'utf8')) as { entries: object[] }
+    journal.entries = journal.entries.slice(0, 1)
+    await writeFile(journalFile, JSON.stringify(journal))
+
+    const database = await openDatabase({ kind: 'embedded', dataDir: 'memory://' })
+    expect(await applyMigrations(database, folder)).toBe(1)
+    await database.db.insert(appMeta).values({ key: 'a', value: 'kept' })
+    expect(await applyMigrations(database)).toBeGreaterThan(0)
+    expect(await database.db.select().from(appMeta)).toEqual([{ key: 'a', value: 'kept' }])
+    const fresh = await createTestDatabase()
+    const withoutTimes = (text: string) => text.replaceAll(/"(created|updated)_at":"[^"]*"/g, '')
+    expect(withoutTimes(await tables(database))).toBe(withoutTimes(await tables(fresh)))
+    await fresh.close()
+    await database.close()
+  })
+
+  it('uses no extension', async () => {
+    const names = (await readdir(migrationsDir)).filter((name) => name.endsWith('.sql'))
+    for (const name of names) expect(await readFile(join(migrationsDir, name), 'utf8')).not.toMatch(/extension/i)
   })
 
   it('reports a migration that is older than the last applied one', async () => {

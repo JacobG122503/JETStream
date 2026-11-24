@@ -1,52 +1,18 @@
-/**
- * Calendar dates as local ISO strings (YYYY-MM-DD). All arithmetic is on the calendar, through
- * UTC, so time zones and clock changes cannot move a date.
- */
-export type IsoDate = string
+import {
+  addDays, addMonths, type DateParts, daysInMonth, type IsoDate, isRealDate, partsOf, startOfWeek, toIso, type Weekday, weekdayOf,
+} from '../../shared/dates'
 
-/** 0 is Sunday, 1 Monday, as in Date. */
-export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6
+export * from '../../shared/dates'
 
 export const monthNames = [
   'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December',
 ] as const
 export const weekdayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const
 
-interface Parts {
-  year: number
-  /** 1 to 12. */
-  month: number
-  day: number
-}
-
-const pad = (value: number, length: number) => String(value).padStart(length, '0')
-
-export function toIso({ year, month, day }: Parts): IsoDate {
-  return `${pad(year, 4)}-${pad(month, 2)}-${pad(day, 2)}`
-}
-
-export function partsOf(date: IsoDate): Parts {
-  const [year = 0, month = 1, day = 1] = date.split('-').map(Number)
-  return { year, month, day }
-}
-
-export function daysInMonth(year: number, month: number): number {
-  return new Date(Date.UTC(year, month, 0)).getUTCDate()
-}
-
-function isRealDate({ year, month, day }: Parts): boolean {
-  // Two-digit years are ambiguous, and JavaScript reads them as 19xx.
-  return year >= 1000 && year <= 9999 && month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth(year, month)
-}
-
-export function isIsoDate(text: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(text) && isRealDate(partsOf(text))
-}
-
 /** Reads YYYY-MM-DD, M/D/YYYY and the display form. Null when it is not a real date. */
 export function parseDate(text: string): IsoDate | null {
   const trimmed = text.trim()
-  let parts: Parts | undefined
+  let parts: DateParts | undefined
   const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(trimmed)
   const us = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(trimmed)
   const shown = /^([a-z]{3,9})\.? (\d{1,2}),? (\d{4})$/i.exec(trimmed)
@@ -72,43 +38,10 @@ export function formatLongDate(date: IsoDate): string {
   return `${weekdayNames[weekdayOf(date)]}, ${monthNames[month - 1]} ${day}, ${year}`
 }
 
-const dayMs = 86_400_000
-
-export function addDays(date: IsoDate, days: number): IsoDate {
-  const { year, month, day } = partsOf(date)
-  const moved = new Date(Date.UTC(year, month - 1, day) + days * dayMs)
-  return toIso({ year: moved.getUTCFullYear(), month: moved.getUTCMonth() + 1, day: moved.getUTCDate() })
-}
-
-/** The same day in another month, or that month's last day. */
-export function addMonths(date: IsoDate, months: number): IsoDate {
-  const { year, month, day } = partsOf(date)
-  const index = year * 12 + (month - 1) + months
-  const newYear = Math.floor(index / 12)
-  const newMonth = index - newYear * 12 + 1
-  return toIso({ year: newYear, month: newMonth, day: Math.min(day, daysInMonth(newYear, newMonth)) })
-}
-
-export function weekdayOf(date: IsoDate): Weekday {
-  const { year, month, day } = partsOf(date)
-  return new Date(Date.UTC(year, month - 1, day)).getUTCDay() as Weekday
-}
-
-export function startOfWeek(date: IsoDate, weekStart: Weekday): IsoDate {
-  return addDays(date, -((weekdayOf(date) - weekStart + 7) % 7))
-}
-
 /** The date on this device's clock. */
 export function todayOnDevice(): IsoDate {
   const now = new Date()
   return toIso({ year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() })
-}
-
-/** ISO strings sort by date. */
-export function clampDate(date: IsoDate, min?: IsoDate, max?: IsoDate): IsoDate {
-  if (min && date < min) return min
-  if (max && date > max) return max
-  return date
 }
 
 /** Weeks of a month, each with seven places; null outside the month. */

@@ -137,13 +137,120 @@ Demo seed
 L (upper end). Schema, calculations and billing first, seed last; keep them in separate modules. Not split, because 004 onward depend on the seeded accounts and the task order is fixed by number.
 
 ## Implementation notes
-_Software engineer fills this in._
+### Result
+Build, lint, unit and e2e tests pass on Node 18.20.8. No dependency added.
+
+**Not proven: contention on a real PostgreSQL server.** The AC17, AC19, AC22 and deadlock tests passed on the embedded database only, which has one connection, so they prove results and not lock contention. The same tests run on a server with `TEST_DATABASE_URL=... npm test` and are reported as skipped without it (16 skipped: 15 plus the deadlock test on the embedded database). The server path of those tests has itself never run. An attempt to start a throwaway PostgreSQL from npm binaries in the session scratchpad was refused by the permission system and not pursued; the downloaded binaries were deleted, nothing of it is in the project. Also untested on a server: migrations, seed and reset.
+
+### Files
+- `src/shared/`: `calc/` (AC12-AC16), `currency.ts`, `domain.ts` (fixed values, also used for database checks), `dates.ts` (calendar part moved out of `src/web/ui/dates.ts`, which re-exports it).
+- `src/server/db/`: `schema/` by area (86 tables), `index.ts` (entry point), `transaction.ts`, `records.ts` (versioned update), `aggregates.ts` and `numbers.ts` (exact integers). `drizzle/0001_domain.sql`, `0002_reference_data.sql`.
+- `src/server/billing/`: numbers, claim, edit guard, totals, payments, delete.
+- `src/server/demo/` (seed), `demoData.ts` and `scripts/demo-data.mjs` (commands), `server.ts`/`main.ts` (demo seeds when no people; dev prints the hint).
+- `src/server/security/passwords.ts` (scrypt, N 2^15, r 8, p 3, self-describing), `src/server/clock.ts`.
+- `docs/data-model.md`; `eslint.config.js` and `vite.config.ts` (AC11, test workers at half the cores because many tests start processes).
+- `server.ts`/`main.ts`: start-up now checks for a stop between slow steps, because longer migrations made stopping during start exceed 4.5 s on a loaded machine (`scripts/dev.test.ts` failed once; passes since).
+
+### Acceptance criteria
+- AC1 -> `database.test.ts`; `npm run db:generate`: "No schema changes"; no extension.
+- AC2, AC3, AC4, AC5, AC6 -> `schema.test.ts`. Foreign keys use NO ACTION, because RESTRICT reports another code on PostgreSQL 18.
+- AC7 -> `values.test.ts` (sets `TZ` and checks it took effect). AC8, AC9 -> `access.test.ts`. AC10 -> `billing.test.ts`.
+- AC11 -> `e2e/bundle.spec.ts`; by hand: a web file importing server code, also with `import()`, fails lint (4 errors) and build ("belongs on the server").
+- AC12-AC16 -> `src/shared/calc/calc.test.ts` (scenarios 1-4).
+- AC17-AC22 -> `billing.test.ts` (scenarios 5-7, lock order) and `concurrency.test.ts` (scenario 8). AC23 -> as above; a database name without `test` is refused.
+- AC24-AC28 -> `guard.test.ts`, `demoData.test.ts`, `server.test.ts`, `seed.test.ts` (all or nothing). By hand: scenarios 9, 10 and 11, the latter on a copy of `.data/demo` as 001 left it, including kill -9; the typed confirmation in a terminal (wrong answer, Ctrl+C, right answer); the commands from `dist`.
+- AC29-AC36 -> `seed.test.ts` for the five dates. Seeding takes about 1.5 s, the whole command 2.5 s.
+- AC37 -> below.
+
+### Commands and results (Node 18.20.8, 2026-11-24)
+`npm run build` 0, `npm run lint` 0, `npm test` 0 (32 files, 940 passed, 16 skipped; also with `DATABASE_URL=postgres://nobody@127.0.0.1:1/none`), `npm run e2e` 0 (156 passed, 94 skipped by design at the second base, as in 002), `npm run db:generate` "No schema changes". No server left running, `.data/tmp` empty, `.data/demo` untouched.
+
+### Decisions and assumptions
+- Claims: hours of a fixed-fee project, or of one with rate method none, are billed at 0; a missing rate is refused. Expenses must be in the invoice's currency. An entry named twice in one claim is refused. "Billed outside" entries stay editable.
+- Numbers of deleted invoices are kept in `retired_numbers`, so a manually numbered invoice that was deleted is not reused either.
+- `version` counts up with any update through Drizzle, not only through the helper.
+- Deleting an invoice also needs the version the caller saw.
+- Seed also refuses a database with clients but no people. `demo:reset` always refuses `DATABASE_URL`, also with the override. With `NODE_ENV=production` and the override but no `DATABASE_URL`, `db:seed` and `db:reset` ask for `DATABASE_URL`, as `db:migrate` does.
+- Reset empties all tables and runs the migrations named `*_reference_*` again, so later reference data (such as 005's permissions) must go into migrations named so. A test compares the result.
+- Seed and reset accept `--data-dir`, as the server does (used by tests).
+- "Written off" is a closed invoice with a write-off record; its amount due stays, as AC15 defines it.
+- The internal client "JET Engineering (internal)" is one of the six and the one without invoices.
+
+### Known limitations
+- `seed.test.ts` and the process tests bring `npm test` from 16 s to 43 s.
+- A lock left by a crash blocks if another program now has that process id; the message says which file to delete (as in 001).
+- The database does not check that stored invoice totals match the lines, only that they add up; the billing code keeps them.
+
+### Follow-ups
+- 004: `sign_in_attempts`, `invites`, `sessions` are a base and may need more columns (kind, help requests). Every e2e worker now seeds its in-memory database, about 2 s.
+- 012: decide whether hours at rate 0 should show on the client's invoice.
+- 023: run the suite with `TEST_DATABASE_URL` on a real server before production use.
 
 ## QA report
-_QA tester fills this in._
+Overall: **PASS** (37 of 37), with one path untested: a real PostgreSQL server.
+
+Node 18.20.8, 2026-11-24. Nothing was taken from the engineer's notes. Commands on the project: `npm run build` 0, `npm run lint` 0, `npm test` 0 (32 files, 940 passed, 16 skipped: the server half of the concurrency tests), `npm run e2e` 0 (156 passed, 94 skipped at the second base, as in 002), `npm run db:generate` "No schema changes". Throwaway scripts and all faults and seed/reset runs were in a copy in the session scratchpad, since deleted; project files and `.data/demo` are unchanged (checksums) and no server is left running. One side effect: `npm run dev` in the copy, whose `node_modules` was a link, rewrote the git-ignored cache `node_modules/.vite/deps`.
+
+**Untested: real PostgreSQL.** No server was started, as instructed. Migrations, seed, reset, the pg driver's value conversion and lock contention were not run against a server, and the 15 server concurrency tests plus the deadlock test have never run. Lock order and "read links after locking" were only read in the code. Embedded results prove outcomes, not contention.
+
+| AC | Result | Evidence |
+|---|---|---|
+| AC1 | PASS | `db:migrate` on empty: 3 applied, again: none; on a copy of 001's `.data/demo`: 2 applied, again: none; same 86 tables. `db:generate`: no change. Only `plpgsql` installed, no `create extension` |
+| AC2 | PASS | 86 documented tables = 86 in the catalogue, every coverage table exists. Removing a row and misspelling one each failed `schema.test.ts` |
+| AC3 | PASS | Own catalogue query: no table without primary key, no foreign key without a leading index, no float or numeric column |
+| AC4 | PASS | After migrations only: 3 roles with `[]`, settings JET Engineering/USD/1/America/Chicago, 2 sequences, Service and Product; 0 people, clients, credentials |
+| AC5 | PASS | 34 raw statements rejected with 23514/23505/23502/23503 (1440 and 0 minutes accepted) |
+| AC6 | PASS | 10 raw deletes, each 23503 |
+| AC7 | PASS | 9 dates round-trip in three `TZ` values (`0001-01-01`, `9999-12-31` too). 9,007,199,254,740,991 exact; saving, reading and summing larger each raise |
+| AC8 | PASS | 40001 and 40P01: 3 attempts; 23505 and 57014: 1; third attempt commits once; plain error rolls back. Embedded only |
+| AC9 | PASS | version+1; stale leaves row alone; missing gives NotFoundError |
+| AC10 | PASS | invoiced (also when approved), approved, stale, not found, each distinct |
+| AC11 | PASS | Bundle has no drizzle/pglite/schema text; server import fails lint (also `import()`) and build; `src/shared/calc` from web lints and builds |
+| AC12 | PASS | 21 resolutions incl. scenario 4, zero rate, EUR skip, task default, cost rate |
+| AC13-15 | PASS | 40,820 cases against expected values computed separately in Python with exact fractions: time and expense amounts, all rounding modes, increments and minutes 0-1440, 4,000 documents: 0 differences. Scenarios 1-3 exact (148749, 14875, 10673, 1069, 145616, 45616; 20917, 3333, 10000, 1, 8083, -1) |
+| AC16 | PASS | 34 invalid inputs raise (negative, fraction, NaN, string, percent -1/100.001/1.5/NaN, unsafe product and sum) |
+| AC17 | PASS | 20 consecutive; failed claim keeps number; manual number skipped; deleted not reused, even with the sequence set back to 1 |
+| AC18 | PASS | All reasons listed at once (running, not billable, billed outside, other client, duplicate, not found, stale, currency); snapshot of invoices, lines, links, payments, sequences unchanged; paid and closed refused, open accepted |
+| AC19 | PASS | Overlap: exactly one (own script). The race with an edit was run only through `concurrency.test.ts`. Removing the claim's checks makes 9 tests fail. Embedded only |
+| AC20 | PASS | 40 min at 100.00 and 50 min at 120.00: two lines, 6667 + 10000 = 16667; link minutes add up; later rate and rounding changes alter nothing, also after recalculation |
+| AC21 | PASS | Time and expense re-billed after deletion; with payments refused, also after refund. On the seed 8 deleted, 19 refused for payments, no other error |
+| AC22 | PASS | 0, negative, fraction, above due, draft, closed refused; part, full (paid), refund (open again, due correct), over-refund refused; two full payments: one succeeds |
+| AC23 | PASS | Reported skipped without `TEST_DATABASE_URL`; `.../jet` refused before connecting; notes state it is untested |
+| AC24 | PASS | All commands run; demo on 001's data seeded once, printed date, accounts and reset; restart kept an added person; dev prints the seed command and seeds nothing |
+| AC25 | PASS | 15 refusals (scenario 9, overrides `TRUE`, `1`, `" true "`, empty, dist build, `--data-dir`), exit 1, no folder created, `hunter2` never shown |
+| AC26 | PASS | Marker removed: reset refused with and without override, 11 people left; client only: seed and reset refused; second seed refused |
+| AC27 | PASS | Real terminal: wrong, empty, other case, Ctrl+C, Ctrl+D refused, exact name accepted; `< /dev/null` refused; forced failure in seed leaves empty, in reset keeps 11 people, 3551 entries and an edited name |
+| AC28 | PASS | Demo running: `demo:reset`, `db:reset`, `db:seed` refused, health still 200; after `kill -9` reset succeeds |
+| AC29 | PASS | Two seeds and a reset after edits: no table differs (hashes left out). Bad dates refused. 1.5 s; command 3.5 s. Own checks on 13 dates (the five, a DST day, weekends, holidays) all pass. 65 generated keys, 0 collisions |
+| AC30-34 | PASS | Own SQL on the same 13 dates: people, hashes, emails, phones, roles, clients, projects, budgets (worked out separately for the five dates and 2026-11-24: Cold store 107-108%, over; Turbine 88% of its fee budget with alert 80), 80% days, 4-10 h, current week, approvals |
+| AC35 | PASS | All line, total, tax, due and link figures recalculated separately, and each billed rate resolved separately from the stored rates: no difference. 108 expenses, 27 invoices, 19 receipts decode: all 10 PNGs, and all 9 PDFs rendered to images; one PNG looked at. The script catches planted errors in total, rate, line, date, hours |
+| AC36 | PASS | Present and dated up to the seed date; Outbox all `captured`, none sent; online payments `simulated`, "No money was moved" |
+| AC37 | PASS | Commands above; also the db tests with `DATABASE_URL` pointing at a closed port. 001 by hand in demo mode at `/jettime`: health, 404, 400, page, clean stop, production refusals without password |
+
+Extra findings, none blocking:
+1. Low: an unknown rate method makes `resolveBillableRate` return `undefined` instead of raising (types and the database exclude it).
+2. Low, for 012/013: a credit line added after payments leaves the invoice paid with a negative amount due (total 5000, paid 8991, due -3991). A refund on a closed invoice is accepted and changes its amount due.
+3. Low, for 013: an open invoice with total 0 can never become paid, since no payment can be recorded. Read in the code, not run.
+4. For 012: `changeInvoiceLines` accepts any change, so it can alter a time line without its entry links; they must be kept together.
+5. Before production (023): run `TEST_DATABASE_URL=... npm test` and the seed and migration commands on a real server.
 
 ## PM acceptance
-_PM fills this in after QA passes._
+**ACCEPTED** for this task's scope, on 2026-11-24. This is not a statement that the data layer is proven on a real PostgreSQL server.
+
+How it was judged: read the Spec, the notes, the QA report and the code (claim, totals, payments, delete, numbers, edit guard, transaction helper, rate and document calculations, seed, reset and guard commands, demo content, data-model document). The PM had no way to run commands, so nothing was run for this review; run-time evidence is QA's.
+
+Reasons:
+- Goal: each entry can be on one invoice line only, by primary key; the claim locks in the specified order, reads state and links after locking, and records the billed rate, minutes and amount. Demo data cannot get into a production database by default, and reset refuses records without the demo marker, checked again inside the transaction.
+- All 37 criteria have QA evidence. AC19's race with an edit rests on the project's own test, not on an independent one.
+- Demo: the three accounts, plausible work, clients and dates around today. Online payments are labelled simulated and Outbox messages captured.
+- AC23 allows server tests to be skipped if the notes say so plainly; they do.
+
+**Untested, and to stay listed as such:** real PostgreSQL. Migrations, seed, reset, value conversion through the pg driver, retry after a real deadlock and lock contention have never run on a server. The embedded database has one connection, so its concurrency tests prove outcomes only. Double billing is also blocked by the key constraints, but do not describe contention safety as tested, nor use JET Time for real billing, until `TEST_DATABASE_URL=... npm test`, migrations and seed/reset pass on a server. That needs the user's approval or a server they provide; it is recorded in 023.
+
+Not blocking, to be handled by the tasks that own the features:
+1. 012: keep entry links and time lines together when lines are edited (`changeInvoiceLines` does not enforce it); decide whether hours at rate 0 show on the client's invoice, and what a credit line after payments does (amount due goes negative).
+2. 013: a zero-total open invoice can never become paid; decide whether a refund on a closed invoice is allowed.
+3. Any: `resolveBillableRate` returns `undefined` for an unknown rate method instead of raising. The database and types exclude that value.
 
 ## History
 - 2026-11-23 created
@@ -154,3 +261,9 @@ _PM fills this in after QA passes._
 - 2026-11-23 ORCH: todo -> groomed
 - 2026-11-23 ORCH: user confirmed company time zone is US Central (America/Chicago)
 - 2026-11-24 ORCH: groomed -> in-progress
+- 2026-11-24 SWE: implemented
+- 2026-11-24 ORCH: in-progress -> qa
+- 2026-11-24 QA: pass
+- 2026-11-24 ORCH: QA PASS, qa -> review
+- 2026-11-24 PM: accepted
+- 2026-11-24 ORCH: PM ACCEPTED, review -> done

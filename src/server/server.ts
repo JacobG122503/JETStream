@@ -9,17 +9,30 @@ import { webBuildDir } from './paths'
 
 export interface RunningServer {
   url: string
+  /** What whoever started it should know. */
+  messages: string[]
   /** Finishes open requests, then closes the database. */
   close: () => Promise<void>
 }
 
 const requestGraceMs = 2000
 
-export async function startServer(config: ServerConfig): Promise<RunningServer> {
+/** It was told to stop before it had started. The database is closed. */
+export class StoppedError extends Error {}
+
+export async function startServer(config: ServerConfig, signal?: AbortSignal): Promise<RunningServer> {
+  // Looked at before each slow step, so that stopping does not wait for all of them.
+  const goOn = () => {
+    if (signal?.aborted) throw new StoppedError()
+  }
   await checkPortIsFree(config)
+  goOn()
   const database = await openDatabase(config.database)
   try {
+    goOn()
     await prepareSchema(config, database)
+    goOn()
+    const messages = await prepareData(config, database)
     const app = createApp({
       db: database.db,
       basePath: config.basePath,
@@ -29,6 +42,7 @@ export async function startServer(config: ServerConfig): Promise<RunningServer> 
     await listen(server, config)
     return {
       url: serverUrl(config),
+      messages,
       close: async () => {
         await closeServer(server)
         await database.close()
@@ -51,6 +65,23 @@ async function prepareSchema(config: ServerConfig, database: Database) {
       `The database is missing ${pending} migration(s). Run npm run db:migrate, then start again.`,
     )
   }
+}
+
+/** The demo fills its database when nobody is in it yet. Nothing else ever adds demo data here. */
+export async function prepareData({ mode }: Pick<ServerConfig, 'mode'>, { db }: Database): Promise<string[]> {
+  if (mode === 'production') return []
+  // Loaded on demand: production never loads the demo data.
+  const { demoAccountLines, demoSeedDate, holdsPeople, seedDemo } = await import('./demo')
+  const empty = !(await holdsPeople(db))
+  if (mode === 'development') {
+    return empty ? ['The database is empty. For demo data, stop this and run npm run db:seed.'] : []
+  }
+  const date = empty ? await seedDemo(db) : await demoSeedDate(db)
+  if (date === null) return []
+  return [
+    `Demo data made for ${date}. Accounts:`, ...demoAccountLines(),
+    'For fresh data, stop the demo and run npm run demo:reset.',
+  ]
 }
 
 export function serverUrl({ host, port, basePath }: Pick<ServerConfig, 'host' | 'port' | 'basePath'>) {

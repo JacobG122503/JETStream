@@ -6,5 +6,5 @@
     "jsx": "react-jsx",
     "types": ["vite/client"]
   },
-  "include": ["src/web"]
+  "include": ["src/web", "src/shared"]
 }
