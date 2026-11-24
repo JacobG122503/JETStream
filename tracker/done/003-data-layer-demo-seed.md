@@ -267,3 +267,4 @@ Not blocking, to be handled by the tasks that own the features:
 - 2026-11-24 ORCH: QA PASS, qa -> review
 - 2026-11-24 PM: accepted
 - 2026-11-24 ORCH: PM ACCEPTED, review -> done
+- 2026-11-24 committed a2726aa

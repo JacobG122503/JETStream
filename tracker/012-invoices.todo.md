@@ -11,6 +11,10 @@ Server change: numbering and billing of entries are transactional; client-facing
 
 Note from 002 QA: tables wider than the paper are cut off when printed; wide tables need a print layout.
 
+Note from 003 QA: `changeInvoiceLines` can alter a time line without its entry links; a credit line added after payments can leave a paid invoice with a negative amount due.
+
+Note from 003 PM: decide whether hours billed at rate 0 (fixed-fee or no-rate projects) show on the client's invoice.
+
 ## Spec
 _PM fills this in during grooming._
 

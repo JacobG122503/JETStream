@@ -7,6 +7,8 @@ User: "full admin controlls for managers alos to add emplyees see time breakdown
 
 Overall goal: match every Harvest capability in this area or provide something similar, within the product rules in CLAUDE.md.
 
+Note from 005 PM: email edit, archive and delete must use 005's outranking rule; archive and delete also its last-administrator guard.
+
 ## Spec
 _PM fills this in during grooming._
 

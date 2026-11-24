@@ -9,6 +9,8 @@ Overall goal: match every Harvest capability in this area or provide something s
 
 Note from 001 QA: see the upload error note in 011.
 
+Note from 005 PM: imports that set a manager flag must go through 005's grant check.
+
 ## Spec
 _PM fills this in during grooming._
 

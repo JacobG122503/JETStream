@@ -8,6 +8,8 @@ Production package for self-hosting: environment configuration with validation, 
 
 Note from 001 PM: test against a real PostgreSQL with TLS if one is available, otherwise say it is untested; review npm audit findings (React Router 6, Vitest 3 tooling) and the Node version, since Node 18 is past end of life.
 
+Note from 003 QA: migrations, seed, reset, value conversion, lock contention and 16 skipped tests (`TEST_DATABASE_URL`) have never run on a real PostgreSQL server. Do not install or run one without the user's approval.
+
 ## Spec
 _PM fills this in during grooming._
 

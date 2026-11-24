@@ -9,6 +9,8 @@ Overall goal: match every Harvest capability in this area or provide something s
 
 Server change: reminders and recurring invoices run from a server scheduler, not when the app is opened. Online payment is an adapter: simulated by default, with a hosted-checkout provider (such as Stripe) selectable by configuration and documented as needing keys and live testing.
 
+Note from 003 QA: a refund on a closed invoice is accepted; an open invoice with total 0 can never become paid (read in code, not run). Decide and fix.
+
 ## Spec
 _PM fills this in during grooming._
 

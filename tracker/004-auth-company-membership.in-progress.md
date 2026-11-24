@@ -154,3 +154,4 @@ _PM fills this in after QA passes._
 - 2026-11-23 ORCH: request updated, user moved the target from GitHub Pages to JET's servers
 - 2026-11-23 PM: groomed (two-factor split off to 026)
 - 2026-11-23 ORCH: todo -> groomed
+- 2026-11-24 ORCH: groomed -> in-progress

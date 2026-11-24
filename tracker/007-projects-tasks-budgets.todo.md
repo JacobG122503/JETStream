@@ -7,6 +7,8 @@ Task library (default billable flag and rate, common tasks added to new projects
 
 Overall goal: match every Harvest capability in this area or provide something similar, within the product rules in CLAUDE.md.
 
+Note from 005 PM: project creation and duplication that set or copy a manager flag must go through 005's grant check; treat removed memberships as in 004.
+
 ## Spec
 _PM fills this in during grooming._
 
