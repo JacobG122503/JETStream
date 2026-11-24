@@ -10,6 +10,8 @@ Overall goal: match every Harvest capability in this area or provide something s
 
 Server change: sessions, hashing (instead of WebCrypto in the browser), two-factor, invite and password-reset links, rate limiting and sign-out of other sessions are all server-side. Includes the setup command for the first production administrator. One-click demo sign-in exists only when demo mode is on.
 
+Note from 001 PM: pass no untrusted text to `navigate`; unexpected errors are logged with query parameter values, so keep secrets out of URLs and logs.
+
 ## Spec
 _PM fills this in during grooming._
 

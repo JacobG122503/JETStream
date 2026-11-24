@@ -7,6 +7,8 @@ CSV import with preview and validation for people, clients, projects, tasks, tim
 
 Overall goal: match every Harvest capability in this area or provide something similar, within the product rules in CLAUDE.md.
 
+Note from 001 QA: see the upload error note in 011.
+
 ## Spec
 _PM fills this in during grooming._
 

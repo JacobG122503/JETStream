@@ -6,6 +6,8 @@ Depends on: 022
 User: "eventually the backend will be hosted on JETs servers" and the user wants to demo it to their manager first.
 Production package for self-hosting: environment configuration with validation, migrations on upgrade, health checks, structured logs, backup and restore instructions, sample service files for Linux and Windows, optional Dockerfile, HTTPS reverse-proxy examples, hardening checklist. CI workflow file that lints, tests and builds (file only, do not push). README with a one-command laptop demo, the demo accounts, a guide per role and a feature matrix against the request that marks simulated or untested features honestly.
 
+Note from 001 PM: test against a real PostgreSQL with TLS if one is available, otherwise say it is untested; review npm audit findings (React Router 6, Vitest 3 tooling) and the Node version, since Node 18 is past end of life.
+
 ## Spec
 _PM fills this in during grooming._
 

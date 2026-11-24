@@ -258,3 +258,4 @@ Known limits accepted, none breaking a criterion; they should be carried into th
 - 2026-11-23 ORCH: QA PASS, qa -> review
 - 2026-11-23 PM: accepted
 - 2026-11-23 ORCH: PM ACCEPTED, review -> done
+- 2026-11-23 committed cc88665

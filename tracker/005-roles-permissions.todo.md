@@ -7,6 +7,8 @@ Permission levels Administrator (the billing manager), Manager (the project lead
 
 Overall goal: match every Harvest capability in this area or provide something similar, within the product rules in CLAUDE.md.
 
+Note from 001 QA: `api.param` callbacks are not covered by the handler guard; do not put access checks there.
+
 ## Spec
 _PM fills this in during grooming._
 
