@@ -7,6 +7,8 @@ Playwright tests that walk the whole story with the three demo accounts on the p
 
 Overall goal: match every Harvest capability in this area or provide something similar, within the product rules in CLAUDE.md.
 
+Note from 002 PM: Firefox, Safari (WebKit) and screen readers are untested so far; test what can be installed inside the project and say what was not tested. Also check 200% root font and focus when a scrolling table starts to fit.
+
 ## Spec
 _PM fills this in during grooming._
 

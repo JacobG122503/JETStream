@@ -7,6 +7,8 @@ User: "see time breakdowns". Time report by client, project, task and person; de
 
 Overall goal: match every Harvest capability in this area or provide something similar, within the product rules in CLAUDE.md.
 
+Note from 002 QA: tables wider than the paper are cut off when printed; wide tables need a print layout.
+
 ## Spec
 _PM fills this in during grooming._
 

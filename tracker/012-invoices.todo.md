@@ -9,6 +9,8 @@ Overall goal: match every Harvest capability in this area or provide something s
 
 Server change: numbering and billing of entries are transactional; client-facing invoice links use unguessable tokens that can be revoked; PDF is generated on the server or by print. Email goes through the adapter in CLAUDE.md.
 
+Note from 002 QA: tables wider than the paper are cut off when printed; wide tables need a print layout.
+
 ## Spec
 _PM fills this in during grooming._
 

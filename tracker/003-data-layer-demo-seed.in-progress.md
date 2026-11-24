@@ -153,3 +153,4 @@ _PM fills this in after QA passes._
 - 2026-11-23 PM: groomed
 - 2026-11-23 ORCH: todo -> groomed
 - 2026-11-23 ORCH: user confirmed company time zone is US Central (America/Chicago)
+- 2026-11-24 ORCH: groomed -> in-progress

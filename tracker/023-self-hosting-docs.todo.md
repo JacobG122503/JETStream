@@ -1,7 +1,7 @@
 # 023 Self-hosting package and documentation
 
 ## Request
-Depends on: 022
+Depends on: 022, 026
 
 User: "eventually the backend will be hosted on JETs servers" and the user wants to demo it to their manager first.
 Production package for self-hosting: environment configuration with validation, migrations on upgrade, health checks, structured logs, backup and restore instructions, sample service files for Linux and Windows, optional Dockerfile, HTTPS reverse-proxy examples, hardening checklist. CI workflow file that lints, tests and builds (file only, do not push). README with a one-command laptop demo, the demo accounts, a guide per role and a feature matrix against the request that marks simulated or untested features honestly.
