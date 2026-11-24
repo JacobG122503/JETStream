@@ -1,0 +1,2 @@
+# Migrations are identified by a hash of their content, so line endings must not change.
+drizzle/** text eol=lf

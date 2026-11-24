@@ -23,5 +23,6 @@
 - **Demo data:** loaded only by an explicit seed command, and refused in production unless explicitly allowed. Demo passwords must never exist in a production database by default; the first production administrator is created by a setup command.
 - **Demo accounts (seeded):** `admin@jet.demo` (administrator, billing manager), `lead@jet.demo` (project lead), `employee@jet.demo` (regular employee). Password for all: `jetdemo123`. All people, client companies and figures in seed data are fictional.
 - **Brand:** "JET Time" by JET Engineering. Primary colour mediumseagreen (#3CB371). White text on it fails WCAG AA, so use dark text on it or a darker shade of it. Do not use Harvest's name, logo, artwork, wording or visual identity in the product.
+- **Time zone:** JET Engineering is in US Central (America/Chicago); use it as the company default.
 - **Correctness:** store time as integer minutes and money as integer minor units; calculate invoices, budgets and reports in pure, unit-tested functions. Store dates as local ISO dates (YYYY-MM-DD).
 - **Quality:** usable on phone and desktop, keyboard accessible, with loading, empty and error states, and confirmation before destructive actions.
