@@ -129,13 +129,123 @@ Failure cases
 L. Not split: every later screen depends on both halves, and the shell cannot be reviewed without the components. Suggested build order: tokens and modes, shell, form components, overlays, table, date pickers, gallery and axe checks.
 
 ## Implementation notes
-_Software engineer fills this in._
+### Files
+- `src/web/styles/`: `tokens.css` (the only place for values; `light-dark()` with `color-scheme`, so each colour has both modes side by side), `base.css`, `print.css`.
+- `src/web/theme/theme.ts`, `public/theme-init.js` (blocking external script, sets `data-theme` before first paint), `index.html` (loads it).
+- `src/web/ui/`: the components, exported from `ui/index.ts`. `ui/overlay/` holds what dialogs, drawer and popups share (modal layers, focus, popup placement). Pure functions: `dates.ts`, `tableData.ts`, `comboboxFilter.ts`.
+- `src/web/shell/`: `AppShell`, `PlainLayout`, `Page` (title and h1), `navigation.ts` (the one list), drawer, theme menu, skip link, `RouteEffects` (focus and scroll), `PageBoundary` (render errors).
+- `src/web/pages/`: `SectionPage` (placeholder), `NotFoundPage`, `design/` (gallery at `/design`, `/design/plain`). `HomePage` removed: `/` now leads to `/time`.
+- `ServerStatus.tsx` (001 AC10) moved from the removed home page to the "Server" section of `/design`; same behaviour, tests kept. It is the only API call of the web app.
+- `e2e/`: `pages.ts` (helpers), `shell.spec.ts` and `theme.spec.ts` (both bases), `components.spec.ts` and `accessibility.spec.ts` (root), `smoke.spec.ts` adapted. `fixtures.ts` now also fails a test on console warnings and third-party requests. `src/web/test/setup.ts`: stubs for jsdom. `eslint.config.js`: browser globals for `public/*.js`.
+
+Dependencies: `@fontsource-variable/archivo` (bundled typeface, OFL; CSS and font files only, no code), dev `axe-core` (AC22; used directly because the current `@axe-core/playwright` needs Node 22). Components are in-house, no UI library. Both work on Node 18.20.
+
+### Acceptance criteria
+- AC1 -> `--c-brand`, defined once; brand mark, primary button, current navigation item, all with dark ink. AC2 -> `tokens.test.ts` (every pair in use, in both modes), axe also hovered, selected and with errors. AC3 -> `tokens.test.ts` scans every style and component file for colour literals, and style files for spacing, font size, radius, shadow and z-index outside tokens.
+- AC4, AC5 -> `theme.test.tsx`, `theme.spec.ts` (T3, E9, E10, F1, F2; records the mode when `<body>` begins and in the first frames; another tab follows too).
+- AC6 to AC13 -> `App.test.tsx`, `AppShell.test.tsx`, `shell.spec.ts` (T1, T2, T6, E4, E11, F3). Also: Back while the drawer is open closes it.
+- AC14 -> `AppShell` props `isNavItemVisible` and `headerContent`; `AppShell.test.tsx`.
+- AC15 -> `Button.test.tsx`, `fields.test.tsx`, `Combobox.test.tsx` (T5, 500 options), `components.spec.ts` (F6). AC16 -> `tableData.test.ts`, `Table.test.tsx` (T4), `components.spec.ts`. AC17 -> `Dialog.test.tsx`, `components.spec.ts` (F5). AC18 -> `Toasts.test.tsx`, `components.spec.ts` (E6). AC19 -> `dates.test.ts`, `DatePicker.test.tsx` (E1, E2, E3, F7), `widgets.test.tsx` (E8), `components.spec.ts` (E1 in both time zones, F4).
+- AC20 -> `shell.spec.ts` (print, E7; reduced motion). AC21 -> `/design`. AC22 -> `accessibility.spec.ts`: 14 pages, 2 modes, 2 widths, plus open drawer, menus, comboboxes, date picker, dialogs, tooltip, toasts; Tab through the whole gallery with a visible indicator. AC23 -> fixture on every spec, "visiting every page is quiet". E5 -> "Long text" section with the width test and popup tests.
+- AC25 -> looked at Time, Reports and the gallery at 375, 768, 1440 in both modes, and at open overlays; QA to repeat.
+
+### Commands run (Node 18.20.8, `DATABASE_URL=postgres://nobody@127.0.0.1:1/none`)
+- `npm run build` 0, `npm run lint` 0, `npm test` 0 (21 files, 637 tests), `npm run e2e` 0 (146 passed, components and accessibility specs skipped at the second base), `npm run db:generate` "No schema changes".
+- All e2e specs repeated 3 times: 438 passed, no flakes. `npm run dev` with `BASE_PATH=/jettime`: gallery loads, no console messages or failed requests.
+
+### Rework after QA (rejection 1)
+- **Bug 1 (AC25)**, `ui/Table.tsx`, `ui/Table.css`: cells now use `overflow-wrap: break-word`, and what is inside a value (badges too) inherits it, so a column is at least as wide as its longest word. Only cells with a word of 25 characters or more, which would push the table out of its box (E5), are marked `data-long-word` after rendering and may break it; they keep at least 12rem. New column option `nowrap` for short values, used for dates. Below 1024px the space between columns is smaller, so the gallery table fits at 640 without scrolling; the outer cells stay in line with the caption.
+- Because words now set a minimum, a table with too many columns scrolls in its own container. That container then becomes a labelled region that takes focus, as with `narrow="scroll"`; a table that fits is not a Tab stop.
+- Note c: the total is that of the rows given to the table (28.50). Note d: the visible caption is above what scrolls, `<caption>` itself is for screen readers. Note e: disabled select and search icons use the disabled colour, a disabled combobox keeps its arrow as a disabled button. Notes a and b, `tokens.test.ts`: `text-muted` on `accent-soft` added; all CSS colour names are found in style sheets (also in the last declaration of a block) and in TSX strings (`style={{ color: 'tomato' }}`, `fill="red"`, borders, gradients), with tests of the check itself.
+- Tests: `components.spec.ts`: whole words, badges and dates and a fitting table at 640, 768 and 1024 (one test each); long words at 640 to 1440; overflowing table; caption at 320; totals; disabled icons. Against the old sources the first three fail ("Submitted", "Approved", "Rejected" and the dates broken), as do those for overflow, caption, totals and icons; the long-word test fails with the marking turned off. `Table.test.tsx` (3), `Combobox.test.tsx` (1), `tokens.test.ts` (25).
+- Commands on the final state, Node 18.20.8, 2026-11-24, `DATABASE_URL` as above: `npm run build` 0, `npm run lint` 0, `npm test` 0 (21 files, 666 tests), `npm run e2e` 0 (154 passed, 94 skipped by design at the second base). `components.spec.ts` five times over: 145 passed. `npm run db:generate` "No schema changes". Looked at tables, long text, select, search and combobox at 320 to 1440.
+- Limit: a cell whose own content changes to a very long word without the table rendering again is not marked until the next render; the table then scrolls in its box.
+
+### Design choices and assumptions
+- Dialogs use `inert` on everything else instead of `aria-modal`, because `aria-modal` would hide the toasts that must stay usable above a dialog (AC18). In a dialog, Tab also goes through visible toasts.
+- Hovering or focusing any toast holds all of them, so that others leaving cannot move one away from under the pointer. Pressing a toast button with the pointer does not move focus.
+- Popups use the browser's `popover` top layer, so dialogs and scrolling containers do not cut them off.
+- A date is taken over on Enter or on leaving the field, not while typing. While the text is not a date, `value` stays the last good one; forms can use `onProblemChange`. The range picker gives a value only for two ordered dates, or both empty.
+- `/time/nope` shows "Page not found" with Time marked current (AC7 sub-route rule).
+- Unused sections show "Not available yet"; the search, menus and buttons of the gallery say that they are samples.
+
+### Known limitations
+- Needs browsers from about mid 2024 (`light-dark()`, popover). Tested in Chromium only; Firefox, Safari and screen readers were not available here.
+- Section fragment links across pages scroll to the top (AC13 wording); a direct `/design#tables` goes to the section.
+- `history.scrollRestoration` is manual, so a reload starts at the top.
+
+### Follow-ups
+- 004: theme choice is per device; nothing to do unless wanted per user. Use `PlainLayout` for sign-in.
+- 023: with a strict `style-src`, note that components set a few inline styles through the DOM (allowed) and none in HTML.
+- Dialogs with unsaved input have no "discard changes?" question yet; decide with the first real form.
 
 ## QA report
-_QA tester fills this in._
+**Overall: PASS** (second pass, after rework 1; the first pass failed on AC25). Node 18.20.8, 2026-11-24. Rerun by QA with `DATABASE_URL=postgres://nobody@127.0.0.1:1/none`:
+`npm run build` 0, `npm run lint` 0, `npm test` 0 (21 files, 666 tests), `npm run e2e` 0 (154 passed, 94 skipped by design at the second base), `npm run db:generate` "No schema changes". No `.only` or retries; the only skips are the two file-level ones for the second base. Own Playwright scripts against the built server: 114 shell and theme checks (both bases), 134 component checks, 67 reflow, touch, axe and print checks, 16 server checks, 31 checks of tables and toasts, plus a fixture page with eight hard tables in a copy of the project.
+
+**Bug 1 (AC25): fixed.** At 28 widths from 320 to 1920 (including 640, 700, 768, 1023, 1024 and pages 2 and 3 of the table), no word under 25 characters is broken anywhere in the gallery, no date wraps, and the page never scrolls sideways. The tables fit from 640 up, so they are not Tab stops there.
+
+| AC | Result | Evidence |
+| --- | --- | --- |
+| 1 | PASS | `#3cb371` only in tokens.css and the favicon; brand mark and primary button computed `rgb(60,179,113)` with dark text, both modes |
+| 2 | PASS | `tokens.test.ts` (dulling `accent-soft` in a copy fails it), axe 0 |
+| 3 | PASS | Scan passes; adding `tomato` in CSS and in TSX (in a copy) now fails it |
+| 4 | PASS | System follows the OS live, Dark overrides, back to System; both bases (T3, E9) |
+| 5 | PASS | App script delayed, CSP `script-src 'self'`, `/design/plain`, both bases: dark before the app ran, no violations (E10). Storage throwing, null, `setItem` throwing, `purple` (F1, F2) |
+| 6 | PASS | Order, hrefs with base, no reload, Meta-click, Back (T1, T6); both bases |
+| 7 | PASS | `aria-current`, titles, `/time/nope` keeps Time; component test |
+| 8 | PASS | 21 addresses opened directly at both bases: styled, one h1, nothing of 400 or more (F3, E11) |
+| 9 | PASS | One h1, "Not available yet", no controls |
+| 10 | PASS | 1280x720 all items in view; sidebar at 1024, drawer at 1023 |
+| 11 | PASS | Focus trap, inert page, Escape, tap outside, item choice (T2), growing to 1200, 667x320 |
+| 12 | PASS | 14 pages at 5 widths, touch targets at 320, 375, 768, also in open overlays |
+| 13 | PASS | h1 focus and scroll on path change only; skip link (E4), both bases |
+| 14 | PASS | `AppShell.test.tsx`; `/design/plain` works |
+| 15 | PASS | Labels, described errors, loading button, F6, T5, 500 options. Disabled combobox keeps a disabled arrow that opens nothing |
+| 16 | PASS | T4, stable sort, empties last, page-only selection, mixed state, totals 307.50 and 28.50 (equal to the sum of their rows), stacked and scrolling variants, sort and selection kept when crossing 640. A table that overflows becomes a labelled region with a visible focus ring; arrow keys scroll it; its row menu is not cut off |
+| 17 | PASS | Trap, inert, scroll lock, Escape, outside press and opt-out, opener gone, 320x568, F5 |
+| 18 | PASS | Real time: 5 s, hover 10 s, focus, 3 visible then the rest (E6), roles, above a dialog; five dismissed by keyboard in a row, 8 of 8 runs. (One check in the rerun failed because it pressed Enter twice with no pause, before focus had moved on to the next toast; with 60 ms between presses it always works. The toast code did not change) |
+| 19 | PASS | Tabs, menu and calendar keys; E1 in three time zones; E2, E3, presets, F7, E8, F4, tooltip |
+| 20 | PASS | E7 in dark mode; no motion over 10 ms when reduced. See note a |
+| 21 | PASS | All components and states present, sample data labelled |
+| 22 | PASS | Axe spec rerun and own runs: 0. Also 0 on the eight hard tables, both modes, 375, 768, 1440 |
+| 23 | PASS | Nothing in the console, no failed or third-party requests, both bases; `npm run dev` also clean at both |
+| 24 | PASS | Commands above; axe-core `node >=4`, the font has no engine limit |
+| 25 | PASS | Fresh screenshots of Time, Reports and every gallery section at 375, 768, 1440 in both modes, and open overlays: nothing overlapping, clipped or unstyled, alignment consistent |
+
+**E5:** at 320, the 120-character name is whole and unclipped in the page header, table cell, badge and menu; page does not scroll sideways.
+
+**Small items of the rework:** notes a and b (colour pair, colour names) verified by faults in a copy; c (totals), d (caption whole, outside what scrolls, table still has its own `<caption>`), e (icons of disabled select, search and combobox have the disabled colour). With the long-word marking turned off in a copy, `Table.test.tsx` fails.
+
+**Hard tables (fixture):** two long names in one row, words of 24, twelve columns, email and URL, 40-digit number, text changing after load, toggled long text, long run of inline elements: page never scrolls sideways at 320 to 1440; what cannot fit scrolls in its own region; marking goes on and off correctly; no errors, also without `ResizeObserver`.
+
+**Screenshots:** `/private/tmp/claude-501/-Users-jacobg/c94458db-ae8d-4d76-bf62-4c413bea25ef/scratchpad/qa3/shots/` : `time|reports|design-top|design-full-{375,768,1440}-{light,dark}.png`, `sec-<section>-<width>-<mode>.png`, `ov-*.png`, `table-768.png`, `table-1024.png`, `v-e5-320.png`, `adv-375.png`, `adv-768.png`, `adv-print.png`. Contact sheets `/private/tmp/claude-501/-Users-jacobg/c94458db-ae8d-4d76-bf62-4c413bea25ef/scratchpad/qa3/s-*.png`. (Headers and skip links across tall section images are stitching artefacts; so is the cut last control in two 375px sections, seen whole in `v-combo-375.png` and `v-tooltip-375.png`.)
+
+**Regression of 001:** server status (checking, connected, 503, stopped, retry), API 404, health, missing asset, outside prefix, traversal, no `X-Powered-By`: unchanged. Demo with `DATABASE_URL` and production without it still refuse. All servers stopped; source checksums equal to those before QA; faults only in copies.
+
+**Notes, not failing:**
+- a. Print below 1024px of page width: in a table with selection and actions, the first and last printed columns sit 8px outside the caption (9 against 17), because the new rule for outer cells looks at `:first-child`/`:last-child`, which are hidden in print. New with the rework, cosmetic.
+- b. A table wider than the paper is cut off in print (it scrolls on screen). Matters for 012 and 015, which print wide tables.
+- c. If the scrolling region has focus and the window grows so that the table fits, focus falls to `body`. Very minor.
+- d. With the root font at 200% and a 1024px window, the date range picker makes the page scroll sideways by 130px (browser zoom is fine, as the widths of AC12 show). Not part of an AC.
+- e. A `nowrap` or numeric value is never broken; a very long one scrolls the table. Sensible, as documented for `nowrap`.
+- f. Only Chromium was available.
 
 ## PM acceptance
-_PM fills this in after QA passes._
+**ACCEPTED** (2026-11-24)
+
+Basis: the spec, the implementation notes, the second QA report, about 25 of QA's screenshots (shell pages, gallery sections, drawer, dialogs, calendar, print; phone, tablet and desktop; both modes) and a short reading of the shell, navigation, theme pre-paint and page sources. I had no shell in this review, so I did not run the app or the commands; behaviour rests on QA's evidence.
+
+- **Goal met.** The shell looks professional and consistent in both modes, mediumseagreen is clearly the brand colour with dark text on it, and all eleven sections are in the requested order on phone and desktop. The components cover what 003 to 024 need.
+- **Criteria.** All 25 have passing evidence in the QA report. The earlier AC25 failure is gone: in the 768 and 1440 table screenshots statuses and dates are whole. The only skipped e2e tests are the component and accessibility specs at the second base, which the spec does not ask for there.
+- **Honest content.** Unused sections say "Not available yet"; gallery people, companies and figures are marked as sample data.
+- **The design choices listed above** (`inert` instead of `aria-modal`, Time staying current on `/time/nope`, dates taken over on Enter or leaving the field) are accepted.
+
+Not blocking, to carry forward:
+1. Tables in print: outer columns 8px off the caption on narrow paper (QA note a) and wide tables cut off at the paper edge (note b). To be fixed in the first task with a printed table, 012 or 015 at the latest; the cut-off would lose data on paper.
+2. Firefox, Safari and real screen readers are untested, and browsers older than about mid 2024 are not supported. 024 should test them, and JET Engineering should be told the browser requirement.
+3. Date range picker at 200% root font (note d) and focus lost when a scrolling table starts to fit (note c): fix when those components are next changed.
+4. Managers should be shown the app after the first real sections exist (009 onward): today every section is a placeholder, and only `/design` shows the components.
 
 ## History
 - 2026-11-23 created
@@ -145,3 +255,14 @@ _PM fills this in after QA passes._
 - 2026-11-23 PM: groomed (revised for server hosting and history routing)
 - 2026-11-23 ORCH: todo -> groomed (revised)
 - 2026-11-23 ORCH: groomed -> in-progress
+- 2026-11-23 SWE: implemented
+- 2026-11-23 ORCH: in-progress -> qa
+- 2026-11-23 QA: fail (AC25)
+- 2026-11-23 ORCH: QA FAIL (rejection 1 of 3), qa -> in-progress
+- 2026-11-24 ORCH: rework interrupted by usage limit, resumed
+- 2026-11-24 SWE: reworked
+- 2026-11-24 ORCH: in-progress -> qa (rework 1)
+- 2026-11-24 QA: pass
+- 2026-11-24 ORCH: QA PASS, qa -> review
+- 2026-11-24 PM: accepted
+- 2026-11-24 ORCH: PM ACCEPTED, review -> done

@@ -46,10 +46,15 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
   baseURL: async ({ appUrl }, use) => use(appUrl),
 
   pageProblems: [
-    async ({ page }, use) => {
+    async ({ page, appUrl }, use) => {
       const problems: string[] = []
+      const { origin } = new URL(appUrl)
+      page.on('request', (request) => {
+        const url = new URL(request.url())
+        if (url.protocol.startsWith('http') && url.origin !== origin) problems.push(`third party: ${request.url()}`)
+      })
       page.on('console', (message) => {
-        if (message.type() === 'error') problems.push(`console error: ${message.text()}`)
+        if (['error', 'warning'].includes(message.type())) problems.push(`console ${message.type()}: ${message.text()}`)
       })
       page.on('pageerror', (error) => problems.push(`uncaught error: ${error.message}`))
       page.on('requestfailed', (request) =>
@@ -59,7 +64,7 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
         if (response.status() >= 400) problems.push(`HTTP ${response.status()}: ${response.url()}`)
       })
       await use(problems)
-      expect(problems, 'failed requests and console errors').toEqual([])
+      expect(problems, 'failed requests, requests to others, console errors and warnings').toEqual([])
     },
     { auto: true },
   ],

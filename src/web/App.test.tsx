@@ -1,9 +1,11 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App'
 import { routerFuture, routes } from './routes'
+import { ServerStatus } from './ServerStatus'
+import { navItems } from './shell/navigation'
 
 function renderAt(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path], future: routerFuture })
@@ -19,25 +21,36 @@ beforeEach(() => {
 })
 
 describe('App', () => {
-  it('shows one level-1 heading "JET Time" on the home page', async () => {
-    renderAt('/')
-    const headings = screen.getAllByRole('heading', { level: 1 })
-    expect(headings).toHaveLength(1)
-    expect(headings[0]).toHaveTextContent(/^JET Time$/)
-    expect(await screen.findByText('Server connected')).toBeInTheDocument()
+  it('leads from the root to Time without a history entry of its own', async () => {
+    const { router } = renderAt('/')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Time' })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/time')
+    expect(router.state.historyAction).toBe('REPLACE')
+    expect(document.body).toHaveFocus()
   })
 
-  it.each(['/no-such-page', '/no/such/page'])('shows "Page not found" at %s', (path) => {
+  it.each(navItems.map((item) => [item.path, item.label]))('%s is the page "%s", and says that it is not available', (path, label) => {
+    renderAt(path)
+    expect(screen.getAllByRole('heading', { level: 1 }).map((heading) => heading.textContent)).toEqual([label])
+    expect(document.title).toBe(`${label} | JET Time`)
+    const main = within(screen.getByRole('main'))
+    expect(main.getByRole('heading', { level: 2, name: 'Not available yet' })).toBeInTheDocument()
+    expect(main.queryAllByRole('button')).toHaveLength(0)
+    expect(main.queryAllByRole('link')).toHaveLength(0)
+  })
+
+  it.each(['/no-such-page', '/time/nope', '/no/such/page'])('shows "Page not found" inside the shell at %s', (path) => {
     renderAt(path)
     expect(screen.getByRole('heading', { level: 1, name: 'Page not found' })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'JET Time' })).not.toBeInTheDocument()
+    expect(document.title).toBe('Page not found | JET Time')
+    expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument()
   })
 
-  it('returns to the home page from "Page not found"', async () => {
+  it('goes to Time from "Page not found"', async () => {
     const { router } = renderAt('/no-such-page')
-    await userEvent.click(screen.getByRole('link', { name: 'Go to the home page' }))
-    expect(await screen.findByRole('heading', { level: 1, name: 'JET Time' })).toBeInTheDocument()
-    expect(router.state.location.pathname).toBe('/')
+    await userEvent.click(screen.getByRole('link', { name: 'Go to Time' }))
+    expect(await screen.findByRole('heading', { level: 1, name: 'Time' })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/time')
   })
 
   it('keeps the base path in links', () => {
@@ -48,7 +61,22 @@ describe('App', () => {
     })
     render(<App router={router} />)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Page not found')
-    expect(screen.getByRole('link')).toHaveAttribute('href', '/jettime/')
+    expect(screen.getByRole('link', { name: 'Go to Time' })).toHaveAttribute('href', '/jettime/time')
+  })
+
+  it('has a layout without navigation', () => {
+    renderAt('/design/plain')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Layout without navigation')
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Appearance/ })).toBeInTheDocument()
+  })
+
+  it('has a gallery that is not in the navigation and calls its data fictional', async () => {
+    renderAt('/design')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Design system')
+    expect(screen.getByText(/the people, companies and figures are fictional/)).toBeInTheDocument()
+    expect(within(screen.getByRole('navigation', { name: 'Main' })).queryByRole('link', { name: /design/i })).not.toBeInTheDocument()
+    expect(await screen.findByText('Server connected')).toBeInTheDocument()
   })
 })
 
@@ -56,7 +84,7 @@ describe('server status', () => {
   it('is announced, first while checking and then when connected', async () => {
     let answer: (response: Response) => void = () => undefined
     fetchMock.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)))
-    renderAt('/')
+    render(<ServerStatus />)
     expect(screen.getByRole('status')).toHaveTextContent('Checking server...')
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
     answer(new Response('{}'))
@@ -68,7 +96,7 @@ describe('server status', () => {
   it.each([200, 503])('finishes the request when the answer is %i, and never cancels it', async (status) => {
     const response = new Response('{}', { status })
     fetchMock.mockResolvedValueOnce(response)
-    const { unmount } = renderAt('/')
+    const { unmount } = render(<ServerStatus />)
     await waitFor(() => expect(screen.getByRole('status')).not.toHaveTextContent('Checking'))
     expect(response.bodyUsed).toBe(true)
     unmount()
@@ -77,7 +105,7 @@ describe('server status', () => {
 
   it('lets a request finish after the page is left', async () => {
     fetchMock.mockReturnValueOnce(new Promise(() => undefined))
-    renderAt('/').unmount()
+    render(<ServerStatus />).unmount()
     await Promise.resolve()
     expect(fetchMock.mock.calls[0]?.[1]?.signal?.aborted).toBe(false)
   })
@@ -87,7 +115,7 @@ describe('server status', () => {
     ['the server answers 503', () => Promise.resolve(new Response('{}', { status: 503 }))],
   ])('offers another try when %s', async (_name, failure) => {
     fetchMock.mockImplementationOnce(failure)
-    renderAt('/')
+    render(<ServerStatus />)
     expect(await screen.findByText('Cannot reach the server')).toHaveAttribute('role', 'status')
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(await screen.findByText('Server connected')).toHaveAttribute('role', 'status')
@@ -97,7 +125,7 @@ describe('server status', () => {
 
   it('keeps focus on the button during a retry and ignores further presses', async () => {
     fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'))
-    renderAt('/')
+    render(<ServerStatus />)
     const button = await screen.findByRole('button', { name: 'Try again' })
     fetchMock.mockReturnValueOnce(new Promise(() => undefined))
     await userEvent.click(button)

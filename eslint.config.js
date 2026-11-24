@@ -14,6 +14,10 @@ export default defineConfig([
     languageOptions: { globals: globals.node },
   },
   {
+    files: ['src/web/public/**/*.js'],
+    languageOptions: { globals: globals.browser },
+  },
+  {
     files: ['**/*.{ts,tsx}'],
     extends: [js.configs.recommended, tseslint.configs.recommendedTypeChecked],
     languageOptions: {

@@ -1,51 +1,23 @@
 import { expect, test } from './fixtures'
 
-test('the home page shows that the server is connected', async ({ page }) => {
-  await page.goto('')
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('JET Time')
-  await expect(page.getByRole('status')).toHaveText('Server connected')
-  await expect(page).toHaveTitle('JET Time')
+test('the gallery shows that the server is connected, and can be reloaded, left and returned to', async ({ page }) => {
+  const heading = page.getByRole('heading', { level: 1 })
+  const status = page.locator('#server').getByRole('status')
+  await page.goto('design')
+  await expect(status).toHaveText('Server connected')
   await expect(page.locator('html')).toHaveAttribute('lang', 'en')
   await expect(page.locator('meta[name="viewport"]')).toHaveAttribute('content', /width=device-width/)
-})
-
-test('the home page can be reloaded, left and returned to without a failed request', async ({ page }) => {
-  const heading = page.getByRole('heading', { level: 1 })
-  const status = page.getByRole('status')
-  await page.goto('')
-  await expect(status).toHaveText('Server connected')
   await page.reload()
   await expect(status).toHaveText('Server connected')
   await page.goto('no/such/page')
   await expect(heading).toHaveText('Page not found')
-  await page.getByRole('link', { name: 'Go to the home page' }).click()
-  await expect(status).toHaveText('Server connected')
   await page.goBack()
-  await expect(heading).toHaveText('Page not found')
-  await page.goForward()
   await expect(status).toHaveText('Server connected')
   // Leaving without waiting for the answer, by a link inside the app.
-  await page.goBack()
-  await page.getByRole('link', { name: 'Go to the home page' }).click()
+  await page.getByRole('link', { name: 'Layout without navigation' }).click()
+  await page.getByRole('link', { name: 'Back to the design system' }).click()
   await page.evaluate(() => history.back())
-  await expect(heading).toHaveText('Page not found')
-})
-
-test('an unknown deep link shows "Page not found", also after a reload, and links home', async ({
-  page,
-  appUrl,
-}) => {
-  const heading = page.getByRole('heading', { level: 1 })
-  for (const path of ['nope', 'no/such/page', 'no/such/page/']) {
-    await page.goto(path)
-    await expect(heading).toHaveText('Page not found')
-    await page.reload()
-    await expect(heading).toHaveText('Page not found')
-  }
-  await page.getByRole('link', { name: 'Go to the home page' }).click()
-  await expect(heading).toHaveText('JET Time')
-  await expect(page.getByRole('status')).toHaveText('Server connected')
-  await expect(page).toHaveURL(appUrl)
+  await expect(heading).toHaveText('Layout without navigation')
 })
 
 test('an unknown API route answers 404 JSON', async ({ request }) => {
@@ -61,6 +33,7 @@ test('files are served under the base path, and nothing else', async ({ page, re
   expect(icon?.headers()['content-type']).toContain('image/svg+xml')
   await page.goto('no/such/page')
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', `${basePath}favicon.svg`)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Page not found')
   expect((await request.get('assets/missing.js')).status()).toBe(404)
   for (const path of ['package.json', 'server/main.js', '..%2fserver/main.js', '.env']) {
     expect(await (await request.get(path)).text(), path).not.toMatch(/jet-time|createServer/)
@@ -71,7 +44,7 @@ test('files are served under the base path, and nothing else', async ({ page, re
       expect((await request.get(origin + path)).status(), path).toBe(404)
     }
     await page.goto(origin + basePath.slice(0, -1))
-    await expect(page).toHaveURL(appUrl)
-    await expect(page.getByRole('status')).toHaveText('Server connected')
+    await expect(page).toHaveURL(`${appUrl}time`)
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Time')
   }
 })

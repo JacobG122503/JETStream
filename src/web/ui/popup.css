@@ -1,0 +1,17 @@
+/* A menu, list or calendar next to the control that opened it; see overlay/usePopup.ts. */
+.popup {
+  position: fixed;
+  inset: auto;
+  z-index: var(--z-popup);
+  margin: 0;
+  padding: var(--space-1);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  background: var(--c-surface);
+  color: var(--c-text);
+  box-shadow: var(--shadow-2);
+  font-size: var(--text-md);
+  font-weight: var(--weight-normal);
+  line-height: var(--leading);
+  text-align: start;
+}

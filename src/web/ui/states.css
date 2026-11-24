@@ -1,0 +1,130 @@
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.state-page {
+  padding-block: var(--space-16);
+}
+
+.state-skeleton {
+  align-items: stretch;
+  padding: var(--space-4) 0;
+}
+
+/* Framed by crop marks, like a detail on a drawing sheet. */
+.state-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  margin-bottom: var(--space-2);
+  color: var(--c-accent);
+  background:
+    linear-gradient(var(--c-tick-major) 0 0) 0 0 / 14px 1px,
+    linear-gradient(var(--c-tick-major) 0 0) 0 0 / 1px 14px,
+    linear-gradient(var(--c-tick-major) 0 0) 100% 0 / 14px 1px,
+    linear-gradient(var(--c-tick-major) 0 0) 100% 0 / 1px 14px,
+    linear-gradient(var(--c-tick-major) 0 0) 0 100% / 14px 1px,
+    linear-gradient(var(--c-tick-major) 0 0) 0 100% / 1px 14px,
+    linear-gradient(var(--c-tick-major) 0 0) 100% 100% / 14px 1px,
+    linear-gradient(var(--c-tick-major) 0 0) 100% 100% / 1px 14px;
+  background-repeat: no-repeat;
+}
+
+.state-art .icon {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.state-art-error {
+  color: var(--c-danger);
+}
+
+.state-title {
+  font-size: var(--text-lg);
+  line-height: var(--leading-tight);
+  font-weight: var(--weight-strong);
+}
+
+.state-page .state-title {
+  font-size: var(--text-xl);
+  font-stretch: var(--wide);
+}
+
+.state-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.state-text {
+  max-width: 52ch;
+  color: var(--c-text-muted);
+  text-wrap: balance;
+}
+
+.state-action {
+  margin-top: var(--space-3);
+}
+
+.loading-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--c-text-muted);
+}
+
+.loading-inline .spinner {
+  color: var(--c-accent);
+}
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.skeleton-line {
+  display: block;
+  width: 100%;
+  height: 0.875rem;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--c-skeleton) 30%, var(--c-skeleton-shine) 50%, var(--c-skeleton) 70%) 0 0 / 300% 100%;
+  animation: shine 1600ms linear infinite;
+}
+
+.skeleton-line:nth-child(3n) {
+  width: 62%;
+}
+
+.skeleton-line:nth-child(3n + 2) {
+  width: 86%;
+}
+
+@keyframes shine {
+  from {
+    background-position: 100% 0;
+  }
+
+  to {
+    background-position: -50% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-line {
+    animation: none;
+  }
+}

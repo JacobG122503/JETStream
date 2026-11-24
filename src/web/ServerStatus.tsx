@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiUrl } from './basePath'
+import { Button } from './ui'
 
 type State = 'checking' | 'connected' | 'failed'
 
@@ -45,17 +46,15 @@ export function ServerStatus() {
     <>
       <p role="status">{messages[state]}</p>
       {(state === 'failed' || retrying) && (
-        <button
-          type="button"
+        <Button
           aria-disabled={retrying}
           onClick={() => {
-            if (retrying) return
             setState('checking')
             setAttempt(attempt + 1)
           }}
         >
           Try again
-        </button>
+        </Button>
       )}
     </>
   )

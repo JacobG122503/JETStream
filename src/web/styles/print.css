@@ -1,0 +1,57 @@
+/* Loaded last. The light colours come from tokens.css. */
+@media print {
+  /* A change of colour on the way to paper would be caught half-way. */
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .shell-sidebar,
+  .shell-header,
+  .plain-header,
+  .skip-link,
+  .drawer-layer,
+  .toasts,
+  .tooltip,
+  .popup,
+  .tabs-list,
+  .table .table-select,
+  .table .table-actions,
+  .no-print,
+  button,
+  .btn {
+    display: none !important;
+  }
+
+  .print-only {
+    display: inline;
+  }
+
+  .shell {
+    display: block;
+  }
+
+  .shell-main,
+  .plain-main {
+    max-width: none;
+    padding: 0;
+  }
+
+  html,
+  body {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  .card,
+  .stat,
+  .table tr {
+    break-inside: avoid;
+  }
+
+  .table thead {
+    display: table-header-group;
+  }
+}

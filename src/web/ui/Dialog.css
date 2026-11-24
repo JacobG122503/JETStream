@@ -1,0 +1,150 @@
+.dialog-layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: var(--c-overlay);
+  animation: fade-in var(--motion-fast) ease-out;
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  max-height: calc(100vh - 2 * var(--space-4));
+  max-height: calc(100dvh - 2 * var(--space-4));
+  overflow: hidden;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  background: var(--c-surface);
+  color: var(--c-text);
+  box-shadow: var(--shadow-3);
+  animation: rise-in var(--motion) ease-out;
+}
+
+.dialog:focus-visible {
+  outline-offset: -2px;
+}
+
+.dialog-small {
+  max-width: 28rem;
+}
+
+.dialog-medium {
+  max-width: 36rem;
+}
+
+.dialog-large {
+  max-width: 56rem;
+}
+
+.dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-3) var(--space-2) var(--space-6);
+}
+
+.dialog-title {
+  padding-top: calc((var(--control-md) - 1.2em) / 2);
+  font-size: var(--text-xl);
+  font-stretch: var(--wide);
+}
+
+.dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--space-2) var(--space-6) var(--space-5);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.dialog-body:focus-visible {
+  outline-offset: -3px;
+}
+
+.dialog-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6);
+  border-top: 1px solid var(--c-border);
+  background: var(--c-surface);
+}
+
+.confirm-message {
+  overflow-wrap: anywhere;
+}
+
+.confirm-error {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--c-danger-soft);
+  color: var(--c-on-danger-soft);
+  overflow-wrap: anywhere;
+}
+
+.confirm-error .icon {
+  margin-top: 0.15em;
+  color: var(--c-danger);
+}
+
+@media (max-width: 639.98px) {
+  .dialog-layer {
+    padding: var(--space-2);
+  }
+
+  .dialog {
+    max-height: calc(100vh - 2 * var(--space-2));
+    max-height: calc(100dvh - 2 * var(--space-2));
+  }
+
+  .dialog-header {
+    padding: var(--space-2) var(--space-2) var(--space-1) var(--space-4);
+  }
+
+  .dialog-body {
+    padding: var(--space-2) var(--space-4) var(--space-4);
+  }
+
+  .dialog-footer {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .dialog-footer > .btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* A very low window, such as a phone held sideways: everything scrolls together. */
+@media (max-height: 320px) {
+  .dialog {
+    overflow-y: auto;
+  }
+
+  .dialog-body {
+    flex: none;
+    overflow: visible;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}

@@ -1,0 +1,184 @@
+/*
+ * Design tokens: the only place where colours, spacing, type, radii, shadows and layers get a
+ * value. tokens.test.ts checks the contrast of the colour pairs in use.
+ *
+ * light-dark(light, dark) follows color-scheme, so a mode is chosen with that one property:
+ * the operating system's by default, or the one in data-theme (see theme/theme.ts).
+ */
+:root {
+  color-scheme: light dark;
+
+  /* Brand. Never put white text on it (2.67:1), and in light mode do not use it for thin lines
+     or text on a light surface: --c-accent is the shade for that. */
+  --c-brand: #3cb371;
+  --c-brand-hover: #54c485;
+  --c-brand-active: #34a366;
+  --c-on-brand: #04210f;
+
+  /* Surfaces and text */
+  --c-bg: light-dark(#f3f7f4, #0d1611);
+  --c-surface: light-dark(#ffffff, #142019);
+  --c-surface-2: light-dark(#eaf1ed, #1b2a21);
+  --c-surface-3: light-dark(#dde8e1, #26382d);
+  --c-text: light-dark(#11211a, #e7f0ea);
+  --c-text-muted: light-dark(#4a5c53, #a6b8ad);
+  --c-border: light-dark(#d2dfd7, #2b3d33);
+  --c-border-strong: light-dark(#6b8075, #7b9285);
+  --c-disabled-bg: light-dark(#e6ece8, #1d2a22);
+  --c-disabled-text: light-dark(#7d8c84, #6f8177);
+
+  /* Accent: links, focus, selected and checked states, progress */
+  --c-accent: light-dark(#1a6e40, #5cd08f);
+  --c-accent-hover: light-dark(#13552f, #86e0ad);
+  --c-on-accent: light-dark(#ffffff, #04210f);
+  --c-accent-soft: light-dark(#d9f1e3, #17402a);
+  --c-on-accent-soft: light-dark(#114a2a, #b9f0cf);
+  --c-focus: light-dark(#1a6e40, #7be3a9);
+
+  /* Status */
+  --c-success: light-dark(#1a6e40, #5cd08f);
+  --c-success-soft: light-dark(#d9f1e3, #17402a);
+  --c-on-success-soft: light-dark(#114a2a, #b9f0cf);
+  --c-warning: light-dark(#8a5500, #f0b94f);
+  --c-warning-soft: light-dark(#fdeecb, #412f0b);
+  --c-on-warning-soft: light-dark(#633d00, #f8dda3);
+  --c-danger: light-dark(#b3261e, #ff9d92);
+  --c-danger-soft: light-dark(#fde5e2, #4a1b17);
+  --c-on-danger-soft: light-dark(#86170f, #ffcfc9);
+  --c-info: light-dark(#1c5f91, #86c5f4);
+  --c-info-soft: light-dark(#dfeefa, #14354e);
+  --c-on-info-soft: light-dark(#123f61, #c9e5fa);
+  --c-danger-solid: light-dark(#b3261e, #f08a7f);
+  --c-danger-solid-hover: light-dark(#971c15, #f7a79e);
+  --c-danger-solid-active: light-dark(#7d130d, #e2766a);
+  --c-on-danger-solid: light-dark(#ffffff, #2b0502);
+
+  /* Navigation is dark in both modes */
+  --c-nav-bg: light-dark(#0f2a1d, #0a120e);
+  --c-nav-edge: light-dark(#0f2a1d, #2b3d33);
+  --c-nav-text: #d3e6db;
+  --c-nav-strong: #ffffff;
+  --c-nav-hover: light-dark(#1c4130, #1a2b22);
+  --c-nav-rule: light-dark(#2d5542, #2b3d33);
+  --c-nav-focus: #9cf0c1;
+
+  --c-tooltip-bg: light-dark(#11211a, #e7f0ea);
+  --c-tooltip-text: light-dark(#ffffff, #11211a);
+  --c-overlay: light-dark(rgb(8 26 17 / 0.55), rgb(0 0 0 / 0.68));
+  --c-skeleton: light-dark(#dde8e1, #26382d);
+  --c-skeleton-shine: light-dark(#eaf1ed, #304639);
+  --c-tick: light-dark(#a9bdb1, #40574b);
+  --c-tick-major: light-dark(#4f8468, #55a379);
+
+  /* Avatars */
+  --c-avatar-1: light-dark(#cdeedb, #1c4b32);
+  --c-avatar-2: light-dark(#d8e6f7, #1e3f5c);
+  --c-avatar-3: light-dark(#f7e4c1, #4d3a14);
+  --c-avatar-4: light-dark(#eadff5, #43305a);
+  --c-avatar-text: light-dark(#11211a, #e7f0ea);
+
+  /* Spacing */
+  --space-0: 0.125rem;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* Type: one family, set wide for titles the way drawing title blocks are lettered */
+  --font: 'Archivo Variable', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+  --wide: 115%;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 0.9375rem;
+  --text-field: 0.9375rem;
+  --text-lg: 1.0625rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-title: clamp(1.5rem, 1.25rem + 1.1vw, 2rem);
+  --leading-tight: 1.2;
+  --leading: 1.5;
+  --weight-normal: 400;
+  --weight-medium: 520;
+  --weight-strong: 640;
+  --weight-heavy: 720;
+
+  /* Shape */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.625rem;
+  --radius-full: 999px;
+  --shadow-1: 0 1px 2px light-dark(rgb(15 42 29 / 0.08), rgb(0 0 0 / 0.4));
+  --shadow-2: 0 4px 16px light-dark(rgb(15 42 29 / 0.14), rgb(0 0 0 / 0.5)), 0 1px 3px light-dark(rgb(15 42 29 / 0.1), rgb(0 0 0 / 0.4));
+  --shadow-3: 0 16px 48px light-dark(rgb(15 42 29 / 0.24), rgb(0 0 0 / 0.65));
+  --shadow-outline: inset 0 0 0 1px currentColor;
+  --shadow-invalid: inset 0 0 0 1px var(--c-danger);
+
+  /* Sizes */
+  --control-sm: 2rem;
+  --control-md: 2.5rem;
+  --sidebar-width: 15rem;
+  --header-height: 3.5rem;
+  --content-max: 80rem;
+  --gutter: var(--space-8);
+
+  /* Layers */
+  --z-raised: 1;
+  --z-header: 100;
+  --z-overlay: 200;
+  --z-popup: 300;
+  --z-toast: 400;
+  --z-skip-link: 500;
+
+  --motion-fast: 120ms;
+  --motion: 180ms;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+/* Touch targets are at least 44px high on phones, tablets and any touch screen. */
+@media (max-width: 1023.98px), (pointer: coarse) {
+  :root {
+    --control-sm: 2.75rem;
+    --control-md: 2.75rem;
+    /* Below 16px, iOS zooms in when a field gets focus. */
+    --text-field: 1rem;
+  }
+}
+
+@media (max-width: 1023.98px) {
+  :root {
+    --gutter: var(--space-6);
+  }
+}
+
+@media (max-width: 639.98px) {
+  :root {
+    --gutter: var(--space-4);
+  }
+}
+
+@media print {
+  :root,
+  :root[data-theme] {
+    color-scheme: light;
+    --c-bg: #ffffff;
+    --c-text: #000000;
+    --shadow-1: none;
+    --shadow-2: none;
+    --shadow-3: none;
+    --gutter: 0;
+  }
+}
