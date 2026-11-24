@@ -8,6 +8,8 @@ Sign-in page with one-click demo sign-in for the three accounts, sign-up, sign-o
 
 Overall goal: match every Harvest capability in this area or provide something similar, within the product rules in CLAUDE.md.
 
+Server change: sessions, hashing (instead of WebCrypto in the browser), two-factor, invite and password-reset links, rate limiting and sign-out of other sessions are all server-side. Includes the setup command for the first production administrator. One-click demo sign-in exists only when demo mode is on.
+
 ## Spec
 _PM fills this in during grooming._
 
@@ -22,3 +24,4 @@ _PM fills this in after QA passes._
 
 ## History
 - 2026-11-23 created
+- 2026-11-23 ORCH: request updated, user moved the target from GitHub Pages to JET's servers

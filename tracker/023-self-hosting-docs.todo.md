@@ -1,0 +1,23 @@
+# 023 Self-hosting package and documentation
+
+## Request
+Depends on: 022
+
+User: "eventually the backend will be hosted on JETs servers" and the user wants to demo it to their manager first.
+Production package for self-hosting: environment configuration with validation, migrations on upgrade, health checks, structured logs, backup and restore instructions, sample service files for Linux and Windows, optional Dockerfile, HTTPS reverse-proxy examples, hardening checklist. CI workflow file that lints, tests and builds (file only, do not push). README with a one-command laptop demo, the demo accounts, a guide per role and a feature matrix against the request that marks simulated or untested features honestly.
+
+## Spec
+_PM fills this in during grooming._
+
+## Implementation notes
+_Software engineer fills this in._
+
+## QA report
+_QA tester fills this in._
+
+## PM acceptance
+_PM fills this in after QA passes._
+
+## History
+- 2026-11-23 created
+- 2026-11-23 ORCH: replaced the GitHub Pages scope

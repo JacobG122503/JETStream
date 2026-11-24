@@ -7,6 +7,8 @@ In-app notification centre with per-user preferences: timesheet reminders, appro
 
 Overall goal: match every Harvest capability in this area or provide something similar, within the product rules in CLAUDE.md.
 
+Server change: real email over SMTP when configured, Outbox capture when not; live in-app notifications; scheduled jobs run once even after restarts.
+
 ## Spec
 _PM fills this in during grooming._
 
@@ -21,3 +23,4 @@ _PM fills this in after QA passes._
 
 ## History
 - 2026-11-23 created
+- 2026-11-23 ORCH: request updated, user moved the target from GitHub Pages to JET's servers

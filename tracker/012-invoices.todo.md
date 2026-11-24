@@ -7,6 +7,8 @@ User: "charge cleints" and "the billable time taken from employees gets charged 
 
 Overall goal: match every Harvest capability in this area or provide something similar, within the product rules in CLAUDE.md.
 
+Server change: numbering and billing of entries are transactional; client-facing invoice links use unguessable tokens that can be revoked; PDF is generated on the server or by print. Email goes through the adapter in CLAUDE.md.
+
 ## Spec
 _PM fills this in during grooming._
 
@@ -21,3 +23,4 @@ _PM fills this in after QA passes._
 
 ## History
 - 2026-11-23 created
+- 2026-11-23 ORCH: request updated, user moved the target from GitHub Pages to JET's servers
