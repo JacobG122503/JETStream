@@ -8,7 +8,6 @@ import {
   saveCategory, setReimbursed, updateExpense,
 } from '../../work/expenses'
 import { readHome } from '../../work/home'
-import { addPayment, createInvoice, listInvoices, listUnbilled, markSent, readInvoice, removeDraft } from '../../work/invoices'
 import { listNotifications, listPreferences, markRead, notify, savePreference } from '../../work/notify'
 import { readTimeReport } from '../../work/reports'
 import { readTeamWeek } from '../../work/team'
@@ -134,46 +133,6 @@ export const workRoutes: AddRoutes = (api, access, ctx) => {
   api.post('/expenses/:id/delete', access.signedIn, jsonBody, async (req, res) => {
     await deleteExpense(ctx, requireActor(res), pathId(req.params.id), readInput(req.body, { version }).version)
     res.json({ expenses: await listExpenses(ctx, requireActor(res)) })
-  })
-
-  api.get('/invoices', access.permission('invoices.manage'), async (_req, res) => {
-    res.json(await listInvoices(ctx, requireActor(res)))
-  })
-
-  api.get('/invoices/unbilled', access.permission('invoices.manage'), async (req, res) => {
-    res.json({ clients: await listUnbilled(ctx.db, requireActor(res), readInput(req.query, { from: optional(date), to: optional(date) })) })
-  })
-
-  api.post('/invoices', access.permission('invoices.manage'), jsonBody, async (req, res) => {
-    const input = readInput(req.body, {
-      clientId: id, projectIds: ids, from: optional(date), to: optional(date), grouping: oneOf('task', 'person', 'project', 'detailed'),
-      withExpenses: flag, subject: text(200),
-    })
-    res.status(201).json({ id: await createInvoice(ctx, requireActor(res), input) })
-  })
-
-  api.get('/invoices/:id', access.permission('invoices.manage'), async (req, res) => {
-    res.json(await readInvoice(ctx, requireActor(res), pathId(req.params.id)))
-  })
-
-  api.post('/invoices/:id/send', access.permission('invoices.manage'), jsonBody, async (req, res) => {
-    const invoiceId = pathId(req.params.id)
-    await markSent(ctx, requireActor(res), invoiceId, readInput(req.body, { version }).version)
-    res.json(await readInvoice(ctx, requireActor(res), invoiceId))
-  })
-
-  api.post('/invoices/:id/payments', access.permission('payments.manage'), jsonBody, async (req, res) => {
-    const invoiceId = pathId(req.params.id)
-    const input = readInput(req.body, {
-      amount: positive, paidOn: date, method: oneOf('check', 'bank_transfer', 'card', 'cash', 'other'), reference: text(100),
-    })
-    await addPayment(ctx, requireActor(res), invoiceId, input)
-    res.status(201).json(await readInvoice(ctx, requireActor(res), invoiceId))
-  })
-
-  api.post('/invoices/:id/delete', access.permission('invoices.manage'), jsonBody, async (req, res) => {
-    await removeDraft(ctx, requireActor(res), pathId(req.params.id), readInput(req.body, { version }).version)
-    res.json({})
   })
 
   api.get('/reports/time', access.signedIn, async (req, res) => {

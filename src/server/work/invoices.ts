@@ -1,19 +1,23 @@
 /** Invoices. The rules of billing are in src/server/billing; this is what people see and start. */
 import { and, asc, desc, eq, gte, inArray, isNull, lte, type SQL } from 'drizzle-orm'
-import { addDays, type IsoDate } from '../../shared/dates'
-import type { PaymentMethod } from '../../shared/domain'
-import type { InvoiceDetails, InvoiceList, InvoiceRow, NewInvoiceInput, UnbilledClient } from '../../shared/work'
-import { type Actor, actorId } from '../access/actor'
+import type { InvoiceDetails, PrintedDocument } from '../../shared/billing'
+import type { IsoDate } from '../../shared/dates'
+import type { InvoiceList, InvoiceRow, NewInvoiceInput, UnbilledClient } from '../../shared/work'
+import type { Actor } from '../access/actor'
 import { can, ownId, requirePermission, requireRecord } from '../access/decisions'
 import { readFacts } from '../access/facts'
 import { filterFor } from '../access/filters'
 import { invalidInput } from '../api/input'
-import { createInvoiceFromEntries, deleteInvoice, lockInvoice, recordPayment } from '../billing'
+import { addEntriesToInvoice, createInvoiceFromEntries } from '../billing'
 import type { AppContext } from '../context'
-import { type Db, runTransaction } from '../db'
-import { clients, expenses, invoiceExpenses, invoiceLines, invoices, payments, projects, timeEntries } from '../db/schema'
-import { ApiError, NotFoundError, StaleError } from '../errors'
+import { type Db, sumExact, type Tx } from '../db'
+import {
+  clients, expenseReceipts, expenses, files, invoiceAttachments, invoiceExpenses, invoiceLines, invoiceLinks, invoiceMessages, invoices, invoiceWriteOffs, payments, projects, refunds,
+  retainerEntries, retainers, timeEntries,
+} from '../db/schema'
+import { NotFoundError } from '../errors'
 import { getSettings } from '../people/lookup'
+import { companyHead, contactsOf, dueDate, toLinks, toMessages } from './documents'
 import { groupRows, isUnbilled, loadValued, notInvoiced, sumBy } from './figures'
 import { todayOf } from './time'
 
@@ -43,29 +47,76 @@ export async function listInvoices(ctx: AppContext, actor: Actor, clientId?: num
 
 const simulated = 'simulated'
 
+type Invoice = typeof invoices.$inferSelect
+
+/** What is printed of an invoice. */
+export async function printInvoice(db: Db, invoice: Invoice, client: typeof clients.$inferSelect): Promise<PrintedDocument> {
+  const lines = await db.select().from(invoiceLines).where(eq(invoiceLines.invoiceId, invoice.id)).orderBy(asc(invoiceLines.position), asc(invoiceLines.id))
+  const { number, currency, subject, purchaseOrder, notes, issuedOn, subtotal, discountPercent, discountAmount, tax1Name, tax1Percent, tax1Amount, tax2Name, tax2Percent, tax2Amount, total } = invoice
+  return {
+    number, currency, subject, purchaseOrder, notes, issuedOn, subtotal, discountPercent, discountAmount, tax1Name, tax1Percent, tax1Amount, tax2Name, tax2Percent, tax2Amount, total,
+    company: await companyHead(db), clientName: client.name, clientAddress: client.address,
+    lines: lines.map(({ id, description, quantity, unitPrice, amount, kind, minutes, projectId, categoryId, tax1, tax2 }) => ({ id, description, quantity, unitPrice, amount, kind, minutes, projectId, categoryId, tax1, tax2 })),
+  }
+}
+
+const receiptsOf = (db: Db | Tx, invoiceId: number) =>
+  db
+    .select({ id: expenseReceipts.fileId })
+    .from(expenseReceipts)
+    .innerJoin(invoiceExpenses, eq(invoiceExpenses.expenseId, expenseReceipts.expenseId))
+    .innerJoin(invoiceLines, eq(invoiceLines.id, invoiceExpenses.lineId))
+    .where(eq(invoiceLines.invoiceId, invoiceId))
+
+export const attachmentsOf = (db: Db, invoiceId: number) =>
+  db.select({ id: files.id, name: files.name }).from(invoiceAttachments).innerJoin(files, eq(files.id, invoiceAttachments.fileId)).where(eq(invoiceAttachments.invoiceId, invoiceId)).orderBy(asc(files.id))
+
 export async function readInvoice(ctx: AppContext, actor: Actor, id: number): Promise<InvoiceDetails> {
   const { db } = ctx
-  requireRecord(actor, { view: 'invoices.manage' }, await readFacts(db, 'invoice', id), id)
+  const facts = await readFacts(db, 'invoice', id)
+  requireRecord(actor, { view: 'invoices.manage' }, facts, id)
   const [row] = await select(db, eq(invoices.id, id))
-  if (!row) throw new NotFoundError(id)
+  if (!row || !facts) throw new NotFoundError(id)
   const { invoice, client } = row
-  const settings = await getSettings(db)
-  const lines = await db.select().from(invoiceLines).where(eq(invoiceLines.invoiceId, id)).orderBy(asc(invoiceLines.position), asc(invoiceLines.id))
   const paid = await db.select().from(payments).where(eq(payments.invoiceId, id)).orderBy(asc(payments.paidOn), asc(payments.id))
-  const { subtotal, discountPercent, discountAmount, tax1Name, tax1Percent, tax1Amount, tax2Name, tax2Percent, tax2Amount, paidAmount } = invoice
+  const given = paid.length === 0 ? [] : await db.select().from(refunds).where(inArray(refunds.paymentId, paid.map((payment) => payment.id))).orderBy(asc(refunds.id))
+  const [writeOff] = await db.select().from(invoiceWriteOffs).where(eq(invoiceWriteOffs.invoiceId, id))
+  const messages = await db.select().from(invoiceMessages).where(eq(invoiceMessages.invoiceId, id)).orderBy(desc(invoiceMessages.createdAt), desc(invoiceMessages.id))
+  const links = await db.select().from(invoiceLinks).where(eq(invoiceLinks.invoiceId, id)).orderBy(desc(invoiceLinks.id))
+  const attachments = await attachmentsOf(db, id)
+  const receipts = await receiptsOf(db, id)
+  const canManagePayments = can(actor, 'payments.manage', facts)
   return {
+    ...(await printInvoice(db, invoice, client)),
     ...toRow(row, await todayOf(db, ownId(actor), ctx.now())),
-    version: invoice.version,
-    company: { name: settings.name, address: settings.address },
-    clientAddress: client.address, purchaseOrder: invoice.purchaseOrder, notes: invoice.notes,
-    lines: lines.map(({ id: lineId, description, quantity, unitPrice, amount, kind, minutes }) => ({ id: lineId, description, quantity, unitPrice, amount, kind, minutes })),
-    subtotal, discountPercent, discountAmount, tax1Name, tax1Percent, tax1Amount, tax2Name, tax2Percent, tax2Amount, paidAmount,
+    version: invoice.version, paymentTerms: invoice.paymentTerms, paidAmount: invoice.paidAmount,
     payments: paid.map((payment) => ({
-      id: payment.id, paidOn: payment.paidOn, amount: payment.amount, method: payment.method, reference: payment.reference,
+      id: payment.id, paidOn: payment.paidOn, amount: payment.amount, method: payment.method, reference: payment.reference, notes: payment.notes,
       simulated: payment.provider === simulated,
+      refunds: given.filter(({ paymentId }) => paymentId === payment.id).map(({ id: refundId, amount, refundedOn, reason }) => ({ id: refundId, amount, refundedOn, reason })),
     })),
-    canPay: invoice.status === 'open' && can(actor, 'payments.manage', (await readFacts(db, 'invoice', id)) ?? { type: 'client', clientId: 0 }),
+    writeOff: writeOff ? { amount: writeOff.amount, on: writeOff.writtenOffOn, reason: writeOff.reason } : null,
+    messages: await toMessages(db, messages),
+    links: toLinks(links),
+    attachments,
+    receipts: receipts.filter((receipt) => !attachments.some((one) => one.id === receipt.id)).length,
+    recurring: invoice.recurringInvoiceId !== null,
+    retainers: canManagePayments ? await retainersWithMoney(db, client.id, invoice.currency) : [],
+    contacts: await contactsOf(db, client.id),
+    canPay: invoice.status === 'open' && canManagePayments,
+    canManagePayments,
   }
+}
+
+/** The client's retainers that can still pay something. */
+export async function retainersWithMoney(db: Db, clientId: number, currency: string) {
+  const rows = await db
+    .select({ id: retainers.id, name: retainers.name, balance: sumExact(retainerEntries.amount) })
+    .from(retainers)
+    .innerJoin(retainerEntries, eq(retainerEntries.retainerId, retainers.id))
+    .where(and(eq(retainers.clientId, clientId), eq(retainers.currency, currency), eq(retainers.status, 'active')))
+    .groupBy(retainers.id, retainers.name)
+  return rows.filter(({ balance }) => balance > 0)
 }
 
 interface Period {
@@ -132,8 +183,6 @@ export async function listUnbilled(db: Db, actor: Actor, period: Period): Promis
   return [...found.values()].filter(({ projects: rows }) => rows.some(({ entries, expenseAmount }) => entries > 0 || expenseAmount > 0)).sort((a, b) => a.name.localeCompare(b.name))
 }
 
-const termDays = { upon_receipt: 0, net_15: 15, net_30: 30, net_45: 45, net_60: 60 } as const
-
 /** Makes a draft of everything that is not billed yet on the chosen projects. */
 export async function createInvoice(ctx: AppContext, actor: Actor, input: NewInvoiceInput): Promise<number> {
   requirePermission(actor, 'invoices.manage')
@@ -150,13 +199,12 @@ export async function createInvoice(ctx: AppContext, actor: Actor, input: NewInv
   )
   const settings = await getSettings(db)
   const issuedOn = await todayOf(db, ownId(actor), ctx.now())
-  const days = client.paymentTerms === 'custom' ? (client.paymentTermDays ?? 0) : termDays[client.paymentTerms]
   const taxes = { tax1: client.tax1Percent !== null, tax2: client.tax2Percent !== null }
   const invoice = await createInvoiceFromEntries(
     db,
     {
       clientId, subject, notes: settings.invoiceNotes, currency: client.currency, discountPercent: client.discountPercent, tax1Name: client.tax1Name,
-      tax1Percent: client.tax1Percent, tax2Name: client.tax2Name, tax2Percent: client.tax2Percent, issuedOn, dueOn: addDays(issuedOn, days),
+      tax1Percent: client.tax1Percent, tax2Name: client.tax2Name, tax2Percent: client.tax2Percent, issuedOn, dueOn: dueDate(issuedOn, client.paymentTerms, client.paymentTermDays),
       paymentTerms: client.paymentTerms, createdBy: ownId(actor),
     },
     {
@@ -168,35 +216,22 @@ export async function createInvoice(ctx: AppContext, actor: Actor, input: NewInv
   return invoice.id
 }
 
-/** A draft becomes an open invoice. Nothing is sent: that is said wherever this is offered. */
-export async function markSent(ctx: AppContext, actor: Actor, id: number, version: number): Promise<void> {
-  requireRecord(actor, { view: 'invoices.manage' }, await readFacts(ctx.db, 'invoice', id), id)
-  await runTransaction(ctx.db, async (tx) => {
-    const invoice = await lockInvoice(tx, id)
-    if (invoice.version !== version) throw new StaleError(id, version)
-    if (invoice.status !== 'draft') throw new ApiError(409, 'not_a_draft', 'Only a draft can be marked as sent.')
-    await tx.update(invoices).set({ status: 'open', sentAt: ctx.now() }).where(eq(invoices.id, id))
+/** Adds what is not billed yet on the client's projects to an invoice. */
+export async function addUnbilled(ctx: AppContext, actor: Actor, id: number, version: number, input: Omit<NewInvoiceInput, 'clientId' | 'subject'>): Promise<void> {
+  const { db } = ctx
+  requireRecord(actor, { view: 'invoices.manage' }, await readFacts(db, 'invoice', id), id)
+  const [invoice] = await db.select().from(invoices).where(eq(invoices.id, id))
+  if (!invoice) throw new NotFoundError(id)
+  const chosen = await db.select({ id: projects.id }).from(projects).where(and(eq(projects.clientId, invoice.clientId), inArray(projects.id, input.projectIds.length > 0 ? input.projectIds : [0])))
+  if (chosen.length < Math.max(1, input.projectIds.length) || !chosen.every((project) => can(actor, 'invoices.manage', { type: 'project', projectId: project.id }))) {
+    throw invalidInput({ projectIds: 'Choose projects from the list.' })
+  }
+  const ids = chosen.map((project) => project.id)
+  const { time, spent } = await loadUnbilled(db, actor, { time: inArray(timeEntries.projectId, ids), expenses: inArray(expenses.projectId, ids) }, input)
+  await addEntriesToInvoice(db, { id, version }, {
+    timeEntries: time.filter(({ amount }) => amount !== null).map((entry) => ({ id: entry.id, version: entry.version })),
+    expenses: input.withExpenses ? spent.map(({ expense }) => ({ id: expense.id, version: expense.version })) : [],
+    timeGrouping: input.grouping, timeLines: { tax1: invoice.tax1Percent !== null, tax2: invoice.tax2Percent !== null }, expenseLines: {},
   })
-}
-
-export interface PaymentInput {
-  amount: number
-  paidOn: IsoDate
-  method: Exclude<PaymentMethod, 'online' | 'retainer'>
-  reference: string
-}
-
-/** Money that came in some other way: nothing is charged here. */
-export async function addPayment(ctx: AppContext, actor: Actor, id: number, input: PaymentInput): Promise<void> {
-  requireRecord(actor, { view: 'invoices.manage', action: 'payments.manage' }, await readFacts(ctx.db, 'invoice', id), id)
-  await recordPayment(ctx.db, { invoiceId: id, ...input, recordedBy: actorId(actor) })
-}
-
-/** Deletes a draft; its time and expenses can be billed again. */
-export async function removeDraft(ctx: AppContext, actor: Actor, id: number, version: number): Promise<void> {
-  requireRecord(actor, { view: 'invoices.manage' }, await readFacts(ctx.db, 'invoice', id), id)
-  const [invoice] = await ctx.db.select().from(invoices).where(eq(invoices.id, id))
-  if (invoice && invoice.status !== 'draft') throw new ApiError(409, 'not_a_draft', 'Only a draft can be deleted.')
-  await deleteInvoice(ctx.db, id, version)
 }
 

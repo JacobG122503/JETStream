@@ -12,6 +12,8 @@ export interface EmailMessage {
   /** The person it is about. */
   personId?: number
   createdBy?: number
+  /** What else it is about. */
+  about?: { type: string; id: number }
 }
 
 export const linkPlaceholder = '{link}'
@@ -38,8 +40,8 @@ export function captureSender(db: Db): EmailSender {
         recipients: [message.to],
         subject: message.subject,
         body: messageText({ ...message, ...(message.link === undefined ? {} : { link: '[link hidden]' }) }),
-        subjectType: message.personId === undefined ? null : 'person',
-        subjectId: message.personId ?? null,
+        subjectType: message.about?.type ?? (message.personId === undefined ? null : 'person'),
+        subjectId: message.about?.id ?? message.personId ?? null,
         createdBy: message.createdBy ?? null,
       })
     },

@@ -66,7 +66,7 @@ function refuseSignedIn(res: Response) {
 }
 
 /** Counts only links that do not work. */
-async function withLinkLimit<T>(ctx: AppContext, req: Request, work: () => Promise<T>): Promise<T> {
+export async function withLinkLimit<T>(ctx: AppContext, req: Request, work: () => Promise<T>): Promise<T> {
   const attempt = await takeAttempt(ctx, 'link', { address: clientAddress(req) })
   try {
     const result = await work()

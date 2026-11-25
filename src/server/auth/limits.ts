@@ -29,6 +29,8 @@ const rules = {
   forgot_password: [{ by: ['address'], limit: 10, windowMs: hour }],
   /** Invite and reset links that do not work. */
   link: [{ by: ['address'], limit: 20, windowMs: 15 * minute }],
+  /** Notices of the payment service that cannot be read. */
+  payment_notice: [{ by: ['address'], limit: 100, windowMs: 15 * minute }],
 } satisfies Record<string, Rule[]>
 
 export type LimitKind = keyof typeof rules

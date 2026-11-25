@@ -8,6 +8,7 @@ export const notificationKinds = {
   assignment: { label: 'I was planned on a project', email: false },
   invoice_late: { label: 'Invoices that are late', email: true },
   invoice_paid: { label: 'Invoices that were paid', email: false },
+  recurring: { label: 'Recurring invoices that were made', email: false },
   estimate_answer: { label: 'Answers to estimates', email: true },
   time_off: { label: 'Time-off requests to decide', email: true },
   time_off_decision: { label: 'Decisions on my time off', email: true },

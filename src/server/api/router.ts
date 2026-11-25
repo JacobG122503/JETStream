@@ -6,6 +6,7 @@ import { ApiError, clientError, describeError, NotFoundError, StaleError } from 
 import { guardHandlers } from './guardHandlers'
 import { health } from './health'
 import { accessRoutes } from './routes/access'
+import { billingRoutes } from './routes/billing'
 import { accountRoutes } from './routes/account'
 import { inviteRoutes } from './routes/invites'
 import { linkRoutes } from './routes/links'
@@ -34,7 +35,7 @@ export function createApiRouter(ctx: AppContext, { extend }: ApiOptions = {}): R
     next()
   })
   api.get('/health', access.public, health(ctx.db))
-  for (const addRoutes of [sessionRoutes, linkRoutes, accountRoutes, peopleRoutes, accessRoutes, requestRoutes, inviteRoutes, manageRoutes, workRoutes]) {
+  for (const addRoutes of [sessionRoutes, linkRoutes, accountRoutes, peopleRoutes, accessRoutes, requestRoutes, inviteRoutes, manageRoutes, workRoutes, billingRoutes]) {
     addRoutes(api, access, ctx)
   }
   extend?.(api, access)

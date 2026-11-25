@@ -1,7 +1,7 @@
 /** What the server's API sends about time, projects, clients, expenses, invoices and reports. */
 import type { IsoDate } from './dates'
 import type {
-  BudgetType, currencyPlacements, dateFormats, EntryStatus, hourFormats, InvoiceStatus, numberFormats, PaymentMethod, paymentTerms, ProjectType,
+  BudgetType, currencyPlacements, dateFormats, EntryStatus, hourFormats, InvoiceStatus, numberFormats, paymentTerms, ProjectType,
   RateMethod, RoundingIncrement, RoundingMode, timeFormats, timeModes,
 } from './domain'
 import type { Weekday } from './dates'
@@ -266,27 +266,6 @@ export interface InvoiceRow {
 export interface InvoiceList {
   today: IsoDate
   invoices: InvoiceRow[]
-}
-
-export interface InvoiceDetails extends InvoiceRow {
-  version: number
-  company: { name: string; address: string }
-  clientAddress: string
-  purchaseOrder: string
-  notes: string
-  lines: { id: number; description: string; quantity: number; unitPrice: number; amount: number; kind: string; minutes: number | null }[]
-  subtotal: number
-  discountPercent: number | null
-  discountAmount: number
-  tax1Name: string | null
-  tax1Percent: number | null
-  tax1Amount: number
-  tax2Name: string | null
-  tax2Percent: number | null
-  tax2Amount: number
-  paidAmount: number
-  payments: { id: number; paidOn: IsoDate; amount: number; method: PaymentMethod; reference: string; simulated: boolean }[]
-  canPay: boolean
 }
 
 export interface UnbilledProject extends Named {

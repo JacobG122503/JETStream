@@ -1,5 +1,6 @@
 import type { Db } from './db'
 import type { EmailSender } from './email/sender'
+import type { PaymentProvider } from './payments/provider'
 
 /** What the routes and services of one running server share. */
 export interface AppContext {
@@ -15,4 +16,6 @@ export interface AppContext {
   /** Demo mode, which offers sign-in without a password. */
   demo: boolean
   email: EmailSender
+  /** How clients can pay online; null when they cannot. */
+  payments: PaymentProvider | null
 }

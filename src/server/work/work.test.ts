@@ -2,9 +2,10 @@
 import type { Express } from 'express'
 import { eq } from 'drizzle-orm'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import type { InvoiceDetails } from '../../shared/billing'
 import { addDays } from '../../shared/dates'
 import type {
-  ClientDetails, ClientRow, ExpenseOptions, ExpenseRow, HomeInfo, InvoiceDetails, InvoiceList, ProjectDetails, ProjectRow, TimeProject,
+  ClientDetails, ClientRow, ExpenseOptions, ExpenseRow, HomeInfo, InvoiceList, ProjectDetails, ProjectRow, TimeProject,
   TaskRow, TeamWeek, TimeReport, TimeWeek, UnbilledClient,
 } from '../../shared/work'
 import type { Database } from '../db'
@@ -245,11 +246,11 @@ describe('from hours to money', () => {
     expect(codeOf(await admin.post(`/invoices/${id}/payments`, { amount: 100, paidOn: today, method: 'check', reference: '' }))).toEqual([409, 'invoice_not_payable'])
     const open = (await admin.post(`/invoices/${id}/send`, { version: draft.version })).body as InvoiceDetails
     expect(open).toMatchObject({ status: 'open', canPay: true })
-    expect(codeOf(await admin.post(`/invoices/${id}/delete`, { version: open.version }))).toEqual([409, 'not_a_draft'])
     expect(codeOf(await admin.post(`/invoices/${id}/payments`, { amount: open.dueAmount + 1, paidOn: today, method: 'check', reference: '' }))).toEqual([409, 'payment_exceeds_due'])
     expect(codeOf(await admin.post(`/invoices/${id}/payments`, { amount: 1, paidOn: today, method: 'online', reference: '' }))).toEqual([400, 'invalid_input'])
     const paid = await admin.post(`/invoices/${id}/payments`, { amount: open.dueAmount, paidOn: today, method: 'check', reference: 'Check 12' })
     expect(paid.body).toMatchObject({ status: 'paid', dueAmount: 0 })
+    expect(codeOf(await admin.post(`/invoices/${id}/delete`, { version: (paid.body as InvoiceDetails).version }))).toEqual([409, 'invoice_has_payments'])
   })
 
   it('a deleted draft frees its hours again', async () => {
