@@ -29,14 +29,14 @@ test('each demo account is one press away, and signing out leaves nothing behind
 })
 
 test('people can be two at once, each in their own browser', async ({ adminPage, employeePage, leadPage }) => {
-  for (const [page, name] of [[adminPage, 'Avery Collins'], [leadPage, 'Jordan Blake'], [employeePage, 'Casey Lindgren']] as const) {
+  for (const [page, name] of [[adminPage, 'Avery Test'], [leadPage, 'Jordan Test'], [employeePage, 'Casey Test']] as const) {
     await open(page, 'time', 'Time')
     await expect(accountButton(page)).toHaveAccessibleName(new RegExp(name))
   }
   await open(employeePage, 'team', 'Team')
   await expect(employeePage.getByText('You do not have access to this page')).toBeVisible()
   await open(adminPage, 'team', 'Team')
-  await expect(adminPage.getByRole('link', { name: 'Casey Lindgren' })).toBeVisible()
+  await expect(adminPage.getByRole('link', { name: 'Casey Test' })).toBeVisible()
 })
 
 test('signed out, pages lead to sign-in and back, and never elsewhere', async ({ page, appUrl }) => {
@@ -189,16 +189,16 @@ test('in a second tab someone else signs in: the first tab becomes theirs', asyn
   const name = page.getByRole('textbox', { name: /^Name/ })
   await name.fill('Wrong person')
   await page.getByRole('button', { name: 'Save profile' }).click()
-  await expect(page.getByText(/You are now working as Avery Collins/)).toBeVisible()
-  await expect(accountButton(page)).toHaveAccessibleName(/Avery Collins/)
-  await expect(name).toHaveValue('Avery Collins')
-  expect(await api<{ name: string }>(tab, 'GET', 'account')).toMatchObject({ name: 'Avery Collins' })
+  await expect(page.getByText(/You are now working as Avery Test/)).toBeVisible()
+  await expect(accountButton(page)).toHaveAccessibleName(/Avery Test/)
+  await expect(name).toHaveValue('Avery Test')
+  expect(await api<{ name: string }>(tab, 'GET', 'account')).toMatchObject({ name: 'Avery Test' })
   // Signed out in one tab, the other notices when it is looked at again.
   await signOut(tab)
   await page.evaluate(() => window.dispatchEvent(new Event('focus')))
   await expect(pageTitle(page)).toHaveText('Sign in')
   await context.request.post(`${appUrl}api/session/demo`, { data: { account: 'employee' } })
-  expect(await (await context.request.get(`${appUrl}api/account`)).json()).toMatchObject({ name: 'Casey Lindgren' })
+  expect(await (await context.request.get(`${appUrl}api/account`)).json()).toMatchObject({ name: 'Casey Test' })
   expect(pageProblems.filter((problem) => !/40[13]/.test(problem))).toEqual([])
   pageProblems.length = 0
 })

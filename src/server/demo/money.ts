@@ -365,7 +365,7 @@ const billingContact: Record<ClientKey, { name: string; email: string }> = {
   fernhollow: { name: 'Samir Dewitt', email: 'samir.dewitt@fernhollow.example' },
   kestrel: { name: 'Anke Vollmer', email: 'anke.vollmer@kestrel.example' },
   lumen: { name: 'Bea Castellan', email: 'bea.castellan@lumenridge.example' },
-  internal: { name: 'Avery Collins', email: 'office@jet.example' },
+  internal: { name: 'Avery Test', email: 'office@jet.example' },
   quarry: { name: 'Hollis Drummond', email: 'hollis@oldquarry.example' },
 }
 

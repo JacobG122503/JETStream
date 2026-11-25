@@ -71,48 +71,48 @@ interface PersonPlan {
 
 const peoplePlan: Record<PersonKey, PersonPlan> = {
   admin: {
-    name: 'Avery Collins', email: 'admin@jet.demo', role: 'administrator', label: 'Billing', manager: null, rate: 95,
+    name: 'Avery Test', email: 'admin@jet.demo', role: 'administrator', label: 'Billing', manager: null, rate: 95,
     cost: 48, work: { office: 8, training: 1, packaging: 1 },
   },
   lead: {
-    name: 'Jordan Blake', email: 'lead@jet.demo', role: 'manager', label: 'Project lead', manager: 'admin', rate: 145,
+    name: 'Jordan Test', email: 'lead@jet.demo', role: 'manager', label: 'Project lead', manager: 'admin', rate: 145,
     cost: 72, work: { turbine: 4, substation: 2, pumps: 3, coldStore: 3, office: 1 },
   },
   employee: {
-    name: 'Casey Lindgren', email: 'employee@jet.demo', role: 'member', label: 'Engineer', manager: 'lead', rate: 110,
+    name: 'Casey Test', email: 'employee@jet.demo', role: 'member', label: 'Engineer', manager: 'lead', rate: 110,
     cost: 52, work: { turbine: 4, substation: 3, pumps: 3, coldStore: 2, training: 1 },
   },
   priya: {
-    name: 'Priya Venkat', email: 'priya.venkat@jet.example', role: 'manager', label: 'Project lead', manager: 'admin',
+    name: 'Priya Test', email: 'priya.test@jet.example', role: 'manager', label: 'Project lead', manager: 'admin',
     rate: 140, cost: 70, work: { controls: 4, assembly: 4, safety: 2, packaging: 1, office: 1 },
   },
   marcus: {
-    name: 'Marcus Oyelaran', email: 'marcus.oyelaran@jet.example', role: 'member', label: 'Engineer', manager: 'lead',
+    name: 'Marcus Test', email: 'marcus.test@jet.example', role: 'member', label: 'Engineer', manager: 'lead',
     rate: 115, cost: 56, work: { turbine: 4, pumps: 3, coldStore: 3, quarry: 2, training: 1 },
   },
   elena: {
-    name: 'Elena Marchetti', email: 'elena.marchetti@jet.example', role: 'bookkeeper', label: 'Engineer', manager: 'priya',
+    name: 'Elena Test', email: 'elena.test@jet.example', role: 'bookkeeper', label: 'Engineer', manager: 'priya',
     rate: 118, cost: 57, work: { controls: 4, assembly: 4, safety: 3, training: 1 },
   },
   tomas: {
-    name: 'Tomas Brennan', email: 'tomas.brennan@jet.example', role: 'member', label: 'Technician', manager: 'lead',
+    name: 'Tomas Test', email: 'tomas.test@jet.example', role: 'member', label: 'Technician', manager: 'lead',
     rate: 88, cost: 41, work: { substation: 5, pumps: 3, coldStore: 2, training: 1 },
   },
   dana: {
-    name: 'Dana Whitlock', email: 'dana.whitlock@contractors.example', role: 'member', label: 'Technician',
+    name: 'Dana Test', email: 'dana.test@contractors.example', role: 'member', label: 'Technician',
     manager: 'priya', rate: 98, cost: 64, work: { controls: 4, safety: 3, assembly: 3 }, kind: 'contractor',
     dayMinutes: hours(6),
   },
   owen: {
-    name: 'Owen Sutherby', email: 'owen.sutherby@jet.example', role: 'member', label: 'Drafter', manager: 'lead',
+    name: 'Owen Test', email: 'owen.test@jet.example', role: 'member', label: 'Drafter', manager: 'lead',
     rate: 82, cost: 38, work: { turbine: 4, coldStore: 3, pumps: 2, quarry: 1, training: 1 },
   },
   lydia: {
-    name: 'Lydia Farrow', email: 'lydia.farrow@jet.example', role: 'member', label: 'Surveyor', manager: 'lead',
+    name: 'Lydia Test', email: 'lydia.test@jet.example', role: 'member', label: 'Surveyor', manager: 'lead',
     rate: 92, cost: 44, work: { quarry: 5, turbine: 2, office: 1 },
   },
   noah: {
-    name: 'Noah Pemberly', email: 'noah.pemberly@jet.example', role: 'member', label: '', manager: null, rate: 0, cost: 0,
+    name: 'Noah Test', email: 'noah.test@jet.example', role: 'member', label: '', manager: null, rate: 0, cost: 0,
     work: {},
   },
 }
@@ -365,7 +365,7 @@ export function addCompany(rows: DemoRows, dates: DemoDates, roles: RoleIds): Co
   contact(client.fernhollow, 'Samir Dewitt', 'Operations director', 'samir.dewitt@fernhollow.example', 42)
   contact(client.kestrel, 'Anke Vollmer', 'Einkauf', 'anke.vollmer@kestrel.example', 43)
   contact(client.lumen, 'Bea Castellan', 'Facilities engineer', 'bea.castellan@lumenridge.example', 44)
-  contact(client.internal, 'Avery Collins', 'Office', 'office@jet.example', 45)
+  contact(client.internal, 'Avery Test', 'Office', 'office@jet.example', 45)
   contact(client.quarry, 'Hollis Drummond', 'Owner', 'hollis@oldquarry.example', 46)
 
   for (const [weeks, rate] of [[-60, 1_092_000], [-20, 1_078_500], [-8, 1_084_250]] as const) {

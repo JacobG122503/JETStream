@@ -68,9 +68,9 @@ function addMessages(rows: DemoRows, dates: DemoDates, company: Company) {
     })
   }
   notify('admin', 'invoice_late', 'An invoice is late', 'Kestrel Maschinenbau GmbH has an invoice past its due date.', '/invoices', 1, false)
-  notify('admin', 'sign_up', 'Someone asks to join', 'Noah Pemberly is waiting for approval.', '/team', 2, false)
+  notify('admin', 'sign_up', 'Someone asks to join', 'Noah Test is waiting for approval.', '/team', 2, false)
   notify('admin', 'estimate_accepted', 'Estimate accepted', 'Tallgrass Wind Cooperative accepted an estimate.', '/estimates', 9, true)
-  notify('lead', 'approval', 'Timesheets to approve', 'Marcus Oyelaran and Tomas Brennan submitted last week.', '/approvals', 1, false)
+  notify('lead', 'approval', 'Timesheets to approve', 'Marcus Test and Tomas Test submitted last week.', '/approvals', 1, false)
   notify('lead', 'budget', 'Budget alert', 'Turbine foundation design has passed 80% of its budget.', '/projects', 4, false)
   notify('lead', 'budget', 'Over budget', 'Cold store expansion is over its budget.', '/projects', 6, true)
   notify('employee', 'approved', 'Week approved', 'Your last week was approved.', '/time', 1, false)
@@ -85,8 +85,8 @@ function addMessages(rows: DemoRows, dates: DemoDates, company: Company) {
       subjectId: people[who].id, createdAt,
     })
   }
-  remind('dana', 'Dana Whitlock', 'dana.whitlock@contractors.example')
-  remind('owen', 'Owen Sutherby', 'owen.sutherby@jet.example')
+  remind('dana', 'Dana Test', 'dana.test@contractors.example')
+  remind('owen', 'Owen Test', 'owen.test@jet.example')
 
   rows.add(savedReports, {
     ownerId: people.admin.id, name: 'Hours by client, this month', kind: 'time', visibility: 'shared',
@@ -105,8 +105,8 @@ function addActivity(rows: DemoRows, dates: DemoDates, company: Company) {
       createdAt: dates.past(date, hour),
     })
   const raise = { billable: [11_000, 11_800] }
-  log('admin', 'updated', 'person', people.employee.id, 'Changed the rates of Casey Lindgren', dates.week(-12), 9, raise)
-  log('admin', 'archived', 'person', people.lydia.id, 'Archived Lydia Farrow', dates.week(-11, 4), 17)
+  log('admin', 'updated', 'person', people.employee.id, 'Changed the rates of Casey Test', dates.week(-12), 9, raise)
+  log('admin', 'archived', 'person', people.lydia.id, 'Archived Lydia Test', dates.week(-11, 4), 17)
   log('lead', 'archived', 'project', projects.quarry, 'Archived project Conveyor route survey', dates.week(-7), 11)
   log('admin', 'archived', 'client', clients.quarry, 'Archived client Old Quarry Materials', dates.week(-7), 11)
   log('lead', 'updated', 'project', projects.turbine, 'Changed the budget of Turbine foundation design', dates.week(-4, 1), 10)
@@ -114,7 +114,7 @@ function addActivity(rows: DemoRows, dates: DemoDates, company: Company) {
   log('priya', 'updated', 'project', projects.controls, 'Moved the end date of Control system integration', dates.week(-2, 2), 15)
   log('lead', 'submitted', 'submission', people.lead.id, 'Submitted a week', dates.week(-1, 4), 17)
   log('employee', 'submitted', 'submission', people.employee.id, 'Submitted a week', dates.week(-1, 4), 17)
-  log('lead', 'approved', 'submission', people.employee.id, 'Approved a week of Casey Lindgren', dates.week(0), 9)
-  log('lead', 'rejected', 'submission', people.owen.id, 'Sent back a week of Owen Sutherby', dates.week(0), 9)
-  log(null, 'requested', 'person', people.noah.id, 'Noah Pemberly asked to join', dates.daysFromToday(-2), 9)
+  log('lead', 'approved', 'submission', people.employee.id, 'Approved a week of Casey Test', dates.week(0), 9)
+  log('lead', 'rejected', 'submission', people.owen.id, 'Sent back a week of Owen Test', dates.week(0), 9)
+  log(null, 'requested', 'person', people.noah.id, 'Noah Test asked to join', dates.daysFromToday(-2), 9)
 }

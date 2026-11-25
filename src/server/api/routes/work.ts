@@ -6,7 +6,9 @@ import { readHome } from '../../work/home'
 import { addPayment, createInvoice, listInvoices, listUnbilled, markSent, readInvoice, removeDraft } from '../../work/invoices'
 import { createProject, listProjects, readProject, readProjectOptions } from '../../work/projects'
 import { readTimeReport } from '../../work/reports'
-import { createEntry, deleteEntry, readTimeOptions, readWeek, startTimer, stopTimer, updateEntry } from '../../work/time'
+import { createTask, listTasks } from '../../work/tasks'
+import { readTeamWeek } from '../../work/team'
+import { copyPreviousDay, createEntry, deleteEntry, readTimeOptions, readWeek, startTimer, stopTimer, submitWeek, updateEntry, withdrawWeek } from '../../work/time'
 import { jsonBody } from '../body'
 import { currency, date, dayMinutes, flag, id, ids, money, oneOf, optional, optionalFlag, pathId, positive, readInput, text, thingName, version } from '../input'
 import type { AddRoutes } from './types'
@@ -39,6 +41,37 @@ export const workRoutes: AddRoutes = (api, access, ctx) => {
   api.post('/time/stop', access.signedIn, async (_req, res) => {
     await stopTimer(ctx, requireActor(res))
     res.json({})
+  })
+
+  api.post('/time/submit', access.signedIn, jsonBody, async (req, res) => {
+    const input = readInput(req.body, { date })
+    await submitWeek(ctx, requireActor(res), input.date)
+    res.json(await readWeek(ctx, requireActor(res), input.date))
+  })
+
+  api.post('/time/withdraw', access.signedIn, jsonBody, async (req, res) => {
+    const input = readInput(req.body, { date })
+    await withdrawWeek(ctx, requireActor(res), input.date)
+    res.json(await readWeek(ctx, requireActor(res), input.date))
+  })
+
+  api.post('/time/copy', access.signedIn, jsonBody, async (req, res) => {
+    const input = readInput(req.body, { date, withHours: optionalFlag })
+    await copyPreviousDay(ctx, requireActor(res), input.date, input.withHours)
+    res.json(await readWeek(ctx, requireActor(res), input.date))
+  })
+
+  api.get('/team', access.permission('people.view'), async (req, res) => {
+    res.json(await readTeamWeek(ctx, requireActor(res), readInput(req.query, { date: optional(date) }).date))
+  })
+
+  api.get('/tasks', access.permission('tasks.manage'), async (_req, res) => {
+    res.json({ tasks: await listTasks(ctx.db, requireActor(res)) })
+  })
+
+  api.post('/tasks', access.permission('tasks.manage'), jsonBody, async (req, res) => {
+    await createTask(ctx, requireActor(res), readInput(req.body, { name: thingName, billable: flag, common: flag }))
+    res.status(201).json({ tasks: await listTasks(ctx.db, requireActor(res)) })
   })
 
   api.put('/time/:id', access.signedIn, jsonBody, async (req, res) => {

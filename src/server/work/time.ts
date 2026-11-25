@@ -1,5 +1,5 @@
 /** One's own time: entries and the timer. */
-import { and, asc, between, desc, eq, inArray, isNotNull, isNull, lte, gte } from 'drizzle-orm'
+import { and, asc, between, desc, eq, inArray, isNotNull, isNull, lt, lte, gte, type SQL } from 'drizzle-orm'
 import { addDays, type IsoDate, startOfWeek, type Weekday } from '../../shared/dates'
 import type { TimeEntry, TimeInput, TimeProject, TimeWeek } from '../../shared/work'
 import type { Actor } from '../access/actor'
@@ -9,9 +9,9 @@ import { lockTimeEntryForEdit } from '../billing'
 import { todayIn } from '../clock'
 import type { AppContext } from '../context'
 import { type Db, runTransaction, type Tx } from '../db'
-import { clients, people, projectMembers, projects, projectTasks, submissions, tasks, timeEntries } from '../db/schema'
+import { approvalEvents, clients, expenses, people, projectMembers, projects, projectTasks, submissions, tasks, timeEntries } from '../db/schema'
 import { ApiError } from '../errors'
-import { getSettings } from '../people/lookup'
+import { getSettings, lockPerson } from '../people/lookup'
 import { currentMembership, isCurrentMembership } from '../people/membership'
 import { selectTime, type TimeRow } from './figures'
 
@@ -44,7 +44,7 @@ export async function closedOn(db: Db | Tx, personId: number, from: IsoDate, to:
 export const toEntry =
   (isClosed: (date: IsoDate) => boolean) =>
   (row: TimeRow): TimeEntry => ({
-    id: row.id, version: row.version, projectId: row.projectId, project: row.project, client: row.client, taskId: row.taskId, task: row.task,
+    id: row.id, version: row.version, projectId: row.projectId, project: row.project, projectCode: row.projectCode, client: row.client, taskId: row.taskId, task: row.task,
     spentOn: row.spentOn, minutes: row.minutes, timerStartedAt: row.timerStartedAt?.toISOString() ?? null, notes: row.notes,
     billable: row.billable, status: row.status,
     locked: row.invoiceLineId !== null ? 'invoiced' : row.status === 'approved' ? 'approved' : isClosed(row.spentOn) ? 'period' : null,
@@ -53,6 +53,14 @@ export const toEntry =
 export async function readRunning(db: Db, personId: number): Promise<TimeEntry | null> {
   const [row] = await selectTime(db).where(and(eq(timeEntries.personId, personId), isNotNull(timeEntries.timerStartedAt)))
   return row ? toEntry(() => false)(row) : null
+}
+
+async function readSubmission(db: Db, personId: number, from: IsoDate): Promise<TimeWeek['submission']> {
+  const [row] = await db
+    .select({ status: submissions.status, comment: submissions.comment })
+    .from(submissions)
+    .where(and(eq(submissions.personId, personId), eq(submissions.periodStart, from)))
+  return row && row.status !== 'withdrawn' ? { status: row.status, comment: row.comment } : null
 }
 
 /** A week of one's own time; the current one without a date. */
@@ -71,6 +79,7 @@ export async function readWeek(ctx: AppContext, actor: Actor, date: IsoDate | nu
   return {
     from, to, today, capacityMinutes: person?.capacity ?? 0,
     entries: rows.map(toEntry(await closedOn(db, personId, from, to, today))),
+    submission: await readSubmission(db, personId, from),
     running: await readRunning(db, personId),
     now: now.toISOString(),
   }
@@ -184,5 +193,92 @@ export async function startTimer(ctx: AppContext, actor: Actor, id: number, vers
     if (entry.timerStartedAt) return
     await stopRunning(tx, personId, ctx.now())
     await tx.update(timeEntries).set({ timerStartedAt: ctx.now() }).where(eq(timeEntries.id, id))
+  })
+}
+
+// Handing in a week ----------------------------------------------------------------------------------
+
+/** The week of a date, locked against a second hand-in at the same time. */
+async function lockWeek(tx: Tx, personId: number, date: IsoDate) {
+  await lockPerson(tx, personId)
+  const { weekStartsOn, approvalEnabled } = await getSettings(tx)
+  const start = startOfWeek(date, weekStartsOn as Weekday)
+  const [submission] = await tx
+    .select()
+    .from(submissions)
+    .where(and(eq(submissions.personId, personId), eq(submissions.periodStart, start)))
+    .for('update')
+  const inWeek = (table: typeof timeEntries | typeof expenses): SQL | undefined =>
+    and(eq(table.personId, personId), between(table.spentOn, start, addDays(start, 6)))
+  return { start, end: addDays(start, 6), submission, inWeek, approvalEnabled }
+}
+
+/** Hands in the week for approval, with its expenses. */
+export async function submitWeek(ctx: AppContext, actor: Actor, date: IsoDate): Promise<void> {
+  const personId = ownId(actor)
+  await runTransaction(ctx.db, async (tx) => {
+    const { start, end, submission, inWeek, approvalEnabled } = await lockWeek(tx, personId, date)
+    if (!approvalEnabled) throw new ApiError(409, 'approval_off', 'Weeks are not handed in here.')
+    if (submission?.status === 'submitted' || submission?.status === 'approved') {
+      throw new ApiError(409, 'already_handled', 'This week was already handed in.')
+    }
+    const entries = await tx.select().from(timeEntries).where(inWeek(timeEntries)).for('update')
+    if (entries.some(({ timerStartedAt }) => timerStartedAt !== null)) throw new ApiError(409, 'running', 'Stop the timer first.')
+    const spent = await tx.select({ id: expenses.id }).from(expenses).where(inWeek(expenses))
+    if (entries.length + spent.length === 0) throw new ApiError(409, 'nothing_to_submit', 'There is nothing in this week to hand in.')
+    const open = ['unsubmitted', 'rejected'] as const
+    await tx.update(timeEntries).set({ status: 'submitted' }).where(and(inWeek(timeEntries), inArray(timeEntries.status, open)))
+    await tx.update(expenses).set({ status: 'submitted' }).where(and(inWeek(expenses), inArray(expenses.status, open)))
+    const values = { status: 'submitted' as const, submittedAt: ctx.now(), comment: '', decidedBy: null, decidedAt: null }
+    const [row] = submission
+      ? await tx.update(submissions).set(values).where(eq(submissions.id, submission.id)).returning()
+      : await tx.insert(submissions).values({ personId, periodStart: start, periodEnd: end, ...values }).returning()
+    if (!row) throw new Error('The week was not stored.')
+    await tx.insert(approvalEvents).values({ submissionId: row.id, actorId: personId, action: 'submitted' })
+  })
+}
+
+/** Takes the week back, as long as nobody decided. */
+export async function withdrawWeek(ctx: AppContext, actor: Actor, date: IsoDate): Promise<void> {
+  const personId = ownId(actor)
+  await runTransaction(ctx.db, async (tx) => {
+    const { submission, inWeek } = await lockWeek(tx, personId, date)
+    if (submission?.status !== 'submitted') throw new ApiError(409, 'already_handled', 'This week is not waiting for approval.')
+    await tx.update(timeEntries).set({ status: 'unsubmitted' }).where(and(inWeek(timeEntries), eq(timeEntries.status, 'submitted')))
+    await tx.update(expenses).set({ status: 'unsubmitted' }).where(and(inWeek(expenses), eq(expenses.status, 'submitted')))
+    await tx.update(submissions).set({ status: 'withdrawn' }).where(eq(submissions.id, submission.id))
+    await tx.insert(approvalEvents).values({ submissionId: submission.id, actorId: personId, action: 'withdrawn' })
+  })
+}
+
+/** Adds what was worked on the last day before that has time: the rows only, or with hours and notes. */
+export async function copyPreviousDay(ctx: AppContext, actor: Actor, date: IsoDate, withHours: boolean): Promise<void> {
+  const personId = ownId(actor)
+  await runTransaction(ctx.db, async (tx) => {
+    await lockPerson(tx, personId)
+    await checkOpen(tx, personId, date, ctx.now())
+    const own = eq(timeEntries.personId, personId)
+    const [last] = await tx.select({ day: timeEntries.spentOn }).from(timeEntries).where(and(own, lt(timeEntries.spentOn, date))).orderBy(desc(timeEntries.spentOn)).limit(1)
+    if (!last) throw new ApiError(409, 'nothing_to_copy', 'There is no earlier day to copy from.')
+    const before = await tx.select().from(timeEntries).where(and(own, eq(timeEntries.spentOn, last.day))).orderBy(asc(timeEntries.id))
+    const there = await tx.select().from(timeEntries).where(and(own, eq(timeEntries.spentOn, date)))
+    const known = new Set(there.map(({ projectId, taskId }) => `${projectId}/${taskId}`))
+    let added = 0
+    for (const { projectId, taskId, minutes, notes } of before) {
+      const key = `${projectId}/${taskId}`
+      if (known.has(key)) continue
+      const billable = await checkTask(tx, personId, projectId, taskId).catch((error: unknown) => {
+        // No longer on it, or it is archived.
+        if (error instanceof ApiError) return null
+        throw error
+      })
+      if (billable === null) continue
+      if (!withHours) known.add(key)
+      await tx.insert(timeEntries).values({
+        personId, projectId, taskId, spentOn: date, billable, createdBy: personId, minutes: withHours ? minutes : 0, notes: withHours ? notes : '',
+      })
+      added++
+    }
+    if (added === 0) throw new ApiError(409, 'nothing_to_copy', 'There is nothing to add from the day before.')
   })
 }

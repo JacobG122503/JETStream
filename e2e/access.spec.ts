@@ -33,7 +33,7 @@ test('an extra reaches an open window at the next page, without signing in again
   await open(adminPage, 'team', 'Team')
   const { people } = await api<{ people: { id: number; email: string }[] }>(adminPage, 'GET', 'people')
   const lead = people.find(({ email }) => email === 'lead@jet.demo')
-  await open(adminPage, `team/${lead?.id}`, 'Jordan Blake')
+  await open(adminPage, `team/${lead?.id}`, 'Jordan Test')
   await adminPage.getByRole('checkbox', { name: 'Create, edit, send, delete invoices' }).check()
   await adminPage.getByRole('button', { name: 'Save access' }).click()
   await expect(adminPage.getByText('Access saved')).toBeVisible()

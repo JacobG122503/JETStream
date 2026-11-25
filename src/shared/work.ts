@@ -12,6 +12,7 @@ export interface TimeEntry {
   version: number
   projectId: number
   project: string
+  projectCode: string
   client: string
   taskId: number
   task: string
@@ -42,6 +43,8 @@ export interface TimeWeek {
   /** Usual working time of a week. */
   capacityMinutes: number
   entries: TimeEntry[]
+  /** How the week stands; null while it has not been handed in. */
+  submission: { status: 'submitted' | 'approved' | 'rejected'; comment: string } | null
   running: TimeEntry | null
   /** The server's clock, to show a running timer right. */
   now: string
@@ -289,4 +292,28 @@ export interface HomeInfo {
   }
   /** For those who see others' time. */
   team?: (Named & { photoId: number | null; minutes: number; capacityMinutes: number })[]
+}
+
+export interface TeamMember extends Named {
+  photoId: number | null
+  role: string
+  kind: 'employee' | 'contractor'
+  minutes: number
+  billableMinutes: number
+  capacityMinutes: number
+}
+
+export interface TeamWeek {
+  from: IsoDate
+  to: IsoDate
+  today: IsoDate
+  members: TeamMember[]
+}
+
+export interface TaskRow extends Named {
+  billable: boolean
+  /** Added to new projects. */
+  common: boolean
+  archived: boolean
+  projects: number
 }

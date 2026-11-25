@@ -205,20 +205,22 @@ function addSubmissions(rows: DemoRows, dates: DemoDates, company: Company, work
     const key = `${entry.person}/${weekOf(entry.date) ?? ''}`
     entriesOf.set(key, [...(entriesOf.get(key) ?? []), entry])
   }
-  for (const periodStart of weeks) {
+  for (const monday of weeks) {
+    // The company's week, from Saturday to Friday.
+    const [periodStart, periodEnd] = [addDays(monday, -2), addDays(monday, 4)]
     for (const person of workers(company)) {
-      const entries = entriesOf.get(`${person.key}/${periodStart}`)
+      const entries = entriesOf.get(`${person.key}/${monday}`)
       if (!entries) continue
-      const standing = periodStart === dates.week(-1) ? (lastWeek[person.key] ?? 'approved') : 'approved'
+      const standing = monday === dates.week(-1) ? (lastWeek[person.key] ?? 'approved') : 'approved'
       if (standing === 'missing') continue
       for (const entry of entries) entry.status = entry.row.status = standing
       const deciderId = company.people[person.manager ?? 'lead'].id
-      const submittedAt = dates.past(addDays(periodStart, 4), 17, 45)
-      const decidedAt = dates.past(addDays(periodStart, 7), 9, 30)
+      const submittedAt = dates.past(periodEnd, 17, 45)
+      const decidedAt = dates.past(addDays(monday, 7), 9, 30)
       const decided = standing !== 'submitted'
       const comment = standing === 'rejected' ? rejection : ''
       const submissionId = rows.add(submissions, {
-        personId: person.id, periodStart, periodEnd: addDays(periodStart, 6), status: standing, submittedAt, comment,
+        personId: person.id, periodStart, periodEnd, status: standing, submittedAt, comment,
         decidedBy: decided ? deciderId : null, decidedAt: decided ? decidedAt : null, createdAt: submittedAt,
       })
       rows.add(approvalEvents, { submissionId, actorId: person.id, action: 'submitted', createdAt: submittedAt })

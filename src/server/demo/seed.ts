@@ -125,6 +125,8 @@ async function fill(tx: Tx, hashes: string[], { today, beforeCommit }: SeedOptio
 
   for (const [table, values] of rows.tables) await insertAll(tx, table, values)
   await tx.update(companySettings).set({
+    // Saturday, as JET Engineering keeps its timesheets.
+    weekStartsOn: 6,
     address: '100 Example Parkway\nSpringfield, IL 62700', reminderDays: [3, 14, 30], invoiceNotes: 'Thank you for your business.',
   })
   await addMoney(tx, dates, company, work)

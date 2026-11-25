@@ -203,8 +203,8 @@ describe.each(dates)('demo data for %s', (_name, today) => {
   })
 
   it('has approvals to do', () => {
-    const lastMonday = addDays(monday, -7)
-    const last = data.submissions.filter(({ periodStart }) => periodStart === lastMonday)
+    const lastStart = addDays(monday, -9)
+    const last = data.submissions.filter(({ periodStart }) => periodStart === lastStart)
     const led = new Set(data.managers.filter(({ managerId }) => managerId === lead().id).map(({ personId }) => personId))
     const waiting = last.filter(({ status, personId }) => status === 'submitted' && led.has(personId) && personId !== employee().id)
     expect(waiting.length).toBeGreaterThanOrEqual(2)

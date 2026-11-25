@@ -28,7 +28,7 @@ export interface SampleEntry {
   hours: number | null
 }
 
-const people = ['Dana Whitfield', 'Marcus Oyelaran', 'Priya Raman', 'Tom Beckett', 'Lucia Ferrante', 'Wen Zhao']
+const people = ['Dana Whitfield', 'Marcus Test', 'Priya Raman', 'Tom Beckett', 'Lucia Ferrante', 'Wen Zhao']
 const statuses = ['Draft', 'Submitted', 'Approved', 'Approved', 'Rejected'] as const
 const hours = [2, 10, 9, null, 7.5, 4.25, 8, 6, 1.5, 3]
 

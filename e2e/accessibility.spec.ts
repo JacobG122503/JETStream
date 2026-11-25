@@ -144,7 +144,7 @@ async function* accountScreens(page: Page, appUrl: string) {
   await open(page, 'team', 'Team')
   const { link } = await inviteLink(page)
   await open(page, 'team', 'Team')
-  await expect(page.getByRole('link', { name: 'Casey Lindgren' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Casey Test' })).toBeVisible()
   yield 'people'
   for (const tab of ['requests', 'invites', 'help']) {
     await open(page, `team?tab=${tab}`, 'Team')
@@ -166,8 +166,8 @@ async function* accountScreens(page: Page, appUrl: string) {
   await expect(dialog(page, 'Invite link')).toBeVisible()
   yield 'link'
   await open(page, 'team', 'Team')
-  await page.getByRole('link', { name: 'Casey Lindgren' }).click()
-  await expect(pageTitle(page)).toHaveText('Casey Lindgren')
+  await page.getByRole('link', { name: 'Casey Test' }).click()
+  await expect(pageTitle(page)).toHaveText('Casey Test')
   yield 'person'
   await open(page, 'account', 'Account')
   await accountButton(page).click()

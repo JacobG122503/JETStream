@@ -28,7 +28,7 @@ export function DisplaySection() {
       <Example title="Avatars" note="With a picture, with a picture that cannot be loaded or none, and in three sizes.">
         <Avatar name="Sample Company" src={`data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><path fill="currentColor" opacity=".35" d="M0 8 8 0v8z"/></svg>')}`} />
         <Avatar name="Dana Whitfield" src="data:image/png;base64,AAAA" />
-        <Avatar name="Marcus Oyelaran" size="small" />
+        <Avatar name="Marcus Test" size="small" />
         <Avatar name="Priya Raman" />
         <Avatar name="Wen Zhao" size="large" />
       </Example>

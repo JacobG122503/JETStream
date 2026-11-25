@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { addDays } from '../../shared/dates'
 import type {
   ClientDetails, ClientRow, ExpenseOptions, ExpenseRow, HomeInfo, InvoiceDetails, InvoiceList, ProjectDetails, ProjectRow, TimeProject,
-  TimeReport, TimeWeek, UnbilledClient,
+  TaskRow, TeamWeek, TimeReport, TimeWeek, UnbilledClient,
 } from '../../shared/work'
 import type { Database } from '../db'
 import { companySettings, invoiceTimeEntries, people, projectMembers, timeEntries } from '../db/schema'
@@ -116,12 +116,59 @@ describe('time', () => {
   })
 })
 
+describe('a week', () => {
+  it('runs from Saturday to Friday, is handed in, cannot be changed then, and is taken back', async () => {
+    const before = await get<TimeWeek>(lead, '/time')
+    expect([before.from, before.to, before.submission]).toEqual(['2026-11-21', '2026-11-27', null])
+    const handed = (await lead.post('/time/submit', { date: today })).body as TimeWeek
+    expect(handed.submission).toEqual({ status: 'submitted', comment: '' })
+    expect(handed.entries.every(({ locked, status }) => locked === 'period' && status === 'submitted')).toBe(true)
+    expect(codeOf(await lead.post('/time/submit', { date: today }))).toEqual([409, 'already_handled'])
+    const [entry] = handed.entries
+    expect(codeOf(await lead.post(`/time/${entry?.id}/delete`, { version: entry?.version }))).toEqual([409, 'period_closed'])
+    const back = (await lead.post('/time/withdraw', { date: today })).body as TimeWeek
+    expect(back.submission).toBeNull()
+    expect(back.entries.every(({ locked }) => locked === null)).toBe(true)
+    expect(codeOf(await lead.post('/time/withdraw', { date: today }))).toEqual([409, 'already_handled'])
+  })
+
+  it('that was approved cannot be taken back, and an empty one not handed in', async () => {
+    expect(codeOf(await employee.post('/time/withdraw', { date: addDays(today, -21) }))).toEqual([409, 'already_handled'])
+    expect(codeOf(await employee.post('/time/submit', { date: addDays(today, 70) }))).toEqual([409, 'nothing_to_submit'])
+  })
+
+  it('copies the rows of the day before, once', async () => {
+    const copied = (await admin.post('/time/copy', { date: today })).body as TimeWeek
+    const rows = copied.entries.filter(({ spentOn }) => spentOn === today)
+    expect(rows.length).toBeGreaterThan(0)
+    expect(rows.every(({ minutes, notes }) => minutes === 0 && notes === '')).toBe(true)
+    expect(codeOf(await admin.post('/time/copy', { date: today }))).toEqual([409, 'nothing_to_copy'])
+  })
+
+  it('of the team shows whom the person may see, with their hours', async () => {
+    const all = await get<TeamWeek>(admin, '/team')
+    expect(all.members.map(({ name }) => name)).toEqual(expect.arrayContaining(['Avery Test', 'Dana Test']))
+    expect(all.members.find(({ name }) => name === 'Dana Test')?.kind).toBe('contractor')
+    expect(all.members.some(({ minutes, billableMinutes }) => minutes > billableMinutes && billableMinutes > 0)).toBe(true)
+    expect((await get<TeamWeek>(lead, '/team')).members.length).toBeLessThan(all.members.length)
+    expect(codeOf(await employee.get('/team'))).toEqual([403, 'forbidden'])
+  })
+
+  it('tasks are listed and added by those who may', async () => {
+    const { tasks } = await get<{ tasks: TaskRow[] }>(admin, '/tasks')
+    expect(tasks.find(({ name }) => name === 'Engineering design')?.projects).toBeGreaterThan(1)
+    expect((await admin.post('/tasks', { name: 'Welding', billable: true, common: false })).status).toBe(201)
+    expect(codeOf(await admin.post('/tasks', { name: 'welding', billable: true, common: false }))).toEqual([400, 'invalid_input'])
+    expect(codeOf(await lead.get('/tasks'))).toEqual([403, 'forbidden'])
+  })
+})
+
 describe('projects and clients', () => {
   it('are seen by those on them, those who manage them, and those who see all', async () => {
     const all = await projectsOf(admin)
     const own = await projectsOf(employee)
     expect(all.length).toBeGreaterThan(own.length)
-    expect(own.every(({ members }) => members.some(({ name }) => name === 'Casey Lindgren'))).toBe(true)
+    expect(own.every(({ members }) => members.some(({ name }) => name === 'Casey Test'))).toBe(true)
     const foreign = all.find(({ code }) => code === 'KES-301')
     expect(codeOf(await employee.get(`/projects/${foreign?.id}`))).toEqual([404, 'not_found'])
   })
@@ -134,7 +181,7 @@ describe('projects and clients', () => {
     const asEmployee = await employee.get(`/projects/${turbine?.id}`)
     expect(JSON.stringify(asEmployee.body)).not.toMatch(/amount|"rate"|fixedFee|"unit":"fees"/i)
     const { people: team } = asEmployee.body as ProjectDetails
-    expect(team.filter(({ minutes }) => minutes > 0).map(({ name }) => name)).toEqual(['Casey Lindgren'])
+    expect(team.filter(({ minutes }) => minutes > 0).map(({ name }) => name)).toEqual(['Casey Test'])
   })
 
   it('are made by those who may, who then manage them', async () => {
@@ -148,7 +195,7 @@ describe('projects and clients', () => {
     const made = await lead.post('/projects', body)
     expect(made.status).toBe(201)
     const project = await get<ProjectDetails>(lead, `/projects/${(made.body as { id: number }).id}`)
-    expect(project.people).toMatchObject([{ name: 'Casey Lindgren', isManager: false }, { name: 'Jordan Blake', isManager: true }])
+    expect(project.people).toMatchObject([{ name: 'Casey Test', isManager: false }, { name: 'Jordan Test', isManager: true }])
     expect(project.budget).toMatchObject({ unit: 'hours', used: 0, total: 6000 })
   })
 
@@ -253,7 +300,7 @@ describe('reports and home', () => {
     }
     expect(all.byDay.reduce((sum, { billable, other }) => sum + billable + other, 0)).toBe(all.minutes)
     expect(own).toMatchObject({ scope: 'own', amounts: [] })
-    expect(own.byPerson.map(({ name }) => name)).toEqual(['Casey Lindgren'])
+    expect(own.byPerson.map(({ name }) => name)).toEqual(['Casey Test'])
     expect(own.byProject.every(({ amount }) => amount === null)).toBe(true)
     const led = await report(lead)
     expect(led.minutes).toBeLessThan(all.minutes)
@@ -276,7 +323,7 @@ describe('reports and home', () => {
     expect(office.team?.length).toBeGreaterThan(5)
     const led = await get<HomeInfo>(lead, '/home')
     expect(led.money).toBeUndefined()
-    expect(led.team?.map(({ name }) => name)).toContain('Casey Lindgren')
+    expect(led.team?.map(({ name }) => name)).toContain('Casey Test')
     const own = await get<HomeInfo>(employee, '/home')
     expect([own.money, own.team]).toEqual([undefined, undefined])
     expect(own.week).toHaveLength(7)
