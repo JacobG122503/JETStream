@@ -24,6 +24,9 @@ import { EstimatePage, EstimatesPage } from './pages/work/EstimatesPage'
 import { RecurringPage } from './pages/work/RecurringPage'
 import { RetainerPage, RetainersPage } from './pages/work/RetainersPage'
 import { StatementPage } from './pages/work/StatementPage'
+import { ExportPage } from './pages/settings/ExportPage'
+import { OutboxPage } from './pages/settings/OutboxPage'
+import { BudgetReportPage, DetailedTimePage, ExpenseReportPage, InvoiceReportPage, PaymentReportPage, UninvoicedReportPage } from './pages/work/ReportPages'
 import { ActivityPage } from './pages/settings/ActivityPage'
 import { CompanyPage } from './pages/settings/CompanyPage'
 import { ProjectEditPage } from './pages/work/ProjectEditPage'
@@ -89,6 +92,14 @@ export const routes: RouteObject[] = [
           { path: '/notifications', element: <NotificationsPage /> },
           { path: '/settings/notifications', element: <NotificationSettingsPage /> },
           { path: '/settings/categories', element: <Needs any={['tasks.manage']} title="Expense categories"><CategoriesPage /></Needs> },
+          { path: '/settings/outbox', element: <Needs any={['outbox.view']} title="Outbox"><OutboxPage /></Needs> },
+          { path: '/settings/export', element: <Needs any={['settings.manage']} title="Export"><ExportPage /></Needs> },
+          { path: '/reports/detailed', element: <DetailedTimePage /> },
+          { path: '/reports/expenses', element: <ExpenseReportPage /> },
+          { path: '/reports/budgets', element: <BudgetReportPage /> },
+          { path: '/reports/uninvoiced', element: <Needs any={['invoices.manage']} title="Uninvoiced"><UninvoicedReportPage /></Needs> },
+          { path: '/reports/invoices', element: <Needs any={['invoices.manage']} title="Invoices report"><InvoiceReportPage /></Needs> },
+          { path: '/reports/payments', element: <Needs any={['invoices.manage']} title="Payments"><PaymentReportPage /></Needs> },
           { path: '/settings/activity', element: <Needs any={['activity.view']} title="Activity log"><ActivityPage /></Needs> },
           { path: '/clients/:id', element: <Needs any={['clients.view']} title="Client"><ClientPage /></Needs> },
           { path: '/invoices/new', element: <Needs any={['invoices.manage']} title="New invoice"><NewInvoicePage /></Needs> },

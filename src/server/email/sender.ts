@@ -18,7 +18,7 @@ export interface EmailMessage {
 
 export const linkPlaceholder = '{link}'
 
-/** Sends email. 018 adds one for SMTP. */
+/** Sends email: see smtp.ts, or keeps it in the Outbox. */
 export interface EmailSender {
   /** Whether messages reach people. */
   delivers: boolean
@@ -34,19 +34,23 @@ export function captureSender(db: Db): EmailSender {
   return {
     delivers: false,
     send: async (message) => {
-      await db.insert(outboxMessages).values({
-        kind: message.kind,
-        status: 'captured',
-        recipients: [message.to],
-        subject: message.subject,
-        body: messageText({ ...message, ...(message.link === undefined ? {} : { link: '[link hidden]' }) }),
-        subjectType: message.about?.type ?? (message.personId === undefined ? null : 'person'),
-        subjectId: message.about?.id ?? message.personId ?? null,
-        createdBy: message.createdBy ?? null,
-      })
+      await db.insert(outboxMessages).values({ ...outboxValues(message), status: 'captured' })
     },
   }
 }
+
+export const hiddenLink = '[link hidden]'
+
+/** What is kept of a message. */
+export const outboxValues = (message: EmailMessage) => ({
+  kind: message.kind,
+  recipients: [message.to],
+  subject: message.subject,
+  body: messageText({ ...message, ...(message.link === undefined ? {} : { link: hiddenLink }) }),
+  subjectType: message.about?.type ?? (message.personId === undefined ? null : 'person'),
+  subjectId: message.about?.id ?? message.personId ?? null,
+  createdBy: message.createdBy ?? null,
+})
 
 /** Sends after the change it tells about was saved, so a failure is logged and changes nothing else. */
 export async function sendEmail(sender: EmailSender, message: EmailMessage): Promise<void> {

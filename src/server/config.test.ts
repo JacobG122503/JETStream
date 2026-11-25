@@ -13,6 +13,7 @@ describe('loadConfig', () => {
       database: { kind: 'postgres', url },
       publicUrl: 'https://time.example.com/',
       trustProxy: 0,
+      smtp: null,
       warnings: [],
     })
   })

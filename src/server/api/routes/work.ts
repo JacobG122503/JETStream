@@ -7,9 +7,11 @@ import {
   addReceipt, archiveCategory, createExpense, deleteExpense, listCategories, listExpenses, listTeamExpenses, readExpenseOptions, readReceiptFile, receiptBytes, removeReceipt,
   saveCategory, setReimbursed, updateExpense,
 } from '../../work/expenses'
+import { exportNames, exportTable } from '../../work/exports'
 import { readHome } from '../../work/home'
 import { listNotifications, listPreferences, markRead, notify, savePreference } from '../../work/notify'
-import { readTimeReport } from '../../work/reports'
+import { listOutbox } from '../../work/outbox'
+import { readDetailedTime, readExpenseReport, readPaymentReport, readTimeReport } from '../../work/reports'
 import { readTeamWeek } from '../../work/team'
 import {
   copyPreviousDay, createEntry, deleteEntry, readMonth, readTimeOptions, readWeek, removeFavorite, saveFavorite, startTimer, stopTimer, submitWeek, updateEntry, withdrawWeek,
@@ -140,6 +142,29 @@ export const workRoutes: AddRoutes = (api, access, ctx) => {
     res.json(await readTimeReport(ctx, requireActor(res), { from, to, activeOnly: active !== null }))
   })
 
+  const dates = (query: unknown) => readInput(query, { from: date, to: date })
+  api.get('/reports/detailed', access.signedIn, async (req, res) => {
+    res.json(await readDetailedTime(ctx, requireActor(res), dates(req.query)))
+  })
+
+  api.get('/reports/expenses', access.signedIn, async (req, res) => {
+    res.json(await readExpenseReport(ctx, requireActor(res), dates(req.query)))
+  })
+
+  api.get('/reports/payments', access.permission('invoices.manage'), async (req, res) => {
+    res.json(await readPaymentReport(ctx, requireActor(res), dates(req.query)))
+  })
+
+  api.get('/export', access.administrator, (_req, res) => {
+    res.json({ tables: exportNames })
+  })
+
+  api.get('/export/:name', access.administrator, async (req, res) => {
+    const rows = await exportTable(ctx, requireActor(res), String(req.params.name))
+    if (!rows) throw new ApiError(404, 'not_found', 'Not found')
+    res.json({ rows })
+  })
+
   // Receipts. A file never runs as a page of this app.
   api.put('/expenses/:id/receipts/:version', access.signedIn, receiptBody, async (req, res) => {
     const upload: unknown = req.body
@@ -215,6 +240,11 @@ export const workRoutes: AddRoutes = (api, access, ctx) => {
   api.post('/approvals/remind', access.permission('time.approve'), jsonBody, async (req, res) => {
     const input = readInput(req.body, { personIds: ids, date })
     res.json({ reminded: await remind(ctx, requireActor(res), input.personIds, input.date) })
+  })
+
+  // Email
+  api.get('/outbox', access.permission('outbox.view'), async (req, res) => {
+    res.json(await listOutbox(ctx.db, requireActor(res), readInput(req.query, { search: text(100) }).search))
   })
 
   // Notifications

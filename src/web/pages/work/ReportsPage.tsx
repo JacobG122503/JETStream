@@ -2,13 +2,15 @@ import { type ReactNode, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { PermissionKey } from '../../../shared/permissions'
 import type { ReportRow, TimeReport } from '../../../shared/work'
-import { useCan, usePerson, useWeekStart } from '../../auth/authContext'
+import { useCan } from '../../auth/authContext'
 import { useLoad } from '../../auth/useLoad'
 import { Page } from '../../shell/Page'
-import { addDays, addMonths, Button, Checkbox, type DateRange, DateRangePicker, ErrorState, Icon, IconButton, LoadingState, partsOf, Ring, Select, startOfWeek, Tabs, toIso, type Weekday } from '../../ui'
-import { formatHours, formatMoney, formatWeek, moneyInput, percentOf } from '../../work/format'
+import { Button, Checkbox, ErrorState, IconButton, LoadingState, Ring, Tabs } from '../../ui'
+import { formatHours, formatMoney, moneyInput, percentOf } from '../../work/format'
 import { downloadCsv } from '../../work/csv'
 import { Amounts } from '../../work/parts'
+import { PeriodBar, usePeriod } from '../../work/Period'
+import { ReportsNav } from './ReportsNav'
 import '../../work/work.css'
 
 interface GroupInfo {
@@ -26,79 +28,15 @@ const groups: GroupInfo[] = [
   { id: 'byPerson', label: 'Teammates', path: '/team', needs: 'people.view' },
 ]
 
-const months = { month: 1, quarter: 3, year: 12 } as const
-type Step = 'week' | keyof typeof months
-type Period = Step | 'custom'
-
-function rangeOf(step: Step, date: string, weekStart: Weekday): DateRange {
-  if (step === 'week') {
-    const start = startOfWeek(date, weekStart)
-    return { start, end: addDays(start, 6) }
-  }
-  const { year, month } = partsOf(date)
-  const start = toIso({ year, month: month - ((month - 1) % months[step]), day: 1 })
-  return { start, end: addDays(addMonths(start, months[step]), -1) }
-}
-
-const todayIn = (timeZone: string): string =>
-  new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()).slice(0, 10)
-
 export function ReportsPage() {
-  const { timeZone } = usePerson()
-  const weekStart = useWeekStart()
-  const today = todayIn(timeZone)
-  const [period, setPeriod] = useState<Period>('week')
-  const [range, setRange] = useState<DateRange>(() => rangeOf('week', today, weekStart))
+  const period = usePeriod('week')
+  const { range } = period
   const [activeOnly, setActiveOnly] = useState(false)
   const { status, data, error, reload } = useLoad<TimeReport>(`reports/time?from=${range.start}&to=${range.end}${activeOnly ? '&active=1' : ''}`)
-
-  const choose = (next: Period) => {
-    setPeriod(next)
-    if (next !== 'custom') setRange(rangeOf(next, today, weekStart))
-  }
-  const move = (by: 1 | -1) => {
-    if (period === 'custom') return
-    setRange(period === 'week' ? rangeOf('week', addDays(range.start, by * 7), weekStart) : rangeOf(period, addMonths(range.start, by * months[period]), weekStart))
-  }
-  const current = today >= range.start && today <= range.end
-
   return (
     <Page title="Reports">
-      <div className="time-bar no-print">
-        <Select
-          label="Period"
-          hideLabel
-          value={period}
-          options={[
-            { value: 'week', label: 'Week' },
-            { value: 'month', label: 'Month' },
-            { value: 'quarter', label: 'Quarter' },
-            { value: 'year', label: 'Year' },
-            { value: 'custom', label: 'Custom' },
-          ]}
-          onChange={(value) => choose(value as Period)}
-        />
-        {period === 'custom' ? (
-          <DateRangePicker label="Dates" weekStart={weekStart} value={range} onChange={setRange} today={today} />
-        ) : (
-          <div className="date-nav">
-            <IconButton icon="chevronLeft" label={`Previous ${period}`} onClick={() => move(-1)} />
-            <p aria-live="polite">
-              <Icon name="calendar" />
-              <span>
-                {current && <span className="muted">This {period} </span>}
-                {formatWeek(range.start, range.end)}
-              </span>
-            </p>
-            <IconButton icon="chevronRight" label={`Next ${period}`} onClick={() => move(1)} />
-          </div>
-        )}
-        {period !== 'custom' && !current && (
-          <button type="button" className="text-button" onClick={() => choose(period)}>
-            Return to this {period}
-          </button>
-        )}
-      </div>
+      <ReportsNav current="/reports" />
+      <PeriodBar period={period} />
       {status === 'loading' && <LoadingState size="page" look="skeleton" label="Loading the report" />}
       {status === 'error' && <ErrorState size="page" headingLevel={2} message={error} onRetry={reload} />}
       {data && <Report report={data} activeOnly={activeOnly} onActiveOnly={setActiveOnly} />}

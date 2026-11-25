@@ -37,3 +37,16 @@ export interface NotificationPreference {
   inApp: boolean
   email: boolean
 }
+
+/** An email, as it was sent or would have been. */
+export interface OutboxRow {
+  id: number
+  kind: string
+  status: 'captured' | 'queued' | 'sent' | 'failed'
+  recipients: { name: string; email: string }[]
+  subject: string
+  /** Links are left out: they work like passwords. */
+  body: string
+  error: string | null
+  at: string
+}

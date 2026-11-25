@@ -14,6 +14,13 @@ export type DatabaseConfig =
   /** `dataDir` is a folder, or `memory://` for a database that lasts as long as the process. */
   | { kind: 'embedded'; dataDir: string }
 
+export interface SmtpConfig {
+  /** smtp:// or smtps://, with user name and password. */
+  url: string
+  /** Who messages are from. */
+  from: string
+}
+
 export interface ServerConfig {
   mode: Mode
   host: string
@@ -25,6 +32,8 @@ export interface ServerConfig {
   publicUrl: string
   /** Number of reverse proxies in front. */
   trustProxy: number
+  /** Null keeps email in the Outbox. */
+  smtp: SmtpConfig | null
   /** What to tell whoever starts the server about these settings. */
   warnings: string[]
 }
@@ -92,6 +101,17 @@ function parsePublicUrl(env: Env, listen: Listen): string {
     )
   }
   return `${url.origin}${basePath}`
+}
+
+/** Never repeats the address: it contains the password. */
+function parseSmtp(mode: Mode, env: Env): SmtpConfig | null {
+  const url = env.SMTP_URL?.trim()
+  // A demo never writes to anyone.
+  if (!url || mode === 'demo') return null
+  if (!/^smtps?:\/\//.test(url) || !URL.canParse(url) || new URL(url).hostname === '') throw new StartupError('SMTP_URL must look like smtp://user:password@mail.example.com:587.')
+  const from = env.EMAIL_FROM?.trim() ?? ''
+  if (!/^[^\r\n<>]*<?[^\s@<>]+@[^\s@<>]+>?$/.test(from)) throw new StartupError('EMAIL_FROM is required with SMTP_URL, such as "Time <time@example.com>".')
+  return { url, from }
 }
 
 function configWarnings(env: Env, { mode, host }: Listen): string[] {
@@ -169,6 +189,7 @@ export function loadConfig(args: string[], env: Env): ServerConfig {
     database,
     publicUrl: parsePublicUrl(env, listen),
     trustProxy: parseTrustProxy(env.TRUST_PROXY || undefined),
+    smtp: parseSmtp(mode, env),
     warnings: configWarnings(env, listen),
   }
 }

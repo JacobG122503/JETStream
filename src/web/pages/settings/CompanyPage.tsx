@@ -67,8 +67,6 @@ const groups: { title: string; fields: FieldSpec[] }[] = [
       { name: 'expensesEnabled', label: 'Expenses', type: 'check' },
       { name: 'invoicesEnabled', label: 'Invoices', type: 'check' },
       { name: 'estimatesEnabled', label: 'Estimates', type: 'check' },
-      { name: 'timeOffEnabled', label: 'Time off', type: 'check' },
-      { name: 'schedulingEnabled', label: 'Schedule', type: 'check' },
     ],
   },
   {
@@ -94,7 +92,7 @@ function CompanyForm({ settings, onSaved, onReload }: { settings: CompanySetting
     void submit(async (result) => {
       const { reminderText, roundingMinutes, ...rest } = result as unknown as Record<string, unknown> & { reminderText: string; roundingMinutes: number | null }
       const reminderDays = reminderText.split(/[\s,]+/).filter(Boolean).map(Number)
-      onSaved(await callApi<CompanySettings>('PUT', 'settings', { ...rest, roundingMinutes: roundingMinutes ?? settings.roundingMinutes, reminderDays, version: settings.version }))
+      onSaved(await callApi<CompanySettings>('PUT', 'settings', { ...rest, timeOffEnabled: settings.timeOffEnabled, schedulingEnabled: settings.schedulingEnabled, roundingMinutes: roundingMinutes ?? settings.roundingMinutes, reminderDays, version: settings.version }))
       toast.success('Settings saved')
       void refresh()
     })

@@ -27,6 +27,7 @@ it('refuses to start in production with pending migrations, and does not apply t
     database: { kind: 'postgres', url: 'postgres://unused' },
     publicUrl: 'https://time.example.com/',
     trustProxy: 0,
+    smtp: null,
     warnings: [],
   }
   await expect(startServer(config)).rejects.toThrow('npm run db:migrate')

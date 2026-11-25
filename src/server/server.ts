@@ -1,13 +1,15 @@
 import { createServer, type Server } from 'node:http'
 import { connect } from 'node:net'
 import { productName } from '../shared/product'
-import { createApp } from './app'
+import { type AppOptions, createApp, createContext } from './app'
 import { startCleaning } from './auth/cleanUp'
 import { type ServerConfig, serverUrl } from './config'
 import { type Database, type Db, openDatabase } from './db/database'
 import { applyMigrations, countPendingMigrations } from './db/migrations'
 import { demoSeedDate } from './demo/marker'
 import { errorCode, StartupError } from './errors'
+import { smtpSender } from './email/smtp'
+import { startJobs } from './jobs'
 import { activeAdministratorWithPassword } from './people/lookup'
 import { webBuildDir } from './paths'
 
@@ -37,29 +39,33 @@ export async function startServer(config: ServerConfig, signal?: AbortSignal): P
     await prepareSchema(config, database)
     goOn()
     const messages = [...config.warnings, ...(await prepareData(config, database))]
-    const { mode, basePath, publicUrl, trustProxy } = config
-    const app = createApp({
+    const { mode, basePath, publicUrl, trustProxy, smtp } = config
+    const email = smtp ? smtpSender(database.db, smtp) : undefined
+    const options: AppOptions = {
       db: database.db,
       basePath,
       publicUrl,
       trustProxy,
       mode,
       webDir: mode === 'development' ? undefined : webBuildDir,
-    })
+      email,
+    }
+    const app = createApp(options)
     goOn()
     const server = createServer(app)
     const stopCleaning = await startCleaning({ db: database.db, now: () => new Date() })
+    const stopJobs = startJobs(createContext(options), email)
     try {
       await listen(server, config)
     } catch (error) {
-      await stopCleaning()
+      await Promise.all([stopCleaning(), stopJobs()])
       throw error
     }
     return {
       url: serverUrl(config),
       messages,
       close: async () => {
-        await Promise.all([closeServer(server), stopCleaning()])
+        await Promise.all([closeServer(server), stopCleaning(), stopJobs()])
         await database.close()
       },
     }

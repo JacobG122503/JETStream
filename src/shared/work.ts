@@ -513,3 +513,45 @@ export interface Receipt {
   name: string
   mediaType: string
 }
+
+export interface DetailedTime {
+  showAmounts: boolean
+  scope: 'own' | 'team'
+  rows: {
+    id: number
+    spentOn: IsoDate
+    client: string
+    project: string
+    task: string
+    person: string
+    notes: string
+    minutes: number
+    billable: boolean
+    /** Null where it may not be seen or no rate applies. */
+    amount: number | null
+    currency: string
+    invoiced: boolean
+    status: EntryStatus
+  }[]
+}
+
+export interface ExpenseReport {
+  rows: {
+    id: number
+    spentOn: IsoDate
+    client: string
+    project: string
+    category: string
+    person: string
+    notes: string
+    amount: number
+    currency: string
+    billable: boolean
+    invoiced: boolean
+    reimbursementStatus: string
+  }[]
+}
+
+export interface PaymentReport {
+  rows: { id: number; paidOn: IsoDate; invoice: { id: number; number: string }; client: string; method: string; reference: string; amount: number; refunded: number; currency: string; simulated: boolean }[]
+}
