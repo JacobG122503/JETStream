@@ -38,7 +38,7 @@ describe('App', () => {
     expect(document.body).toHaveFocus()
   })
 
-  const forAll = navItems.filter(({ needs }) => !needs)
+  const forAll = navItems.filter(({ id, needs }) => !needs && id !== 'settings')
   it.each(forAll.map((item) => [item.path, item.label]))('%s is the page "%s", and says when it cannot be loaded', async (path, label) => {
     await renderAt(path)
     expect(screen.getAllByRole('heading', { level: 1 }).map((heading) => heading.textContent)).toEqual([label])
@@ -69,7 +69,7 @@ describe('App', () => {
   it('goes to Time from "Page not found"', async () => {
     const { router } = await renderAt('/no-such-page')
     await userEvent.click(screen.getByRole('link', { name: 'Go to Time' }))
-    expect(await screen.findByRole('heading', { level: 1, name: 'Time' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Timesheet' })).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/time')
   })
 

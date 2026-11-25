@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { ReportRow, TimeReport } from '../../../shared/work'
 import { productName } from '../../../shared/product'
-import { usePerson } from '../../auth/authContext'
+import { usePerson, useWeekStart } from '../../auth/authContext'
 import { useLoad } from '../../auth/useLoad'
 import { Page } from '../../shell/Page'
 import { BarChart, Button, Card, type DateRange, DateRangePicker, ErrorState, formatDate, Legend, LoadingState, Meter, monthNames, partsOf, presetRange, StatTile, Table, type TableColumn, Tabs } from '../../ui'
@@ -23,13 +23,14 @@ function todayIn(timeZone: string): string {
 
 export function ReportsPage() {
   const { timeZone } = usePerson()
+  const weekStart = useWeekStart()
   const today = todayIn(timeZone)
-  const [range, setRange] = useState<DateRange>(() => presetRange('this-month', today, 1))
+  const [range, setRange] = useState<DateRange>(() => presetRange('this-month', today, weekStart))
   const { status, data, error, reload } = useLoad<TimeReport>(`reports/time?from=${range.start}&to=${range.end}`)
   return (
     <Page title="Reports" description={data?.scope === 'own' ? 'Your own hours.' : 'Hours and what they are worth.'}>
       <div className="report-head">
-        <DateRangePicker label="Dates" value={range} onChange={setRange} today={today} />
+        <DateRangePicker label="Dates" weekStart={weekStart} value={range} onChange={setRange} today={today} />
       </div>
       {status === 'loading' && <LoadingState size="page" look="skeleton" label="Loading the report" />}
       {status === 'error' && <ErrorState size="page" headingLevel={2} message={error} onRetry={reload} />}

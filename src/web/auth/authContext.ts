@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react'
 import type { SessionInfo, SessionPerson } from '../../shared/api'
+import type { Weekday } from '../../shared/dates'
 import { type Level, type PermissionKey, reaches } from '../../shared/permissions'
 
 export interface Auth {
@@ -35,3 +36,6 @@ export function useCan(): (key: PermissionKey, level?: Level) => boolean {
   const { permissions } = usePerson()
   return (key, level = 'managed') => reaches(permissions[key], level)
 }
+
+/** The first day of the company's week. */
+export const useWeekStart = (): Weekday => useAuth().info?.company.weekStartsOn ?? 1

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { type ReactNode, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
 import { IconButton } from '../ui'
@@ -12,11 +12,13 @@ import type { NavItem } from './navigation'
 interface NavDrawerProps {
   id: string
   items: readonly NavItem[]
+  /** Above the navigation. */
+  top?: ReactNode
   onClose: () => void
 }
 
 /** Navigation on phones and tablets. Mounted only while open. */
-export function NavDrawer({ id, items, onClose }: NavDrawerProps) {
+export function NavDrawer({ id, items, top, onClose }: NavDrawerProps) {
   const root = useRef<HTMLDivElement>(null)
   const panel = useRef<HTMLDivElement>(null)
   const closeButton = useRef<HTMLButtonElement>(null)
@@ -58,6 +60,7 @@ export function NavDrawer({ id, items, onClose }: NavDrawerProps) {
           <Brand onClick={() => choose('/home')} />
           <IconButton ref={closeButton} icon="close" label="Close menu" className="drawer-close" onClick={onClose} />
         </div>
+        {top}
         <MainNav items={items} onChoose={(item) => choose(item.path)} />
       </div>
     </div>,

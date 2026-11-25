@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { productName } from '../../../shared/product'
 import type { InvoiceDetails } from '../../../shared/work'
 import { callApi, errorMessage } from '../../api'
+import { useWeekStart } from '../../auth/authContext'
 import { FormMessages } from '../../auth/FormMessages'
 import { useForm } from '../../auth/useForm'
 import { useLoad } from '../../auth/useLoad'
@@ -195,7 +196,7 @@ function Document({ invoice }: { invoice: InvoiceDetails }) {
             {invoice.lines.map((line) => (
               <tr key={line.id}>
                 <td>{line.description}</td>
-                <td>{line.minutes === null ? quantity.format(line.quantity / 1000) : `${formatHours(line.minutes)} h`}</td>
+                <td>{line.minutes === null ? quantity.format(line.quantity / 1000) : formatHours(line.minutes)}</td>
                 <td>{money(line.unitPrice)}</td>
                 <td>{money(line.amount)}</td>
               </tr>
@@ -249,6 +250,7 @@ function Document({ invoice }: { invoice: InvoiceDetails }) {
 const fields = ['amount', 'paidOn', 'method', 'reference'] as const
 
 function PaymentDialog({ invoice, onClose, onPaid }: { invoice: InvoiceDetails; onClose: () => void; onPaid: (invoice: InvoiceDetails) => void }) {
+  const weekStart = useWeekStart()
   const formId = useId()
   const form = useForm('payment', fields)
   const [amount, setAmount] = useState(formatMoney(invoice.dueAmount, invoice.currency).replace(/[^\d.]/g, ''))
@@ -287,7 +289,7 @@ function PaymentDialog({ invoice, onClose, onPaid }: { invoice: InvoiceDetails; 
         <Notice>For money you have already received. Nothing is charged here.</Notice>
         <div className="form-pair">
           <TextField label={`Amount (${invoice.currency})`} required inputMode="decimal" value={amount} onChange={setAmount} {...form.field('amount')} />
-          <DatePicker label="Received" required value={paidOn} onChange={setPaidOn} {...form.field('paidOn')} />
+          <DatePicker weekStart={weekStart} label="Received" required value={paidOn} onChange={setPaidOn} {...form.field('paidOn')} />
         </div>
         <div className="form-pair">
           <Select

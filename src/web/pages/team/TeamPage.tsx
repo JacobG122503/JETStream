@@ -6,13 +6,14 @@ import { Page } from '../../shell/Page'
 import { Tabs } from '../../ui'
 import { HelpPanel } from './HelpPanel'
 import { InvitesPanel } from './InvitesPanel'
+import { MembersPanel } from './MembersPanel'
 import { PeoplePanel } from './PeoplePanel'
 import { RequestsPanel } from './RequestsPanel'
 import '../auth/auth.css'
 import './team.css'
 
 export function TeamPage() {
-  return <Page title="Team">{useCan()('people.manage') ? <TeamTabs /> : <PeoplePanel />}</Page>
+  return <Page title="Team">{useCan()('people.manage') ? <TeamTabs /> : <MembersPanel />}</Page>
 }
 
 const counted = (label: string, count: number | undefined) => (count ? `${label} (${count})` : label)
@@ -25,10 +26,11 @@ function TeamTabs() {
   return (
     <Tabs
       label="Team"
-      value={query.get('tab') ?? 'people'}
-      onChange={(tab) => setQuery(tab === 'people' ? {} : { tab }, { replace: true })}
+      value={query.get('tab') ?? 'members'}
+      onChange={(tab) => setQuery(tab === 'members' ? {} : { tab }, { replace: true })}
       items={[
-        { id: 'people', label: 'People', content: <PeoplePanel /> },
+        { id: 'members', label: 'Members', content: <MembersPanel /> },
+        { id: 'people', label: 'Accounts', content: <PeoplePanel /> },
         { id: 'requests', label: counted('Requests', requests.data?.requests.length), content: <RequestsPanel load={requests} /> },
         { id: 'invites', label: 'Invites', content: <InvitesPanel /> },
         { id: 'help', label: counted('Help requests', help.data?.requests.length), content: <HelpPanel load={help} /> },

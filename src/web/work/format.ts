@@ -1,4 +1,5 @@
 import { currencyExponent } from '../../shared/currency'
+import { monthNames, partsOf, weekdayNames, weekdayOf } from '../ui/dates'
 
 const money = new Map<string, Intl.NumberFormat>()
 
@@ -19,12 +20,29 @@ export function formatMoney(amount: number, currency: string, { whole = false } 
 export const formatAmounts = (amounts: readonly { currency: string; amount: number }[], options?: { whole?: boolean }): string =>
   amounts.length === 0 ? formatMoney(0, 'USD', options) : amounts.map(({ currency, amount }) => formatMoney(amount, currency, options)).join(' + ')
 
-/** 90 is 1:30. */
-export function formatHours(minutes: number): string {
-  return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}`
+const hours = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+/** Decimal hours: 375 minutes are 6.25. */
+export const formatHours = (minutes: number): string => hours.format(minutes / 60)
+
+/** Hours as they are typed into a field. */
+export const hoursInput = (minutes: number): string => (minutes / 60).toFixed(2)
+
+const shortMonth = (month: number) => monthNames[month - 1]?.slice(0, 3)
+
+/** "Wednesday, 25 Nov" */
+export function formatDay(date: string): string {
+  const { month, day } = partsOf(date)
+  return `${weekdayNames[weekdayOf(date)]}, ${day} ${shortMonth(month)}`
 }
 
-/** 90 is 1.5 h, for sums where minutes do not matter. */
+/** "21 to 27 Nov 2026" */
+export function formatWeek(from: string, to: string): string {
+  const [first, last] = [partsOf(from), partsOf(to)]
+  return `${first.day}${first.month === last.month ? '' : ` ${shortMonth(first.month)}`} to ${last.day} ${shortMonth(last.month)} ${last.year}`
+}
+
+/** 90 is 1.5 h, for axes and sums where minutes do not matter. */
 export const formatDecimalHours = (minutes: number): string => `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }).format(minutes / 60)} h`
 
 /** Seconds of a running timer as 1:02:09. */

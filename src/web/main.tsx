@@ -1,7 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createBrowserRouter } from 'react-router-dom'
-import '@fontsource-variable/bricolage-grotesque/wght.css'
 import '@fontsource-variable/geist/wght.css'
 import './styles/tokens.css'
 import './styles/base.css'

@@ -216,10 +216,8 @@
 }
 
 .ring-content strong {
-  font-family: var(--font-display);
   font-size: var(--text-2xl);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
 }
 
 .ring-content span {
@@ -240,7 +238,7 @@
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--g-progress);
+  background: var(--c-accent);
 }
 
 .meter.is-over > span {

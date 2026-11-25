@@ -184,7 +184,7 @@ describe('signed in', () => {
 
   it('a change is refused after someone else signed in in another tab, and the page becomes theirs', async () => {
     server.session = signedIn
-    await open('/time', 'Time')
+    await open('/time', 'Timesheet')
     server.session = sessionInfo({ person: administrator })
     server.handlers['POST session/sign-out'] = ({ csrfToken }) =>
       csrfToken === 'token of 1' ? server.signIn(sessionInfo()) : failure(403, 'csrf')
@@ -197,7 +197,7 @@ describe('signed in', () => {
 
   it('a change is sent again with a new token when the same person signed in again in another tab', async () => {
     server.session = signedIn
-    await open('/time', 'Time')
+    await open('/time', 'Timesheet')
     server.session = { ...signedIn, csrfToken: 'new token' }
     server.handlers['POST session/sign-out'] = ({ csrfToken }) => (csrfToken === 'new token' ? server.signIn(sessionInfo()) : failure(403, 'csrf'))
     await userEvent.click(screen.getByRole('button', { name: /^Account: Casey/ }))
@@ -208,13 +208,13 @@ describe('signed in', () => {
 
   it('keeps what is shown when the server cannot be asked on coming back', async () => {
     server.session = signedIn
-    await open('/time', 'Time')
+    await open('/time', 'Timesheet')
     server.handlers['GET session'] = () => {
       throw new TypeError('Failed to fetch')
     }
     refocus()
     await waitFor(() => expect(server.sent('GET session').length).toBeGreaterThan(1))
-    await heading('Time')
+    await heading('Timesheet')
   })
 })
 

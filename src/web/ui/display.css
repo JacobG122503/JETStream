@@ -110,9 +110,7 @@
 
 .card-title {
   min-width: 0;
-  font-family: var(--font-display);
   font-size: var(--text-lg);
-  letter-spacing: -0.01em;
 }
 
 .card-actions {
@@ -140,11 +138,9 @@
 }
 
 .stat-value {
-  font-size: var(--text-3xl);
-  font-family: var(--font-display);
+  font-size: var(--text-2xl);
   font-variant-numeric: tabular-nums;
   font-weight: var(--weight-strong);
-  letter-spacing: -0.02em;
   line-height: var(--leading-tight);
   overflow-wrap: anywhere;
 }
@@ -191,7 +187,7 @@
 .progress-fill {
   height: 100%;
   border-radius: inherit;
-  background: var(--g-progress);
+  background: var(--c-accent);
 }
 
 .is-over .progress-fill {
@@ -230,6 +226,8 @@
 }
 
 .page-header-row {
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--c-border);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -244,9 +242,7 @@
 
 .page-title {
   font-size: var(--text-title);
-  font-family: var(--font-display);
-  font-weight: var(--weight-heavy);
-  letter-spacing: -0.025em;
+  font-weight: var(--weight-strong);
 }
 
 .page-description {

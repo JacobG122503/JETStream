@@ -18,13 +18,7 @@
   cursor: pointer;
   transition:
     background-color var(--motion-fast),
-    border-color var(--motion-fast),
-    box-shadow var(--motion-fast),
-    transform var(--motion-fast);
-}
-
-.btn:active:not(:disabled, [aria-disabled='true']) {
-  transform: translateY(1px);
+    border-color var(--motion-fast);
 }
 
 .btn-small {
@@ -43,31 +37,28 @@
 
 
 .btn-primary {
-  background: var(--g-brand);
-  color: var(--c-on-brand);
+  background: var(--c-primary);
+  color: var(--c-on-primary);
   font-weight: var(--weight-strong);
-  box-shadow: var(--shadow-brand);
 }
 
 .btn-primary:hover {
-  background: var(--c-brand-hover);
-  color: var(--c-on-brand);
+  background: var(--c-primary-hover);
+  color: var(--c-on-primary);
 }
 
 .btn-primary:active {
-  background: var(--c-brand-active);
+  background: var(--c-primary-active);
 }
 
 .btn-secondary {
-  border-color: var(--c-border);
-  background: var(--c-surface);
+  border-color: var(--c-border-strong);
+  background: transparent;
   color: var(--c-text);
-  box-shadow: var(--shadow-1);
 }
 
 .btn-secondary:hover {
-  border-color: var(--c-border-strong);
-  background: var(--c-surface);
+  background: var(--c-surface-2);
   color: var(--c-text);
 }
 

@@ -9,7 +9,7 @@ import { isCurrentItem, navItems } from './navigation'
 import { Page } from './Page'
 import { RouteEffects } from './RouteEffects'
 
-const labels = ['Home', 'Time', 'Expenses', 'Projects', 'Clients', 'Team', 'Reports', 'Invoices', 'Settings']
+const labels = ['Home', 'Timesheet', 'Expenses', 'Team', 'Clients', 'Projects', 'Tasks', 'Invoices', 'Reports', 'Settings']
 
 function Breaking() {
   const [broken, setBroken] = useState(false)
@@ -65,7 +65,7 @@ describe('navigation', () => {
     renderShell('/time')
     expect(links().map((link) => link.textContent)).toEqual(labels)
     expect(links().map((link) => link.getAttribute('href'))).toEqual(
-      ['/home', '/time', '/expenses', '/projects', '/clients', '/team', '/reports', '/invoices', '/settings'],
+      ['/home', '/time', '/expenses', '/team', '/clients', '/projects', '/tasks', '/invoices', '/reports', '/settings'],
     )
   })
 
@@ -85,8 +85,8 @@ describe('navigation', () => {
   })
 
   it.each([
-    ['/time', 'Time'],
-    ['/time/', 'Time'],
+    ['/time', 'Timesheet'],
+    ['/time/', 'Timesheet'],
     ['/projects/123', 'Projects'],
     ['/Projects/123/tasks', 'Projects'],
   ])('at %s the current item is %s', (path, label) => {
@@ -184,7 +184,7 @@ describe('drawer', () => {
     expect(menuButton()).toHaveFocus()
   })
 
-  it.each(['Invoices', 'Time'])('closes when %s is chosen, and focus goes to the heading', async (name) => {
+  it.each(['Invoices', 'Timesheet'])('closes when %s is chosen, and focus goes to the heading', async (name) => {
     renderShell('/time')
     await userEvent.click(menuButton())
     await userEvent.click(within(drawer() as HTMLElement).getByRole('link', { name }))
@@ -237,7 +237,7 @@ describe('an error while a page renders', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Break' }))
     expect(screen.getByRole('heading', { level: 1, name: 'Something went wrong' })).toHaveFocus()
     expect(document.title).toBe('Something went wrong | JETStream')
-    expect(links()).toHaveLength(9)
+    expect(links()).toHaveLength(10)
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(screen.getByRole('button', { name: 'Break' })).toBeInTheDocument()
     expect(document.title).toBe('Breaking | JETStream')

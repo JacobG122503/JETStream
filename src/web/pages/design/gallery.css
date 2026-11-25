@@ -21,7 +21,6 @@
 
 .gallery-section-title {
   font-size: var(--text-xl);
-  font-family: var(--font-display);
 }
 
 .gallery-example {
@@ -109,14 +108,12 @@
 
 .type-title {
   font-size: var(--text-title);
-  font-family: var(--font-display);
   font-weight: var(--weight-heavy);
   line-height: var(--leading-tight);
 }
 
 .type-xl {
   font-size: var(--text-xl);
-  font-family: var(--font-display);
   font-weight: var(--weight-strong);
 }
 

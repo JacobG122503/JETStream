@@ -1,6 +1,8 @@
-import { type FormEvent, useId, useState } from 'react'
+import { type FormEvent, useEffect, useId, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import type { ExpenseOptions, ExpenseRow } from '../../../shared/work'
 import { callApi, errorMessage } from '../../api'
+import { useWeekStart } from '../../auth/authContext'
 import { FormMessages } from '../../auth/FormMessages'
 import { useForm } from '../../auth/useForm'
 import { useLoad } from '../../auth/useLoad'
@@ -27,6 +29,14 @@ export function ExpensesPage() {
   const [editing, setEditing] = useState<ExpenseRow | 'new' | null>(null)
   const [deleting, setDeleting] = useState<ExpenseRow | null>(null)
   const toast = useToast()
+  // From the button above the navigation.
+  const [query, setQuery] = useSearchParams()
+  const wantsNew = query.get('new') !== null
+  useEffect(() => {
+    if (!wantsNew) return
+    setEditing('new')
+    setQuery({}, { replace: true })
+  }, [wantsNew, setQuery])
   const rows = data?.expenses ?? []
   const month = todayOnDevice().slice(0, 7)
   const thisMonth = rows.filter(({ spentOn }) => spentOn.startsWith(month))
@@ -153,6 +163,7 @@ interface ExpenseDialogProps {
 }
 
 function ExpenseDialog({ expense, onClose, onReload, onSaved }: ExpenseDialogProps) {
+  const weekStart = useWeekStart()
   const formId = useId()
   const { status, data, error, reload } = useLoad<ExpenseOptions>('expenses/options')
   const form = useForm('expense', fields)
@@ -236,7 +247,7 @@ function ExpenseDialog({ expense, onClose, onReload, onSaved }: ExpenseDialogPro
               onChange={setCategoryId}
               {...form.field('categoryId')}
             />
-            <DatePicker label="Date" required value={spentOn} onChange={setSpentOn} {...form.field('spentOn')} />
+            <DatePicker weekStart={weekStart} label="Date" required value={spentOn} onChange={setSpentOn} {...form.field('spentOn')} />
           </div>
           <TextField
             label={unit === null ? `Amount (${currency})` : `How many (${unit})`}

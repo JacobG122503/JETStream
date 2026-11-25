@@ -10,11 +10,11 @@ import { administrator, person, sessionInfo } from '../../test/session'
 
 const now = '2026-11-25T16:00:00Z'
 const entry = (more: Partial<TimeEntry> = {}): TimeEntry => ({
-  id: 5, version: 2, projectId: 1, project: 'Pump station', client: 'Fernhollow', taskId: 7, task: 'Design', spentOn: '2026-11-25', minutes: 90,
+  id: 5, version: 2, projectId: 1, project: 'Pump station', projectCode: 'P', client: 'Fernhollow', taskId: 7, task: 'Design', spentOn: '2026-11-25', minutes: 90,
   timerStartedAt: null, notes: 'North run', billable: true, status: 'unsubmitted', locked: null, ...more,
 })
 const week = (entries: TimeEntry[], running: TimeEntry | null = null): TimeWeek => ({
-  from: '2026-11-23', to: '2026-11-29', today: '2026-11-25', capacityMinutes: 2400, entries, running, now,
+  from: '2026-11-21', to: '2026-11-27', today: '2026-11-25', capacityMinutes: 2400, entries, submission: null, running, now,
 })
 
 const server = fakeServer()
@@ -38,25 +38,25 @@ const dialog = async () => within(await screen.findByRole('dialog'))
 
 describe('time', () => {
   it('shows the day, what is locked, and the sum of the week', async () => {
-    await open('/time', 'Time')
+    await open('/time', 'Timesheet')
     expect(await screen.findByText('North run')).toBeInTheDocument()
     expect(screen.getByText('Approved')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Edit Design, Pump station' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit Meetings, Pump station' })).not.toBeInTheDocument()
-    expect(screen.getAllByText('3:00').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('3.00').length).toBeGreaterThan(0)
   })
 
   it('adds time, choosing the first task of the project', async () => {
-    await open('/time', 'Time')
+    await open('/time', 'Timesheet')
     await screen.findByText('North run')
-    await press('Track time')
+    await userEvent.click(screen.getAllByRole('button', { name: 'Track time' })[0] as HTMLElement)
     const box = await dialog()
     await userEvent.click(await box.findByRole('combobox', { name: /Project/ }))
     await userEvent.click(await screen.findByRole('option', { name: 'Office' }))
     expect(box.getByLabelText(/^Task/)).toHaveValue('8')
     await userEvent.type(box.getByLabelText('Hours'), 'nonsense')
     await press('Add time', box)
-    expect(box.getAllByText(/Enter a time such as/).length).toBeGreaterThan(0)
+    expect(box.getAllByText(/Enter hours such as/).length).toBeGreaterThan(0)
     expect(server.sent('POST time')).toEqual([])
     await userEvent.clear(box.getByLabelText('Hours'))
     await userEvent.type(box.getByLabelText('Hours'), '1.5')
@@ -67,10 +67,10 @@ describe('time', () => {
   })
 
   it('starts a timer when the hours are left empty, and shows it in the header', async () => {
-    await open('/time?new=1', 'Time')
+    await open('/time?new=1', 'Timesheet')
     const box = await dialog()
     await userEvent.click(await box.findByRole('combobox', { name: /Project/ }))
-    await userEvent.click(await screen.findByRole('option', { name: 'Pump station' }))
+    await userEvent.click(await screen.findByRole('option', { name: '[P] Pump station' }))
     const running = entry({ id: 9, minutes: 0, timerStartedAt: now })
     server.handlers['POST time'] = () => week([running], running)
     server.handlers['GET time'] = () => week([running], running)
@@ -85,7 +85,7 @@ describe('time', () => {
   })
 
   it('keeps what was typed when someone else changed the entry', async () => {
-    await open('/time', 'Time')
+    await open('/time', 'Timesheet')
     await screen.findByText('North run')
     await press('Edit Design, Pump station')
     const box = await dialog()
@@ -97,15 +97,61 @@ describe('time', () => {
   })
 
   it('is deleted only after a confirmation', async () => {
-    await open('/time', 'Time')
+    await open('/time', 'Timesheet')
     await screen.findByText('North run')
-    await press('Delete Design, Pump station')
+    await press('Edit Design, Pump station')
+    await press('Delete', await dialog())
     expect(server.sent('POST time/5/delete')).toEqual([])
     server.handlers['POST time/5/delete'] = () => ({})
     server.handlers['GET time'] = () => week([])
-    await press('Delete entry', await dialog())
-    expect(await screen.findByText('Nothing tracked on this day')).toBeInTheDocument()
+    await press('Delete entry', within(await screen.findByRole('dialog', { name: 'Delete this entry?' })))
+    expect(await screen.findByText('Nothing tracked on this day.')).toBeInTheDocument()
     expect(server.sent('POST time/5/delete')[0]?.body).toEqual({ version: 2 })
+  })
+
+  it('is typed into the week, one change after another', async () => {
+    server.handlers['GET time'] = () => week([entry()])
+    await open('/time?view=week', 'Timesheet')
+    const cell = await screen.findByRole('textbox', { name: 'Design, Pump station, Wednesday, 25 Nov' })
+    expect(cell).toHaveValue('1.50')
+    await userEvent.clear(cell)
+    await userEvent.type(cell, 'x{Enter}')
+    expect(cell).toBeInvalid()
+    expect(server.sent('PUT time/5')).toEqual([])
+    await userEvent.clear(cell)
+    await userEvent.type(cell, '6.25')
+    server.handlers['PUT time/5'] = () => week([entry({ minutes: 375, version: 3 })])
+    server.handlers['POST time'] = () => week([entry({ minutes: 375, version: 3 }), entry({ id: 8, spentOn: '2026-11-26', minutes: 60 })])
+    await userEvent.type(cell, '{Enter}')
+    await userEvent.type(screen.getByRole('textbox', { name: 'Design, Pump station, Thursday, 26 Nov' }), '1{Enter}')
+    await waitFor(() => expect(server.sent('POST time')).toHaveLength(1))
+    expect(server.sent('PUT time/5')[0]?.body).toMatchObject({ minutes: 375, notes: 'North run', version: 2 })
+    expect(server.sent('POST time')[0]?.body).toEqual({ projectId: 1, taskId: 7, spentOn: '2026-11-26', minutes: 60, notes: '' })
+    expect((await screen.findAllByText('7.25')).length).toBeGreaterThan(0)
+  })
+
+  it('is handed in after a confirmation, and taken back', async () => {
+    await open('/time', 'Timesheet')
+    await screen.findByText('North run')
+    await press('Submit week for approval')
+    server.handlers['POST time/submit'] = () => ({ ...week([entry({ locked: 'period', status: 'submitted' })]), submission: { status: 'submitted', comment: '' } })
+    await press('Submit week', await dialog())
+    expect(await screen.findByText('Waiting for approval')).toBeInTheDocument()
+    expect(server.sent('POST time/submit')[0]?.body).toEqual({ date: '2026-11-21' })
+    expect(screen.queryByRole('button', { name: 'Copy from previous day' })).not.toBeInTheDocument()
+    server.handlers['POST time/withdraw'] = () => week([entry()])
+    await press('Take back')
+    expect(await screen.findByRole('button', { name: 'Submit week for approval' })).toBeInTheDocument()
+  })
+
+  it('copies the day before', async () => {
+    await open('/time', 'Timesheet')
+    await screen.findByText('North run')
+    await press('Copy from previous day')
+    server.handlers['POST time/copy'] = () => week([entry(), entry({ id: 11, task: 'Drafting', taskId: 12, minutes: 0, notes: '' })])
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Projects and tasks only' }))
+    expect(await screen.findByText('Drafting')).toBeInTheDocument()
+    expect(server.sent('POST time/copy')[0]?.body).toEqual({ date: '2026-11-25', withHours: false })
   })
 })
 
@@ -117,7 +163,7 @@ describe('home', () => {
   it('greets, and goes on with what was done last', async () => {
     server.handlers['GET home'] = () => info()
     await open('/home', 'Home')
-    expect(await screen.findByText('Good morning, Casey')).toBeInTheDocument()
+    expect(await screen.findByText(/^Good morning, Casey\./)).toHaveTextContent('1.50 of 40.00 hours this week, 67% billable')
     expect(screen.queryByText('Outstanding')).not.toBeInTheDocument()
     server.handlers['POST time/5/start'] = () => ({})
     await press('Start timer for Design, Pump station')

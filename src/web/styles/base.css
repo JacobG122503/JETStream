@@ -5,7 +5,7 @@
 }
 
 html {
-  background: var(--g-canvas) no-repeat var(--c-bg);
+  background: var(--c-bg);
   color: var(--c-text);
   font-family: var(--font);
   font-size: 100%;
@@ -99,8 +99,9 @@ h1:focus-visible {
   outline-offset: 4px;
 }
 
+/* Only a place for focus to go, never a control. */
 main:focus-visible {
-  outline-offset: -2px;
+  outline: none;
 }
 
 [hidden] {

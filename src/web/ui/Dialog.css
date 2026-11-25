@@ -6,7 +6,6 @@
   place-items: center;
   padding: var(--space-4);
   background: var(--c-overlay);
-  backdrop-filter: blur(4px);
   animation: fade-in var(--motion-fast) ease-out;
 }
 
@@ -19,7 +18,7 @@
   max-height: calc(100dvh - 2 * var(--space-4));
   overflow: hidden;
   border: 1px solid var(--c-border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-lg);
   background: var(--c-surface);
   color: var(--c-text);
   box-shadow: var(--shadow-3);
@@ -53,7 +52,6 @@
 .dialog-title {
   padding-top: calc((var(--control-md) - 1.2em) / 2);
   font-size: var(--text-xl);
-  font-family: var(--font-display);
 }
 
 .dialog-body {

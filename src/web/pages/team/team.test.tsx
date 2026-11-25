@@ -13,6 +13,7 @@ import { allProjectsState, choiceOf, noChoice, removedClients, toggleClient, tog
 const server = fakeServer()
 beforeEach(() => {
   server.session = sessionInfo({ person: administrator })
+  server.handlers['GET team'] = () => ({ from: '2026-11-21', to: '2026-11-27', today: '2026-11-25', members: [{ id: 3, name: 'Priya', photoId: null, role: 'Member', kind: 'employee', minutes: 375, billableMinutes: 300, capacityMinutes: 2400 }] })
   server.handlers['GET people'] = () => ({ people: [row(3, 'Priya'), row(4, 'Marcus')] })
   server.handlers['GET requests'] = () => ({ enabled: true, requests: [request] })
   server.handlers['GET help-requests'] = () => ({ requests: [] })
@@ -52,10 +53,12 @@ it.each([['/team', 'Team'], ['/team/3', 'Person']])('%s is not for everyone', as
 })
 
 describe('team', () => {
-  it('has four tabs, with how many wait, and a search', async () => {
+  it('has five tabs, with how many wait, and a search', async () => {
     await open('/team', 'Team')
     await screen.findByRole('tab', { name: 'Requests (1)' })
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['People', 'Requests (1)', 'Invites', 'Help requests'])
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Members', 'Accounts', 'Requests (1)', 'Invites', 'Help requests'])
+    expect(await screen.findByRole('row', { name: /Priya Member 6.25 .*16% 40.00 5.00/ })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('tab', { name: 'Accounts' }))
     expect(await screen.findByRole('link', { name: 'Marcus' })).toHaveAttribute('href', '/team/4')
     await userEvent.type(screen.getByRole('searchbox'), 'priya@')
     expect(screen.queryByRole('link', { name: 'Marcus' })).not.toBeInTheDocument()
@@ -71,8 +74,9 @@ describe('team', () => {
   })
 
   it('shows an error with a retry', async () => {
-    server.handlers['GET people'] = () => failure(500, 'internal_error', { message: 'Something went wrong' })
-    await open('/team', 'Team')
+    server.handlers['GET team'] = () => ({ from: '2026-11-21', to: '2026-11-27', today: '2026-11-25', members: [{ id: 3, name: 'Priya', photoId: null, role: 'Member', kind: 'employee', minutes: 375, billableMinutes: 300, capacityMinutes: 2400 }] })
+  server.handlers['GET people'] = () => failure(500, 'internal_error', { message: 'Something went wrong' })
+    await open('/team?tab=people', 'Team')
     await press('Retry', within(await screen.findByRole('table')))
     expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong')
   })

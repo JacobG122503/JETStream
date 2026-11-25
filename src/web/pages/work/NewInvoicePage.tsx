@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { UnbilledClient } from '../../../shared/work'
 import { callApi } from '../../api'
+import { useWeekStart } from '../../auth/authContext'
 import { FormMessages } from '../../auth/FormMessages'
 import { useForm } from '../../auth/useForm'
 import { useLoad } from '../../auth/useLoad'
@@ -73,6 +74,7 @@ interface InvoiceFormProps {
 }
 
 function InvoiceForm({ client, from, to, onFrom, onTo }: InvoiceFormProps) {
+  const weekStart = useWeekStart()
   const toast = useToast()
   const navigate = useNavigate()
   const form = useForm('invoice', fields)
@@ -127,8 +129,8 @@ function InvoiceForm({ client, from, to, onFrom, onTo }: InvoiceFormProps) {
           </fieldset>
           <Checkbox label="Include billable expenses" checked={withExpenses} onChange={setWithExpenses} />
           <div className="form-pair">
-            <DatePicker label="From" hint="Leave empty for everything." value={from} onChange={onFrom} {...form.field('from')} />
-            <DatePicker label="To" value={to} onChange={onTo} {...form.field('to')} />
+            <DatePicker weekStart={weekStart} label="From" hint="Leave empty for everything." value={from} onChange={onFrom} {...form.field('from')} />
+            <DatePicker weekStart={weekStart} label="To" value={to} onChange={onTo} {...form.field('to')} />
           </div>
           <TextField label="Subject" placeholder="Engineering services" value={subject} onChange={setSubject} {...form.field('subject')} />
         </div>

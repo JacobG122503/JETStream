@@ -5,6 +5,7 @@
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import type { Request, Response } from 'express'
 import type { DemoAccount, SessionInfo, SessionPerson } from '../../shared/api'
+import type { Weekday } from '../../shared/dates'
 import type { AppContext } from '../context'
 import { accessFingerprint } from '../access/actor'
 import { people, personCredentials } from '../db/schema'
@@ -104,9 +105,9 @@ function sessionPerson(session: CurrentSession, companyTimeZone: string): Sessio
 /** What the web app needs to know first, signed in or not. */
 export async function readSessionInfo(ctx: AppContext, req: Request): Promise<SessionInfo> {
   const session = await loadSession(ctx, req)
-  const { name, timeZone } = await getSettings(ctx.db)
+  const { name, timeZone, weekStartsOn } = await getSettings(ctx.db)
   return {
-    company: { name, timeZone },
+    company: { name, timeZone, weekStartsOn: weekStartsOn as Weekday },
     person: session ? sessionPerson(session, timeZone) : null,
     csrfToken: session?.csrfToken ?? null,
     signUpOpen: session ? false : await isSignUpOpen(ctx.db),

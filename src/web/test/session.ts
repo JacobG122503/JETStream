@@ -14,7 +14,7 @@ export const administrator: SessionPerson = {
 /** What the server says about the session: signed out, unless told otherwise. */
 export function sessionInfo(more: Partial<SessionInfo> = {}): SessionInfo {
   return {
-    company: { name: 'JET Engineering', timeZone: 'America/Chicago' },
+    company: { name: 'JET Engineering', timeZone: 'America/Chicago', weekStartsOn: 6 },
     person: null, csrfToken: more.person ? `token of ${more.person.id}` : null, signUpOpen: !more.person, emailDelivers: false,
     demoAccounts: [], ...more,
   }

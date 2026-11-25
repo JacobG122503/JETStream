@@ -5,9 +5,7 @@ import { useCan, usePerson } from '../../auth/authContext'
 import { useLoad } from '../../auth/useLoad'
 import { photoUrl } from '../../shell/photo'
 import { Page } from '../../shell/Page'
-import { StreamLines } from '../../shell/StreamLines'
-import { Avatar, BarChart, Button, Card, ErrorState, formatLongDate, Icon, type IconName, Legend, LinkButton, LoadingState, Meter, monthNames, partsOf, weekdayNames, weekdayOf } from '../../ui'
-import { Clock } from '../../work/Clock'
+import { Avatar, BarChart, Button, Card, ErrorState, formatLongDate, Legend, LinkButton, LoadingState, Meter, monthNames, partsOf, weekdayNames, weekdayOf } from '../../ui'
 import { formatDecimalHours, formatHours, formatMoney, percentOf } from '../../work/format'
 import { Amounts, BudgetBar, hourSeries } from '../../work/parts'
 import { useTimer } from '../../work/timerContext'
@@ -22,7 +20,7 @@ export function HomePage() {
 function Home() {
   const { status, data, error, reload } = useLoad<HomeInfo>('home')
   return (
-    <Page title="Home" hideTitle>
+    <Page title="Home">
       {status === 'loading' && <LoadingState size="page" look="skeleton" label="Loading your overview" />}
       {status === 'error' && <ErrorState size="page" headingLevel={2} message={error} onRetry={reload} />}
       {data && <Overview info={data} />}
@@ -46,61 +44,21 @@ function Overview({ info }: { info: HomeInfo }) {
 
   return (
     <>
-      <section className="hero" aria-label="This week">
-        <StreamLines className="hero-lines" count={12} width={1200} height={320} />
-        <div className="hero-text">
-          <p className="hero-date">{formatLongDate(today)}</p>
-          <p className="hero-title">
-            {greeting(timeZone, info.now)}, {name.split(' ')[0]}
-          </p>
-          <p className="hero-lead">
-            {running ? (
-              <>
-                You are on <strong>{running.task}</strong> for <strong>{running.project}</strong>.
-              </>
-            ) : (
-              <>
-                {percentOf(billable, total)}% of your week is billable so far, with {formatHours(Math.max(0, capacityMinutes - total))} hours to go.
-              </>
-            )}
-          </p>
-          <div className="hero-actions">
-            {running ? (
-              <Button icon="stop" variant="primary" onClick={() => void stop()}>
-                Stop timer
-              </Button>
-            ) : (
-              <LinkButton to="/time?new=1" variant="primary" icon="plus">
-                Track time
-              </LinkButton>
-            )}
-            <LinkButton to="/time" className="btn-glass">
-              My timesheet
-            </LinkButton>
-          </div>
-        </div>
-        <div className="hero-side">
-          <p className="hero-figure">{running ? <Clock entry={running} /> : formatHours(total)}</p>
-          <p className="hero-caption">{running ? 'running now' : 'tracked this week'}</p>
-          <div className="hero-bar">
-            <span style={{ width: `${Math.min(100, percentOf(total, capacityMinutes))}%` }} />
-          </div>
-        </div>
-      </section>
+      <p className="home-lead">
+        {greeting(timeZone, info.now)}, {name.split(' ')[0]}. {formatHours(total)} of {formatHours(capacityMinutes)} hours this week, {percentOf(billable, total)}% billable.
+      </p>
 
       {money && (
         <div className="tiles">
-          <Tile icon="dollar" label="Outstanding" value={<Amounts amounts={money.outstanding} />} detail="on open invoices" to="/invoices?show=open" />
+          <Tile label="Outstanding" value={<Amounts amounts={money.outstanding} />} detail="on open invoices" to="/invoices?show=open" />
           <Tile
-            icon="warning"
-            tone={money.late.length > 0 ? 'warning' : undefined}
             label="Past due"
             value={<Amounts amounts={money.late} />}
             detail={`${money.late.reduce((sum, { count }) => sum + count, 0)} late invoices`}
             to="/invoices?show=late"
           />
-          <Tile icon="time" label="Ready to invoice" value={<Amounts amounts={money.unbilled} />} detail="hours and expenses not billed yet" to="/invoices/new" />
-          <Tile icon="edit" label="Drafts" value={String(money.drafts)} detail="waiting to be sent" to="/invoices?show=draft" />
+          <Tile label="Ready to invoice" value={<Amounts amounts={money.unbilled} />} detail="hours and expenses not billed yet" to="/invoices/new" />
+          <Tile label="Drafts" value={String(money.drafts)} detail="waiting to be sent" to="/invoices?show=draft" />
         </div>
       )}
 
@@ -205,20 +163,15 @@ const moneySeries = [
 ]
 
 interface TileProps {
-  icon: IconName
   label: string
   value: ReactNode
   detail: ReactNode
   to: string
-  tone?: 'warning'
 }
 
-function Tile({ icon, label, value, detail, to, tone }: TileProps) {
+function Tile({ label, value, detail, to }: TileProps) {
   return (
-    <Link to={to} className={tone ? `tile tile-${tone}` : 'tile'}>
-      <span className="tile-icon">
-        <Icon name={icon} />
-      </span>
+    <Link to={to} className="tile">
       <span className="tile-label">{label}</span>
       <span className="tile-value">{value}</span>
       <span className="tile-detail">{detail}</span>

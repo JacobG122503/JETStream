@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { Navigate, type RouteObject } from 'react-router-dom'
+import type { RouteObject } from 'react-router-dom'
 import { Needs } from './auth/Needs'
 import { KnownSession, RequireActive, SignedOutOnly } from './auth/guards'
 import { AccountPage } from './pages/account/AccountPage'
@@ -25,6 +25,7 @@ import { NewInvoicePage } from './pages/work/NewInvoicePage'
 import { ProjectPage } from './pages/work/ProjectPage'
 import { ProjectsPage } from './pages/work/ProjectsPage'
 import { ReportsPage } from './pages/work/ReportsPage'
+import { TasksPage } from './pages/work/TasksPage'
 import { TimePage } from './pages/work/TimePage'
 import { TeamPage } from './pages/team/TeamPage'
 import { AccountMenu } from './shell/AccountMenu'
@@ -33,6 +34,7 @@ import { type NavItem, navItems } from './shell/navigation'
 import { PlainLayout } from './shell/PlainLayout'
 import { RouteEffects } from './shell/RouteEffects'
 import { SignedInShell } from './shell/SignedInShell'
+import { StartPage } from './shell/StartPage'
 
 /** Opting in to the v7 behaviour keeps React Router's deprecation warnings out of the console. */
 export const routerFuture = {
@@ -44,7 +46,7 @@ export const routerFuture = {
 } as const
 
 const pages: Record<string, ReactElement> = {
-  home: <HomePage />, time: <TimePage />, expenses: <ExpensesPage />, projects: <ProjectsPage />, clients: <ClientsPage />, team: <TeamPage />,
+  home: <HomePage />, time: <TimePage />, expenses: <ExpensesPage />, projects: <ProjectsPage />, clients: <ClientsPage />, tasks: <TasksPage />, team: <TeamPage />,
   reports: <ReportsPage />, invoices: <InvoicesPage />, settings: <SettingsPage />,
 }
 
@@ -63,7 +65,7 @@ export const routes: RouteObject[] = [
   {
     element: <RouteEffects />,
     children: [
-      { path: '/', element: <Navigate to="/home" replace /> },
+      { path: '/', element: <StartPage /> },
       {
         element: <RequireActive><SignedInShell /></RequireActive>,
         children: [

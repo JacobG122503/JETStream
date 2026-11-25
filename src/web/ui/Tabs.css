@@ -2,37 +2,29 @@
   min-width: 0;
 }
 
-/* A segmented control. */
 .tabs-list {
   position: relative;
   display: flex;
-  gap: var(--space-1);
-  width: max-content;
-  max-width: 100%;
-  padding: var(--space-1);
+  gap: var(--space-5);
   overflow: auto hidden;
   overscroll-behavior-x: contain;
-  border-radius: var(--radius-full);
-  background: var(--c-surface-3);
+  box-shadow: inset 0 -1px 0 var(--c-border);
   scrollbar-width: none;
 }
 
 .tab {
   flex: none;
-  min-height: var(--control-sm);
-  padding: var(--space-1) var(--space-4);
+  min-height: var(--control-md);
+  padding: var(--space-2) var(--space-1);
   border: 0;
-  border-radius: var(--radius-full);
+  border-bottom: 2px solid transparent;
   background: transparent;
   color: var(--c-text-muted);
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
   font-weight: var(--weight-medium);
   line-height: var(--leading-tight);
   white-space: nowrap;
   cursor: pointer;
-  transition:
-    background-color var(--motion-fast),
-    color var(--motion-fast);
 }
 
 .tab:hover {
@@ -40,9 +32,8 @@
 }
 
 .tab[aria-selected='true'] {
-  background: var(--c-surface);
+  border-bottom-color: var(--c-accent);
   color: var(--c-text);
-  box-shadow: var(--shadow-1);
   font-weight: var(--weight-strong);
 }
 
