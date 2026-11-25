@@ -24,7 +24,7 @@ export function AccessFields({ load, value, onChange, roleField, disabled }: Acc
         required
         disabled={disabled}
         value={value.roleId}
-        options={data.roles.map(({ id, name }) => ({ value: String(id), label: name }))}
+        options={data.roles.map(({ id, name, allowed }) => ({ value: String(id), label: allowed ? name : `${name} (needs more access than you have)`, disabled: !allowed }))}
         onChange={(roleId) => onChange({ ...value, roleId })}
         {...roleField}
       />

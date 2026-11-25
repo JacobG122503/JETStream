@@ -69,6 +69,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     connectApi({
       csrfToken: () => latest.current.info?.csrfToken ?? null,
+      access: () => latest.current.info?.person?.access ?? null,
+      onAccessChanged: () => void refresh(),
       onRefused: async (code) => {
         const before = latest.current.info?.person?.id
         await refresh()

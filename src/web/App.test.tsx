@@ -26,15 +26,15 @@ beforeEach(() => {
 })
 
 describe('App', () => {
-  it('leads from the root to Time without a history entry of its own', async () => {
+  it('leads from the root to Home without a history entry of its own', async () => {
     const { router } = await renderAt('/')
-    expect(await screen.findByRole('heading', { level: 1, name: 'Time' })).toBeInTheDocument()
-    expect(router.state.location.pathname).toBe('/time')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Home' })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/home')
     expect(router.state.historyAction).toBe('REPLACE')
     expect(document.body).toHaveFocus()
   })
 
-  const notBuilt = navItems.filter(({ id }) => id !== 'team')
+  const notBuilt = navItems.filter(({ needs }) => !needs)
   it.each(notBuilt.map((item) => [item.path, item.label]))('%s is the page "%s", and says that it is not available', async (path, label) => {
     await renderAt(path)
     expect(screen.getAllByRole('heading', { level: 1 }).map((heading) => heading.textContent)).toEqual([label])
@@ -43,6 +43,15 @@ describe('App', () => {
     expect(main.getByRole('heading', { level: 2, name: 'Not available yet' })).toBeInTheDocument()
     expect(main.queryAllByRole('button')).toHaveLength(0)
     expect(main.queryAllByRole('link')).toHaveLength(0)
+  })
+
+  it.each(navItems.filter(({ needs }) => needs).map(({ path, label }) => [path, label]))('%s is refused to who lacks the permission, without asking for data', async (path, label) => {
+    await renderAt(path)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(label)
+    expect(screen.getByRole('heading', { level: 2, name: 'You do not have access to this page' })).toBeInTheDocument()
+    expect(within(screen.getByRole('main')).getByRole('link', { name: 'Go to Time' })).toBeInTheDocument()
+    expect(within(screen.getByRole('navigation', { name: 'Main' })).queryByRole('link', { name: label })).not.toBeInTheDocument()
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['/api/session'])
   })
 
   it.each(['/no-such-page', '/time/nope', '/no/such/page'])('shows "Page not found" inside the shell at %s', async (path) => {

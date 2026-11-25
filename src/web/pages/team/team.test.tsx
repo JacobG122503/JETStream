@@ -2,7 +2,8 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { AssignmentClient, InviteRow, JoinRequest, PersonDetails } from '../../../shared/api'
+import type { AssignmentClient, InviteRow, JoinRequest, PersonAccessDetails, PersonDetails } from '../../../shared/api'
+import { everything, managerGrants } from '../../../shared/permissions'
 import { App } from '../../App'
 import { routerFuture, routes } from '../../routes'
 import { failure, fakeServer } from '../../test/fakeServer'
@@ -19,7 +20,7 @@ beforeEach(() => {
   server.handlers['GET invites'] = () => ({ invites: [] })
 })
 
-const roles = [{ id: 11, key: 'administrator', name: 'Administrator' }, { id: 12, key: 'manager', name: 'Manager' }, { id: 13, key: 'member', name: 'Member' }]
+const roles = [{ id: 11, key: 'administrator', name: 'Administrator', allowed: true }, { id: 12, key: 'manager', name: 'Manager', allowed: true }, { id: 13, key: 'member', name: 'Member', allowed: true }]
 const row = (id: number, name: string) =>
   ({ id, name, email: `${name.toLowerCase()}@jet.example`, role: 'Member', status: 'active', signIn: 'none', photoId: null }) as const
 const request: JoinRequest = { id: 9, name: 'Noah', email: 'noah@client.example', requestedAt: '2026-03-02T15:00:00Z' }
@@ -165,6 +166,64 @@ describe('team', () => {
   })
 })
 
+const access = (more: Partial<PersonAccessDetails> = {}): PersonAccessDetails => ({
+  state: 'a', editable: 'all', reason: null, roleId: 13, extras: [], refusedExtras: [], managedPeople: [],
+  projects: [{ id: 1, name: 'Project 1', client: 'Tallgrass', archived: false, isManager: false }],
+  roles: [
+    { id: 11, key: 'administrator', name: 'Administrator', builtIn: true, grants: everything(), refusal: null },
+    { id: 12, key: 'manager', name: 'Manager', builtIn: true, grants: managerGrants(), refusal: null },
+    { id: 13, key: 'member', name: 'Member', builtIn: true, grants: {}, refusal: null },
+  ],
+  people: [{ id: 4, name: 'Marcus', active: true }],
+  ...more,
+})
+
+describe('the access of a person', () => {
+  beforeEach(() => {
+    server.handlers['GET people/3'] = () => ({ ...row(3, 'Priya'), timeZone: 'America/Chicago' })
+    server.handlers['GET people/3/access'] = () => access()
+  })
+
+  it('is given as a role with extras, which bring what they need, and projects to manage', async () => {
+    await open('/team/3', 'Priya')
+    await userEvent.selectOptions(await screen.findByLabelText('Role'), 'Manager')
+    const invoices = screen.getByRole('checkbox', { name: 'Create, edit, send, delete invoices' })
+    expect(invoices).not.toBeChecked()
+    await userEvent.click(invoices)
+    expect(screen.getByRole('checkbox', { name: 'Billable rates, billable amounts, fee budgets' })).toBeChecked()
+    expect(screen.getByText(/Also switched on/)).toHaveTextContent('Billable rates')
+    await userEvent.click(screen.getByRole('switch', { name: 'Project 1 (Tallgrass)' }))
+    expect(screen.getByText('Manages these projects: Project 1.')).toBeInTheDocument()
+    server.handlers['PUT people/3/access'] = () => access({ state: 'b', roleId: 12, extras: ['billable.view', 'invoices.manage'] })
+    await press('Save access')
+    await waitFor(() => expect(server.sent('PUT people/3/access')).toHaveLength(1))
+    expect(server.sent('PUT people/3/access')[0]?.body).toEqual({
+      roleId: 12, extras: ['billable.view', 'invoices.manage'], managedPersonIds: [], managedProjectIds: [1], state: 'a',
+    })
+  })
+
+  it('loses extras with the role only after a confirmation that names them', async () => {
+    server.handlers['GET people/3/access'] = () => access({ roleId: 12, extras: ['time.approve'] })
+    await open('/team/3', 'Priya')
+    await userEvent.selectOptions(await screen.findByLabelText('Role'), 'Member')
+    await press('Save access')
+    const box = within(await dialog())
+    expect(box.getByText('Approve, reject, withdraw approval of time and expenses')).toBeInTheDocument()
+    expect(server.sent('PUT people/3/access')).toEqual([])
+    server.handlers['PUT people/3/access'] = () => access({ state: 'b' })
+    await press('Remove and save', box)
+    await waitFor(() => expect(server.sent('PUT people/3/access')[0]?.body).toMatchObject({ roleId: 13, extras: [] }))
+  })
+
+  it('is shown read-only with the reason when it may not be changed', async () => {
+    server.handlers['GET people/3/access'] = () => access({ editable: 'none', reason: 'You cannot change your own access.' })
+    await open('/team/3', 'Priya')
+    expect(await screen.findByText('You cannot change your own access.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Role')).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Save access' })).not.toBeInTheDocument()
+  })
+})
+
 describe('a person', () => {
   const details = (more: Partial<PersonDetails> = {}): PersonDetails => ({
     ...row(3, 'Priya'), timeZone: 'America/Chicago', state: 'one',
@@ -176,6 +235,7 @@ describe('a person', () => {
     ...more,
   })
   beforeEach(() => {
+    server.handlers['GET people/3/access'] = () => access()
     server.handlers['GET people/3'] = () => details()
   })
 

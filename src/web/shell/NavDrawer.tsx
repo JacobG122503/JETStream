@@ -55,7 +55,7 @@ export function NavDrawer({ id, items, onClose }: NavDrawerProps) {
     >
       <div ref={panel} id={id} role="dialog" aria-label="Main menu" tabIndex={-1} className="drawer">
         <div className="drawer-header">
-          <Brand onClick={() => choose('/time')} />
+          <Brand onClick={() => choose('/home')} />
           <IconButton ref={closeButton} icon="close" label="Close menu" className="drawer-close" onClick={onClose} />
         </div>
         <MainNav items={items} onChoose={(item) => choose(item.path)} />

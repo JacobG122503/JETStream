@@ -4,6 +4,7 @@ import { useAuth } from '../../auth/authContext'
 import { useLoad } from '../../auth/useLoad'
 import { Page } from '../../shell/Page'
 import { ErrorState, LoadingState } from '../../ui'
+import { AccessCard } from './AccessCard'
 import { DevicesCard } from './DevicesCard'
 import { PasswordCard } from './PasswordCard'
 import { PhotoCard } from './PhotoCard'
@@ -32,6 +33,7 @@ export function AccountPage() {
           <ProfileCard account={data} companyTimeZone={info.company.timeZone} onChange={change} onReload={reload} />
           <PhotoCard account={data} onChange={change} />
           <PasswordCard email={data.email} onChanged={() => setDevicesChanged((count) => count + 1)} />
+          <AccessCard />
           <DevicesCard key={devicesChanged} />
         </>
       )}

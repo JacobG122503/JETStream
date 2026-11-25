@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { PersonRow } from '../../../shared/api'
+import { useCan } from '../../auth/authContext'
 import { useLoad } from '../../auth/useLoad'
 import { photoUrl } from '../../shell/AccountMenu'
 import { Avatar, SearchField, Table, type TableColumn } from '../../ui'
 import { signInLabels } from './labels'
 import { StatusBadge } from './StatusBadge'
 
-const columns: TableColumn<PersonRow>[] = [
+const baseColumns: TableColumn<PersonRow>[] = [
   {
     id: 'name',
     header: 'Name',
@@ -24,10 +25,14 @@ const columns: TableColumn<PersonRow>[] = [
   { id: 'email', header: 'Email', cell: ({ email }) => email, sortValue: ({ email }) => email },
   { id: 'role', header: 'Role', cell: ({ role }) => role, sortValue: ({ role }) => role },
   { id: 'status', header: 'Status', cell: ({ status }) => <StatusBadge status={status} />, sortValue: ({ status }) => status },
-  { id: 'signIn', header: 'Sign-in', cell: ({ signIn }) => signInLabels[signIn], sortValue: ({ signIn }) => signInLabels[signIn] },
 ]
 
+const signInText = ({ signIn }: PersonRow) => (signIn ? signInLabels[signIn] : '')
+/** Only for those who manage people. */
+const signInColumn: TableColumn<PersonRow> = { id: 'signIn', header: 'Sign-in', cell: signInText, sortValue: signInText }
+
 export function PeoplePanel() {
+  const manages = useCan()('people.manage')
   const { status, data, error, reload } = useLoad<{ people: PersonRow[] }>('people')
   const [search, setSearch] = useState('')
   const rows = useMemo(() => {
@@ -41,7 +46,7 @@ export function PeoplePanel() {
       <Table
         caption="People"
         hideCaption
-        columns={columns}
+        columns={manages ? [...baseColumns, signInColumn] : baseColumns}
         rows={rows}
         rowKey={({ id }) => String(id)}
         rowLabel={({ name }) => name}

@@ -56,8 +56,8 @@ describe('signed out', () => {
     const router = await open(`/sign-in?next=${encodeURIComponent(next)}`, 'Sign in')
     server.handlers['POST session/sign-in'] = () => server.signIn(signedIn)
     await fillSignIn()
-    await heading('Time')
-    expect(where(router)).toBe('/time')
+    await heading('Home')
+    expect(where(router)).toBe('/home')
   })
 
   it('tells what is missing, then what is wrong, and when to try again', async () => {
@@ -85,7 +85,7 @@ describe('signed out', () => {
     await userEvent.keyboard('{Enter}')
     expect(server.sent('POST session/sign-in')).toHaveLength(1)
     answer(server.signIn(signedIn))
-    await heading('Time')
+    await heading('Home')
   })
 
   it('shows the password on request, and keeps nothing in browser storage', async () => {
@@ -113,7 +113,7 @@ describe('signed out', () => {
     await open('/sign-in', 'Sign in')
     server.handlers['POST session/demo'] = () => server.signIn(sessionInfo({ person: administrator }))
     await userEvent.click(screen.getByRole('button', { name: /Administrator.*Avery Example/ }))
-    await heading('Time')
+    await heading('Home')
     expect(server.sent('POST session/demo')[0]?.body).toEqual({ account: 'admin' })
     expect(screen.getByRole('button', { name: 'Account: Avery Example , Administrator' })).toBeInTheDocument()
   })
@@ -134,8 +134,8 @@ describe('signed out', () => {
 describe('signed in', () => {
   it.each(['/sign-in', '/sign-in?next=%2Freports', '/sign-up', '/forgot-password'])('%s leads to the home page', async (path) => {
     server.session = signedIn
-    const router = await open(path, 'Time')
-    expect(where(router)).toBe('/time')
+    const router = await open(path, 'Home')
+    expect(where(router)).toBe('/home')
   })
 
   it('the account menu names the person, opens the account and signs out, after which Back shows nothing', async () => {
@@ -178,8 +178,8 @@ describe('signed in', () => {
     await heading('Sign in')
     server.handlers['POST session/sign-in'] = () => server.signIn(sessionInfo({ person: administrator }))
     await fillSignIn()
-    await heading('Time')
-    expect(where(router)).toBe('/time')
+    await heading('Home')
+    expect(where(router)).toBe('/home')
   })
 
   it('a change is refused after someone else signed in in another tab, and the page becomes theirs', async () => {
@@ -254,7 +254,7 @@ describe('links', () => {
     server.handlers['POST invite/accept'] = () => server.signIn(signedIn)
     await userEvent.type(screen.getByLabelText(/^Password/), 'a good password')
     await userEvent.click(screen.getByRole('button', { name: 'Accept and sign in' }))
-    await heading('Time')
+    await heading('Home')
     expect(server.sent('POST invite/accept')[0]?.body).toEqual({ token, name: 'Ivy', password: 'a good password', timeZone: 'America/Chicago' })
   })
 
@@ -330,7 +330,7 @@ it('does not let an answer from before signing in sign out again', async () => {
   refocus()
   server.handlers['POST session/sign-in'] = () => signedIn
   await fillSignIn()
-  await heading('Time')
+  await heading('Home')
   act(() => late(sessionInfo()))
-  await vi.waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Time'))
+  await vi.waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Home'))
 })

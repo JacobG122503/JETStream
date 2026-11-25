@@ -14,7 +14,7 @@ import { LinkDialog, type ShownLink } from './LinkDialog'
 const statuses: Record<InviteStatus, { label: string; tone: Tone }> = {
   open: { label: 'Open', tone: 'info' },
   expired: { label: 'Expired', tone: 'warning' },
-  void: { label: 'Void: the sender is no longer an administrator', tone: 'warning' },
+  void: { label: 'Void: the sender may no longer invite for this role', tone: 'warning' },
   accepted: { label: 'Accepted', tone: 'success' },
   revoked: { label: 'Revoked', tone: 'neutral' },
 }

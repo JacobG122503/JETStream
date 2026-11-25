@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import type { PersonDetails } from '../../../shared/api'
+import type { AssignmentClient, PersonDetails, SavedAssignments } from '../../../shared/api'
 import { callApi } from '../../api'
-import { usePerson } from '../../auth/authContext'
+import { useCan } from '../../auth/authContext'
 import { FormMessages } from '../../auth/FormMessages'
 import { useForm } from '../../auth/useForm'
 import { useLoad } from '../../auth/useLoad'
@@ -14,7 +14,7 @@ import { AssignmentPicker } from './AssignmentPicker'
 import { InviteDialog } from './InvitesPanel'
 import { signInLabels } from './labels'
 import { LinkDialog, type ShownLink } from './LinkDialog'
-import { NoAccess } from './NoAccess'
+import { PersonAccess } from './PersonAccess'
 import { ResetLink, type ResetTarget } from './ResetLink'
 import { StatusBadge } from './StatusBadge'
 import '../auth/auth.css'
@@ -22,18 +22,11 @@ import './team.css'
 
 export function PersonPage() {
   const { id = '' } = useParams()
-  if (!usePerson().administrator) {
-    return (
-      <Page title="Person">
-        <NoAccess />
-      </Page>
-    )
-  }
   return <PersonLoader key={id} id={id} />
 }
 
 function PersonLoader({ id }: { id: string }) {
-  const { status, data, error, reload, setData } = useLoad<PersonDetails>(`people/${encodeURIComponent(id)}`)
+  const { status, data, error, reload, refresh, setData } = useLoad<PersonDetails>(`people/${encodeURIComponent(id)}`)
   return (
     <Page
       title={data?.name ?? 'Person'}
@@ -52,7 +45,7 @@ function PersonLoader({ id }: { id: string }) {
           onRetry={reload}
         />
       )}
-      {data && <Person person={data} onChange={setData} onReload={reload} />}
+      {data && <Person person={data} onChange={setData} onReload={reload} onRefresh={refresh} />}
     </Page>
   )
 }
@@ -63,17 +56,19 @@ interface PersonProps {
   onReload: () => void
 }
 
-function Person({ person, onChange, onReload }: PersonProps) {
+function Person({ person, onChange, onReload, onRefresh }: PersonProps & { onRefresh: () => void }) {
   const [target, setTarget] = useState<ResetTarget | null>(null)
   const [inviting, setInviting] = useState(false)
   const [link, setLink] = useState<ShownLink | null>(null)
+  const can = useCan()
   const active = person.status === 'active'
+  const actions = active && person.signIn !== undefined && person.accountRefusal === null
   return (
     <>
       <Card
         title="Details"
         actions={
-          active &&
+          actions &&
           (person.signIn === 'password' ? (
             <Button icon="unlock" onClick={() => setTarget(person)}>
               Make reset link
@@ -94,14 +89,22 @@ function Person({ person, onChange, onReload }: PersonProps) {
             <dd>
               <StatusBadge status={person.status} />
             </dd>
-            <dt>Sign-in</dt>
-            <dd>{signInLabels[person.signIn]}</dd>
+            {person.signIn && (
+              <>
+                <dt>Sign-in</dt>
+                <dd>{signInLabels[person.signIn]}</dd>
+              </>
+            )}
             <dt>Time zone</dt>
             <dd>{person.timeZone.replaceAll('_', ' ')}</dd>
           </dl>
         </div>
+        {active && person.accountRefusal && <Notice tone="info">{person.accountRefusal}</Notice>}
       </Card>
-      <Assignments key={person.state} person={person} onChange={onChange} onReload={onReload} />
+      {person.clients && (
+        <Assignments key={person.state} person={person} clients={person.clients} onChange={onChange} onReload={onReload} />
+      )}
+      {can('roles.manage') && <PersonAccess key={`access ${person.state ?? ''}`} personId={person.id} name={person.name} onSaved={onRefresh} />}
       <ResetLink target={target} onClose={() => setTarget(null)} />
       {inviting && (
         <InviteDialog
@@ -121,18 +124,21 @@ function Person({ person, onChange, onReload }: PersonProps) {
 
 const fields: readonly string[] = []
 
-function Assignments({ person, onChange, onReload }: PersonProps) {
+function Assignments({ person, clients, onChange, onReload }: PersonProps & { clients: AssignmentClient[] }) {
   const toast = useToast()
-  const [choice, setChoice] = useState(() => choiceOf(person.clients))
+  const [choice, setChoice] = useState(() => choiceOf(clients))
   const [confirming, setConfirming] = useState(false)
   const form = useForm('assignments', fields)
-  const removed = removedClients(person.clients, choice)
+  const removed = removedClients(clients, choice)
   const active = person.status === 'active'
 
   const save = () =>
     form.submit(async () => {
-      const saved = await callApi<PersonDetails>('PUT', `people/${person.id}/assignments`, { ...choice, state: person.state })
+      const { notManaged = [], ...saved } = await callApi<SavedAssignments>('PUT', `people/${person.id}/assignments`, { ...choice, state: person.state })
       toast.success('Assignments saved')
+      if (notManaged.length > 0) {
+        toast.warning(`${person.name} is on ${notManaged.join(', ')} again, but no longer as manager. Someone who may give that can switch it on.`)
+      }
       onChange(saved)
     })
 
@@ -149,8 +155,8 @@ function Assignments({ person, onChange, onReload }: PersonProps) {
       >
         <FormMessages form={form} onReload={onReload} />
         {!active && <Notice tone="info">Only active people can be assigned.</Notice>}
-        <AssignmentPicker clients={person.clients} value={choice} onChange={setChoice} disabled={!active || form.busy} />
-        {active && person.clients.length > 0 && (
+        <AssignmentPicker clients={clients} value={choice} onChange={setChoice} disabled={!active || form.busy} />
+        {active && clients.length > 0 && (
           <div className="form-actions">
             <Button type="submit" variant="primary" loading={form.busy} loadingLabel="Saving assignments">
               Save assignments

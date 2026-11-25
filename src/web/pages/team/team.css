@@ -65,3 +65,39 @@
   padding-left: var(--space-5);
   list-style: disc;
 }
+
+.extras-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(18rem, 100%), 1fr));
+  gap: var(--space-2) var(--space-4);
+}
+
+.access-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--c-surface-2);
+}
+
+.access-summary h3 {
+  font-size: var(--text-md);
+}
+
+.access-summary ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-inline-start: var(--space-5);
+  list-style: disc;
+}
+
+.form-note {
+  color: var(--c-text-muted);
+  font-size: var(--text-sm);
+}
+
+.form-note:empty {
+  display: none;
+}

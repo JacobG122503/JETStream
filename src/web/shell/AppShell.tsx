@@ -14,9 +14,11 @@ export interface AppShellProps {
   isNavItemVisible?: (item: NavItem) => boolean
   /** Placed in the header before the appearance control: running timer, notifications, account menu. */
   headerContent?: ReactNode
+  /** The page is put up anew when this changes, so that nothing stays of what it had loaded. */
+  contentKey?: string
 }
 
-export function AppShell({ isNavItemVisible = () => true, headerContent }: AppShellProps) {
+export function AppShell({ isNavItemVisible = () => true, headerContent, contentKey }: AppShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const drawerId = useId()
   const items = navItems.filter(isNavItemVisible)
@@ -45,7 +47,7 @@ export function AppShell({ isNavItemVisible = () => true, headerContent }: AppSh
         <ThemeMenu />
       </header>
       <main id={mainId} tabIndex={-1} className="shell-main">
-        <PageBoundary />
+        <PageBoundary key={contentKey} />
       </main>
       {drawerOpen && <NavDrawer id={drawerId} items={items} onClose={() => setDrawerOpen(false)} />}
     </div>

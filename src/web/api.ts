@@ -19,11 +19,15 @@ export class ApiError extends Error {
 /** The part of the app that knows who is signed in. */
 export interface ApiSession {
   csrfToken: () => string | null
+  /** What the person may do, as the server last said it. */
+  access: () => string | null
+  /** The person may now do something else than was known. */
+  onAccessChanged: () => void
   /** The server refused because of who is signed in. True to send the request once more. */
   onRefused: (code: string) => Promise<boolean>
 }
 
-let session: ApiSession = { csrfToken: () => null, onRefused: () => Promise.resolve(false) }
+let session: ApiSession = { csrfToken: () => null, access: () => null, onAccessChanged: () => undefined, onRefused: () => Promise.resolve(false) }
 
 export function connectApi(connected: ApiSession) {
   session = connected
@@ -60,6 +64,9 @@ async function send<T>(method: Method, route: string, body?: object): Promise<T>
   } catch {
     throw new ApiError(0, 'unreachable', 'The server cannot be reached. Check your connection and try again.')
   }
+  const now = response.headers.get('X-Access')
+  const known = session.access()
+  if (now !== null && known !== null && now !== known) session.onAccessChanged()
   let data: unknown
   try {
     data = JSON.parse(text)

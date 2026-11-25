@@ -9,7 +9,7 @@ import { isCurrentItem, navItems } from './navigation'
 import { Page } from './Page'
 import { RouteEffects } from './RouteEffects'
 
-const labels = ['Time', 'Expenses', 'Projects', 'Clients', 'Team', 'Schedule', 'Time off', 'Reports', 'Invoices', 'Estimates', 'Settings']
+const labels = ['Home', 'Time', 'Expenses', 'Projects', 'Clients', 'Team', 'Reports', 'Invoices', 'Settings']
 
 function Breaking() {
   const [broken, setBroken] = useState(false)
@@ -65,29 +65,28 @@ describe('navigation', () => {
     renderShell('/time')
     expect(links().map((link) => link.textContent)).toEqual(labels)
     expect(links().map((link) => link.getAttribute('href'))).toEqual(
-      ['/time', '/expenses', '/projects', '/clients', '/team', '/schedule', '/time-off', '/reports', '/invoices', '/estimates', '/settings'],
+      ['/home', '/time', '/expenses', '/projects', '/clients', '/team', '/reports', '/invoices', '/settings'],
     )
   })
 
-  it('has the name of the product in the sidebar and the header, leading to Time', () => {
+  it('has the name of the product in the sidebar and the header, leading to Home', () => {
     renderShell('/reports')
     const brands = screen.getAllByText('JETStream').map((name) => name.closest('a'))
     expect(brands).toHaveLength(2)
     for (const brand of brands) {
-      expect(brand).toHaveAttribute('href', '/time')
+      expect(brand).toHaveAttribute('href', '/home')
       expect(brand).toHaveTextContent('by JET Engineering')
     }
   })
 
   it('has the base path in addresses', () => {
     renderShell('/jetstream/time', {}, '/jetstream/')
-    expect(links()[0]).toHaveAttribute('href', '/jetstream/time')
+    expect(links()[0]).toHaveAttribute('href', '/jetstream/home')
   })
 
   it.each([
     ['/time', 'Time'],
     ['/time/', 'Time'],
-    ['/time-off', 'Time off'],
     ['/projects/123', 'Projects'],
     ['/Projects/123/tasks', 'Projects'],
   ])('at %s the current item is %s', (path, label) => {
@@ -95,7 +94,7 @@ describe('navigation', () => {
     expect(currentLinks().map((link) => link.textContent)).toEqual([label])
   })
 
-  it.each(['/timeless', '/nope'])('at %s nothing is current', (path) => {
+  it.each(['/timeless', '/time-off', '/nope'])('at %s nothing is current', (path) => {
     renderShell(path)
     expect(currentLinks()).toHaveLength(0)
     expect(navItems.some((item) => isCurrentItem(item, path))).toBe(false)
@@ -238,7 +237,7 @@ describe('an error while a page renders', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Break' }))
     expect(screen.getByRole('heading', { level: 1, name: 'Something went wrong' })).toHaveFocus()
     expect(document.title).toBe('Something went wrong | JETStream')
-    expect(links()).toHaveLength(11)
+    expect(links()).toHaveLength(9)
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(screen.getByRole('button', { name: 'Break' })).toBeInTheDocument()
     expect(document.title).toBe('Breaking | JETStream')

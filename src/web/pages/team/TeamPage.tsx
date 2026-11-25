@@ -1,19 +1,18 @@
 import { useSearchParams } from 'react-router-dom'
 import type { HelpRequest, JoinRequests } from '../../../shared/api'
-import { usePerson } from '../../auth/authContext'
+import { useCan } from '../../auth/authContext'
 import { useLoad } from '../../auth/useLoad'
 import { Page } from '../../shell/Page'
 import { Tabs } from '../../ui'
 import { HelpPanel } from './HelpPanel'
 import { InvitesPanel } from './InvitesPanel'
-import { NoAccess } from './NoAccess'
 import { PeoplePanel } from './PeoplePanel'
 import { RequestsPanel } from './RequestsPanel'
 import '../auth/auth.css'
 import './team.css'
 
 export function TeamPage() {
-  return <Page title="Team">{usePerson().administrator ? <TeamTabs /> : <NoAccess />}</Page>
+  return <Page title="Team">{useCan()('people.manage') ? <TeamTabs /> : <PeoplePanel />}</Page>
 }
 
 const counted = (label: string, count: number | undefined) => (count ? `${label} (${count})` : label)

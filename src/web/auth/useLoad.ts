@@ -5,7 +5,10 @@ export interface Load<T> {
   status: 'loading' | 'ready' | 'error'
   data: T | undefined
   error: string
+  /** Starts over, showing that it loads. */
   reload: () => void
+  /** Loads again behind what is shown. */
+  refresh: () => void
   /** Takes over what a change answered. */
   setData: (data: T) => void
 }
@@ -22,7 +25,7 @@ export function useLoad<T>(route: string): Load<T> {
         if (current) setState({ status: 'ready', data, error: '' })
       },
       (error: unknown) => {
-        if (current) setState({ status: 'error', data: undefined, error: errorMessage(error) })
+        if (current) setState((before) => (before.status === 'ready' ? before : { status: 'error', data: undefined, error: errorMessage(error) }))
       },
     )
     return () => {
@@ -34,6 +37,7 @@ export function useLoad<T>(route: string): Load<T> {
     setState({ status: 'loading', data: undefined, error: '' })
     setAttempt((count) => count + 1)
   }, [])
+  const refresh = useCallback(() => setAttempt((count) => count + 1), [])
   const setData = useCallback((data: T) => setState({ status: 'ready', data, error: '' }), [])
-  return { ...state, reload, setData }
+  return { ...state, reload, refresh, setData }
 }

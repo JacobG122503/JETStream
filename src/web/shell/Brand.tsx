@@ -4,7 +4,7 @@ import { BrandMark } from './BrandMark'
 
 export function Brand({ onClick }: { onClick?: () => void }) {
   return (
-    <Link to="/time" className="brand" onClick={onClick}>
+    <Link to="/home" className="brand" onClick={onClick}>
       <BrandMark />
       <span className="brand-text">
         <span className="brand-name">{productName}</span>

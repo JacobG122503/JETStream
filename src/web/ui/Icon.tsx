@@ -1,5 +1,12 @@
 /** Line icons on a 24px grid, drawn for JETStream. The values are SVG path data. */
 const paths = {
+  home: 'M4 11 12 4l8 7v9h-5.5v-5.5h-5V20H4Z',
+  play: 'M8 5.5v13l10.5-6.5Z',
+  stop: 'M7 7h10v10H7Z',
+  shield: 'M12 3.5 5 6v5.5c0 4.4 2.9 7.4 7 9 4.1-1.6 7-4.6 7-9V6Z',
+  send: 'M20.5 3.5 10 14M20.5 3.5l-6.5 17-4-6.5-6.5-4Z',
+  printer: 'M7 8.5v-5h10v5M7 17H4v-8.5h16V17h-3M7 14h10v6.5H7Z',
+  trend: 'M3.5 16.5 9 11l4 4 7.5-8M15 7h5.5v5.5',
   time: 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17ZM12 7.5V12l3 2',
   expenses: 'M6 3.5h12v17l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5ZM9 8h6M9 11.5h6M9 15h3',
   projects: 'M3.5 6.5h6l2 2.5h9v10.5h-17ZM3.5 9V6.5',

@@ -18,6 +18,7 @@ const server = fakeServer()
 beforeEach(async () => {
   server.session = sessionInfo({ person })
   server.handlers['GET account'] = () => account
+  server.handlers['GET account/access'] = () => ({ role: { key: 'member', name: 'Member' }, administrator: false, grants: {}, managedProjects: [], managedPeople: [] })
   server.handlers['GET account/sessions'] = () => ({ sessions: [device(1, { current: true, browser: 'Chrome' }), device(2)] })
   render(<App router={createMemoryRouter(routes, { initialEntries: ['/account'], future: routerFuture })} />)
   await screen.findByRole('heading', { level: 2, name: 'Profile' })

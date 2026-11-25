@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react'
 import type { SessionInfo, SessionPerson } from '../../shared/api'
+import { type Level, type PermissionKey, reaches } from '../../shared/permissions'
 
 export interface Auth {
   status: 'loading' | 'failed' | 'ready'
@@ -27,4 +28,10 @@ export function usePerson(): SessionPerson {
   const { info } = useAuth()
   if (!info?.person) throw new Error('Nobody is signed in')
   return info.person
+}
+
+/** Whether the signed-in person holds a permission. The server decides; this only leaves out what it would refuse. */
+export function useCan(): (key: PermissionKey, level?: Level) => boolean {
+  const { permissions } = usePerson()
+  return (key, level = 'managed') => reaches(permissions[key], level)
 }
