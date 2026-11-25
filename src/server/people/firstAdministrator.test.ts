@@ -23,14 +23,14 @@ describe('the first administrator', () => {
 
   it('is not made by migrations or a start', async () => {
     expect(await database.db.select().from(people)).toEqual([])
-    expect((await prepareData({ mode: 'production' }, database)).join()).toContain('npm run admin:create')
+    expect((await prepareData({ mode: 'production' }, database)).join()).toMatch(/administer JETStream yet\..*npm run admin:create/)
     expect(await database.db.select().from(people)).toEqual([])
   })
 
   it('is made once, also by two commands at the same time, and never over someone else', async () => {
     const taken = await makeRecords(database.db).person()
     const input = (email: string) => ({ name: 'Ada Admin', email, password })
-    await expect(createAdministrator(database.db, input(taken.email))).rejects.toThrow('already belongs')
+    await expect(createAdministrator(database.db, input(taken.email))).rejects.toThrow('already belongs to a person in JETStream')
     const results = await Promise.allSettled(['a', 'b'].map((name) => createAdministrator(database.db, input(`${name}@jet.example`))))
     expect(results.map(({ status }) => status).sort()).toEqual(['fulfilled', 'rejected'])
     const made = await database.db.select({ person: people, role: roles.key }).from(people)
@@ -104,7 +104,7 @@ describe('npm run admin:create', { timeout: 30_000 }, () => {
     const dir = await dataDir()
     const database = await openDatabase({ kind: 'embedded', dataDir: dir })
     const used = await command([...args, dir], { input: password })
-    expect([used.code, used.output]).toEqual([1, expect.stringContaining('in use by process')])
+    expect([used.code, used.output]).toEqual([1, expect.stringMatching(/^JETStream: .* is in use by process/m)])
     expect(await database.db.select().from(people)).toEqual([])
     await database.close()
   })

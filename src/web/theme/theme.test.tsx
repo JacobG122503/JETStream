@@ -43,7 +43,7 @@ describe('theme choice', () => {
     expect(localStorage).toHaveLength(0)
   })
 
-  it('has a prefixed key', () => expect(themeStorageKey).toMatch(/^jettime\./))
+  it('has a prefixed key', () => expect(themeStorageKey).toBe('jetstream.theme'))
 
   it.each(['purple', '', 'system', 'DARK'])('treats the stored value "%s" as System', (value) => {
     localStorage.setItem(themeStorageKey, value)

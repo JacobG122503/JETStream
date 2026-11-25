@@ -28,6 +28,7 @@ it.skipIf(process.platform === 'win32').each([
     })
 
     const url = await dev.ready
+    expect(dev.output()).toContain(`JETStream (development) is running at ${url}\n`)
     expect(await (await fetch(`${url}api/health`)).json()).toEqual({ status: 'ok', database: 'ok' })
     const apiPid = Number(readFileSync(lockFile, 'utf8'))
 

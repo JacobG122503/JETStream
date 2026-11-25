@@ -1,5 +1,6 @@
 // npm run db:seed, db:reset and demo:reset: adds demo data, or erases it and adds it afresh.
 import { createInterface } from 'node:readline/promises'
+import { productName } from '../shared/product'
 import { openDatabase } from './db'
 import { applyMigrations } from './db/migrations'
 import { checkResetAllowed, checkSeedAllowed, demoAccountLines, resetDemo, seedDemo } from './demo'
@@ -42,6 +43,6 @@ async function run(command: DemoCommand) {
 try {
   await run(parseDemoCommand(process.argv.slice(2), process.env))
 } catch (error) {
-  console.error(error instanceof StartupError ? `JET Time: ${error.message}` : error)
+  console.error(error instanceof StartupError ? `${productName}: ${error.message}` : error)
   process.exitCode = 1
 }

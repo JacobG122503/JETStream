@@ -1,5 +1,6 @@
 import { type FormEvent, useId, useRef, useState } from 'react'
 import type { JoinRequest, JoinRequests } from '../../../shared/api'
+import { productName } from '../../../shared/product'
 import { ApiError, callApi, errorMessage } from '../../api'
 import { usePerson } from '../../auth/authContext'
 import { FormMessages } from '../../auth/FormMessages'
@@ -160,7 +161,7 @@ function ApproveDialog({ request, onClose, onApproved, onFailed }: ApproveDialog
       <form id={formId} className="stack" noValidate onSubmit={submit}>
         <FormMessages form={form} />
         <p>
-          {request.name} ({request.email}) can use JET Time once approved. The address is not verified.
+          {request.name} ({request.email}) can use {productName} once approved. The address is not verified.
         </p>
         <AccessFields load={load} value={access} onChange={setAccess} roleField={form.field('roleId')} disabled={form.busy} />
       </form>

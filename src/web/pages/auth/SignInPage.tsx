@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react'
 import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom'
 import type { SessionInfo } from '../../../shared/api'
+import { productName } from '../../../shared/product'
 import { callApi } from '../../api'
 import { useAuth } from '../../auth/authContext'
 import { FormMessages } from '../../auth/FormMessages'
@@ -59,7 +60,7 @@ export function SignInPage() {
   const demoAccounts = info?.demoAccounts ?? []
 
   return (
-    <AuthPage title="Sign in" description={info ? `JET Time at ${info.company.name}` : undefined}>
+    <AuthPage title="Sign in" description={info ? `${productName} at ${info.company.name}` : undefined}>
       {endedFor !== null && (
         <Notice tone="warning" announce="status">
           Your session has ended. Sign in again to go on.

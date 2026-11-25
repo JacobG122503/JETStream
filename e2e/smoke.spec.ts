@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { expect, test } from './fixtures'
 
 test.use({ account: 'admin' })
@@ -37,8 +38,13 @@ test('files are served under the base path, and nothing else', async ({ page, re
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', `${basePath}favicon.svg`)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Page not found')
   expect((await request.get('assets/missing.js')).status()).toBe(404)
+  // In package.json, and not in the page that unknown addresses get. The name of the package is in both.
+  const inPackageJson = '"devDependencies"'
+  expect(readFileSync('package.json', 'utf8')).toContain(inPackageJson)
   for (const path of ['package.json', 'server/main.js', '..%2fserver/main.js', '.env']) {
-    expect(await (await request.get(path)).text(), path).not.toMatch(/jet-time|createServer/)
+    const text = await (await request.get(path)).text()
+    expect(text, path).not.toContain(inPackageJson)
+    expect(text, path).not.toContain('createServer')
   }
   if (basePath !== '/') {
     const { origin } = new URL(appUrl)

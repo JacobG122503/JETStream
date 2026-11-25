@@ -98,7 +98,7 @@ test('with storage blocked the app loads, and the control works for this visit',
 })
 
 test('an unknown stored value is System', async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('jettime.theme', 'purple'))
+  await page.addInitScript(() => localStorage.setItem('jetstream.theme', 'purple'))
   await page.emulateMedia({ colorScheme: 'dark' })
   await open(page, 'time')
   await expect(page.getByRole('button', { name: 'Appearance: System' })).toBeVisible()
@@ -108,5 +108,5 @@ test('an unknown stored value is System', async ({ page }) => {
 test('what is stored has a prefix', async ({ page }) => {
   await open(page, 'time')
   await choose(page, 'Dark')
-  expect(await page.evaluate(() => Object.keys(localStorage))).toEqual(['jettime.theme'])
+  expect(await page.evaluate(() => Object.keys(localStorage))).toEqual(['jetstream.theme'])
 })

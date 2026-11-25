@@ -9,6 +9,7 @@ import { loadConfig, serverUrl } from '../src/server/config'
 import { StartupError } from '../src/server/errors'
 import { projectRoot } from '../src/server/paths'
 import { checkPortIsFree } from '../src/server/server'
+import { productName } from '../src/shared/product'
 
 async function freePort(): Promise<number> {
   const server = createNetServer()
@@ -97,8 +98,8 @@ try {
 
   await vite.listen()
   await waitForApi(`http://127.0.0.1:${apiPort}${config.basePath}api/health`)
-  console.log(`\nJET Time (development) is running at ${serverUrl(config)}\n`)
+  console.log(`\n${productName} (development) is running at ${serverUrl(config)}\n`)
 } catch (error) {
-  console.error(error instanceof StartupError ? `JET Time: ${error.message}` : error)
+  console.error(error instanceof StartupError ? `${productName}: ${error.message}` : error)
   process.exit(1)
 }

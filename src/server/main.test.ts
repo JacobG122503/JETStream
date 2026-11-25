@@ -53,14 +53,14 @@ describe('server process', { timeout: 30_000 }, () => {
     ['demo with DATABASE_URL', ['--demo'], { DATABASE_URL: unreachable }, 'DATABASE_URL'],
     ['PORT=abc', ['--demo'], { PORT: 'abc' }, 'PORT'],
     ['PORT=70000', ['--demo'], { PORT: '70000' }, 'PORT'],
-    ['BASE_PATH=jet', ['--demo'], { BASE_PATH: 'jet' }, 'BASE_PATH'],
+    ['BASE_PATH=jet', ['--demo'], { BASE_PATH: 'jet' }, 'BASE_PATH must start with "/" (for example /jetstream)'],
     ['an unreadable DATABASE_URL', [], { DATABASE_URL: 'postgres://u:hunter2/@:x:/y', PUBLIC_URL: publicUrl }, 'DATABASE_URL'],
     ['production without PUBLIC_URL', [], { DATABASE_URL: unreachable }, 'PUBLIC_URL'],
     ['a PUBLIC_URL under another path', [], { DATABASE_URL: unreachable, PUBLIC_URL: `${publicUrl}x` }, 'PUBLIC_URL'],
     ['a PUBLIC_URL without https', [], { DATABASE_URL: unreachable, PUBLIC_URL: 'http://time.example.com' }, 'PUBLIC_URL'],
     ['TRUST_PROXY=6', ['--demo'], { TRUST_PROXY: '6' }, 'TRUST_PROXY'],
   ])('refuses to start: %s', async (_name, args, settings, message) => {
-    await expectFailure(args, settings, message)
+    expect(await expectFailure(args, settings, message)).toMatch(/^JETStream: /)
   })
 
   it('refuses to start when the database cannot be reached', async () => {
@@ -112,6 +112,13 @@ describe('server process', { timeout: 30_000 }, () => {
     const after = await openDatabase({ kind: 'embedded', dataDir })
     expect(await after.db.select().from(appMeta)).toEqual([{ key: 'a', value: 'kept' }])
     await after.close()
+  })
+
+  it('names the product when it starts', async () => {
+    const server = start(['--demo', '--data-dir', 'memory://'], { PORT: String(await findFreePort()) })
+    const url = await server.ready
+    expect(server.output()).toContain('DEMO MODE: for showing JETStream on this computer only.')
+    expect(server.output()).toContain(`JETStream is running at ${url}\n`)
   })
 
   it('serves the API only, with no X-Powered-By, in development', async () => {

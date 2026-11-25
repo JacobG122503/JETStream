@@ -1,5 +1,5 @@
 /**
- * Exact integer arithmetic. Every amount, rate, quantity and percentage in JET Time is an integer
+ * Exact integer arithmetic. Every amount, rate, quantity and percentage in JETStream is an integer
  * in its own small unit (see docs/data-model.md), so sums and products never go through floating
  * point. Products are taken as BigInt and rounded once, half away from zero.
  */

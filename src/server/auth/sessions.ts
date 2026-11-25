@@ -17,7 +17,7 @@ const lifetimes = {
 const lifetimeOf = (persistent: boolean) => (persistent ? lifetimes.persistent : lifetimes.browser)
 
 const lastUseEveryMs = 60_000
-export const sessionCookie = 'jettime_session'
+export const sessionCookie = 'jetstream_session'
 
 export interface CurrentSession {
   id: number

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { productName } from '../../shared/product'
 import { BrandMark } from './BrandMark'
 import { PageBoundary } from './PageBoundary'
 import { mainId, SkipLink } from './SkipLink'
@@ -14,7 +15,7 @@ export function PlainLayout({ children }: { children?: ReactNode }) {
         <span className="brand">
           <BrandMark />
           <span className="brand-text">
-            <span className="brand-name">JET Time</span>
+            <span className="brand-name">{productName}</span>
             <span className="brand-owner">by JET Engineering</span>
           </span>
         </span>

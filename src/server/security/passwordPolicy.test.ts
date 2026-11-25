@@ -6,12 +6,12 @@ const email = 'alexandria@jet.example'
 
 it.each([
   'short', '123456789', 'x'.repeat(129), 'aaaaaaaaaaaa', 'AaAaAaAaAaAa', '            ', 'jetdemo123', 'JetDemo123', 'password123',
-  'Password123', '1234567890', 'qwertyuiop', email, 'Alexandria@JET.example', 'ALEXANDRIA', 'ａａａａａａａａａａ', 'ｐassword123',
+  'Password123', '1234567890', 'qwertyuiop', email, 'Alexandria@JET.example', 'ALEXANDRIA', 'jetstream1', 'jetstream123', 'jetstream1234', 'JETStream1', 'ａａａａａａａａａａ', 'ｐassword123',
 ])('refuses %s', (password) => {
   expect(passwordProblem(password, email)).toEqual(expect.any(String))
 })
 
-it.each(['ten chars!', 'x'.repeat(127) + 'y', 'correct horse battery', 'ünïcödé pässwörd', '🚲🚲🚲🚲🚲🚲🚲🚲🚲🚗', ' spaces around '])('accepts %s', (password) => {
+it.each(['ten chars!', 'x'.repeat(127) + 'y', 'correct horse battery', 'jetstream river 9', 'ünïcödé pässwörd', '🚲🚲🚲🚲🚲🚲🚲🚲🚲🚗', ' spaces around '])('accepts %s', (password) => {
   expect(passwordProblem(password, email)).toBeNull()
 })
 

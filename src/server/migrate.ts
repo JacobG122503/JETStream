@@ -1,4 +1,5 @@
 // Applies pending migrations: to DATABASE_URL, or to the development database without one.
+import { productName } from '../shared/product'
 import { type DatabaseConfig, defaultDataDir, parseDatabaseUrl } from './config'
 import { openDatabase } from './db/database'
 import { applyMigrations } from './db/migrations'
@@ -25,6 +26,6 @@ try {
     await database.close()
   }
 } catch (error) {
-  console.error(error instanceof StartupError ? `JET Time: ${error.message}` : error)
+  console.error(error instanceof StartupError ? `${productName}: ${error.message}` : error)
   process.exitCode = 1
 }

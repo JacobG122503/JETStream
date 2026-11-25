@@ -52,7 +52,7 @@ Use `src/server/db` for all access. It gives the same interface for the embedded
 
 | Table | Purpose | Tasks |
 |---|---|---|
-| `people` | Everyone who uses JET Time: unique email ignoring case, status, employee or contractor, capacity, time zone, photo, role | 004, 008 |
+| `people` | Everyone who uses JETStream: unique email ignoring case, status, employee or contractor, capacity, time zone, photo, role | 004, 008 |
 | `roles` | Built-in and custom roles with their permission list | 005 |
 | `labels` | Descriptive labels, such as Engineer | 008 |
 | `person_labels` | Labels of a person | 008 |

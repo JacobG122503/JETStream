@@ -1,4 +1,4 @@
-/** Line icons on a 24px grid, drawn for JET Time. The values are SVG path data. */
+/** Line icons on a 24px grid, drawn for JETStream. The values are SVG path data. */
 const paths = {
   time: 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17ZM12 7.5V12l3 2',
   expenses: 'M6 3.5h12v17l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5ZM9 8h6M9 11.5h6M9 15h3',

@@ -3,7 +3,7 @@ import { findFreePort, startServerProcess } from '../src/server/testing/serverPr
 
 /*
  * The built server is started for each worker, with its own in-memory database, at the base
- * path of the project ("/" or "/jettime/"). Addresses in specs are relative to the base path
+ * path of the project ("/" or "/jetstream/"). Addresses in specs are relative to the base path
  * and have no leading slash: page.goto('') is the home page, page.goto('a/b') a deep link,
  * request.get('api/health') an API call.
  *

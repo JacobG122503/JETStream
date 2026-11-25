@@ -9,7 +9,7 @@ export const themeChoices = ['system', 'light', 'dark'] as const
 export type ThemeChoice = (typeof themeChoices)[number]
 
 /** Prefixed because other applications on the same server may share the browser's storage. */
-export const themeStorageKey = 'jettime.theme'
+export const themeStorageKey = 'jetstream.theme'
 
 const listeners = new Set<() => void>()
 

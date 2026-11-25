@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { productName } from '../../../shared/product'
 import { errorMessage } from '../../api'
 import { useAuth, usePerson } from '../../auth/authContext'
 import { announce, Button, Notice, useToast } from '../../ui'
@@ -23,7 +24,7 @@ export function WaitingPage() {
   return (
     <AuthPage title="Waiting for approval" description={`Signed in as ${person.name} (${person.email})`}>
       <Notice tone="info">
-        An administrator at {info?.company.name} must approve your account before you can use JET Time.
+        An administrator at {info?.company.name} must approve your account before you can use {productName}.
         {checked > 0 && ' Not approved yet.'}
       </Notice>
       <div className="form-actions">

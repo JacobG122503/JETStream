@@ -1,5 +1,6 @@
 /** What the admin:create command does, apart from asking. */
 import { eq } from 'drizzle-orm'
+import { productName } from '../../shared/product'
 import { endSessions } from '../auth/sessions'
 import { type Db, runTransaction } from '../db'
 import { people, personCredentials, roles } from '../db/schema'
@@ -21,7 +22,7 @@ export async function checkCanCreate(db: Db): Promise<void> {
 }
 
 export async function checkEmailIsFree(db: Db, email: string): Promise<void> {
-  if (await findPersonByEmail(db, email)) throw new StartupError('This email already belongs to a person in JET Time.')
+  if (await findPersonByEmail(db, email)) throw new StartupError(`This email already belongs to a person in ${productName}.`)
 }
 
 export async function createAdministrator(

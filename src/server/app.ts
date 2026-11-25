@@ -53,7 +53,7 @@ export function createApp(options: AppOptions): Express {
   return app
 }
 
-/** /jettime -> /jettime/, so relative addresses on the page resolve inside the prefix. */
+/** /jetstream -> /jetstream/, so relative addresses on the page resolve inside the prefix. */
 function redirectToSlash(basePath: string): RequestHandler {
   return (req, res, next) => {
     const [path = '', query] = req.originalUrl.split(/\?(.*)/s)

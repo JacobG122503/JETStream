@@ -221,7 +221,7 @@ describe('API errors', () => {
 
 describe.each([
   ['/', ''],
-  ['/jettime/', '/jettime'],
+  ['/jetstream/', '/jetstream'],
 ])('web app at %s', (basePath, prefix) => {
   it.each(['/', '/time', '/nope/deeper', '/nope/deeper/still/', '/apiary', '/projects/12.5', '/package.json'])(
     'answers page %s with index.html for the base path',
@@ -304,15 +304,15 @@ describe.each([
 
 describe('with a base path', () => {
   it('redirects the path without a slash, keeping the query', async () => {
-    const app = await createTestApp('/jettime/')
-    expect((await request(app).get('/jettime')).headers.location).toBe('/jettime/')
-    expect((await request(app).get('/jettime?a=1?b')).headers.location).toBe('/jettime/?a=1?b')
+    const app = await createTestApp('/jetstream/')
+    expect((await request(app).get('/jetstream')).headers.location).toBe('/jetstream/')
+    expect((await request(app).get('/jetstream?a=1?b')).headers.location).toBe('/jetstream/?a=1?b')
   })
 
-  it.each(['/', '/api/health', '/time', '/favicon.svg', '/jettime2/', '/JETTIME/', '/jettime2/api/health'])(
+  it.each(['/', '/api/health', '/time', '/favicon.svg', '/jetstream2/', '/JETSTREAM/', '/jetstream2/api/health'])(
     'answers %s, outside the prefix, with 404',
     async (path) => {
-      expect((await request(await createTestApp('/jettime/')).get(path)).status).toBe(404)
+      expect((await request(await createTestApp('/jetstream/')).get(path)).status).toBe(404)
     },
   )
 })

@@ -24,10 +24,10 @@ describe('the session cookie', () => {
   it('is HttpOnly, SameSite=Lax and for the base path, and Secure when the address is https', async () => {
     const person = await account()
     const plain = await signedIn(testApp({ db: database.db }), person.email)
-    expect(plain.setCookie).toMatch(/^jettime_session=[\w-]{43}; Path=\/; HttpOnly; SameSite=Lax$/)
-    const app = testApp({ db: database.db, basePath: '/jettime/', publicUrl: 'https://time.example.com/jettime/' })
-    const secure = await signedIn(app, person.email, goodPassword, '/jettime')
-    expect(secure.setCookie).toMatch(/^jettime_session=[\w-]{43}; Path=\/jettime\/; HttpOnly; Secure; SameSite=Lax$/)
+    expect(plain.setCookie).toMatch(/^jetstream_session=[\w-]{43}; Path=\/; HttpOnly; SameSite=Lax$/)
+    const app = testApp({ db: database.db, basePath: '/jetstream/', publicUrl: 'https://time.example.com/jetstream/' })
+    const secure = await signedIn(app, person.email, goodPassword, '/jetstream')
+    expect(secure.setCookie).toMatch(/^jetstream_session=[\w-]{43}; Path=\/jetstream\/; HttpOnly; Secure; SameSite=Lax$/)
   })
 
   it('lasts longer than the browser only with "Keep me signed in"', async () => {
@@ -146,7 +146,7 @@ describe('signing out', () => {
     const response = await client.post('/session/sign-out')
     expect(response.status).toBe(200)
     expect((response.body as SessionInfo).person).toBeNull()
-    expect(client.setCookie).toMatch(/^jettime_session=; Path=\/; Expires=Thu, 01 Jan 1970/)
+    expect(client.setCookie).toMatch(/^jetstream_session=; Path=\/; Expires=Thu, 01 Jan 1970/)
     client.cookie = cookie
     expect((await client.get('/account')).status).toBe(401)
     // Also without a session, so that a page that is behind can always sign out.
@@ -167,7 +167,7 @@ describe('the session status', () => {
       person: { name: 'Sam Rivera', role: { name: 'Manager' }, administrator: false, status: 'active', timeZone: 'America/Chicago' },
     })
     const stale = browser(app)
-    stale.cookie = `jettime_session=${'x'.repeat(43)}`
+    stale.cookie = `jetstream_session=${'x'.repeat(43)}`
     expect((await stale.get('/session')).body).toMatchObject({ person: null })
     // A cookie of a session that is gone must not keep anyone from signing in.
     expect((await stale.signIn(person.email, goodPassword)).status).toBe(200)

@@ -1,5 +1,6 @@
 import { readFile, rm, writeFile } from 'node:fs/promises'
 import { setTimeout as delay } from 'node:timers/promises'
+import { productName } from '../../shared/product'
 import { errorCode, StartupError } from '../errors'
 
 function isRunning(pid: number): boolean {
@@ -32,7 +33,7 @@ export async function lockDataDir(dataDir: string, waitMs = 5000): Promise<() =>
     } else if (Date.now() > deadline) {
       throw new StartupError(
         `The embedded database in ${dataDir} is in use by process ${owner}. Stop it first; ` +
-          `if it is not JET Time, delete ${lockFile}.`,
+          `if it is not ${productName}, delete ${lockFile}.`,
       )
     } else {
       await delay(100)

@@ -3,7 +3,7 @@
 // those of theme/theme.ts; theme.test.tsx checks that they agree.
 ;(function () {
   try {
-    var choice = window.localStorage.getItem('jettime.theme')
+    var choice = window.localStorage.getItem('jetstream.theme')
     if (choice === 'light' || choice === 'dark') document.documentElement.setAttribute('data-theme', choice)
   } catch {
     // Storage is blocked: follow the operating system.

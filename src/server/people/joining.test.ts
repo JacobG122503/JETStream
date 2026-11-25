@@ -506,14 +506,14 @@ describe('messages', () => {
     }
 
     const { sender, messages } = standInSender()
-    const app = testApp({ db: database.db, email: sender, basePath: '/jettime/', publicUrl: 'https://example.com/jettime/' })
+    const app = testApp({ db: database.db, email: sender, basePath: '/jetstream/', publicUrl: 'https://example.com/jetstream/' })
     const admin = await account('administrator')
-    const at = await signedIn(app, admin.email, goodPassword, '/jettime')
+    const at = await signedIn(app, admin.email, goodPassword, '/jetstream')
     const response = await at.post('/invites', { name: 'Ivy', email: newEmail(), roleId: roleIds.member }, { Host: 'evil.example' })
     expect(response.body).toMatchObject({ emailed: true })
     expect(messages[0]?.text).toContain((response.body as NewLink).link)
-    expect((response.body as NewLink).link).toMatch(/^https:\/\/example\.com\/jettime\/invite#/)
-    const guest = browser(app, '/jettime')
+    expect((response.body as NewLink).link).toMatch(/^https:\/\/example\.com\/jetstream\/invite#/)
+    const guest = browser(app, '/jetstream')
     expect((await guest.post('/invite/check', { token: tokenIn(messages[0]?.link ?? '') })).status).toBe(200)
   })
 

@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { InviteInfo, SessionInfo } from '../../../shared/api'
+import { productName } from '../../../shared/product'
 import { ApiError, callApi } from '../../api'
 import { useAuth } from '../../auth/authContext'
 import { FormMessages } from '../../auth/FormMessages'
@@ -77,7 +78,7 @@ function InviteForm({ invite, token, onAccepting, onDead }: InviteFormProps) {
   }
 
   return (
-    <AuthPage title={title} description={`${invite.company} invites you to JET Time.`}>
+    <AuthPage title={title} description={`${invite.company} invites you to ${productName}.`}>
       <Card>
         <form className="stack" noValidate onSubmit={submit}>
           <FormMessages form={form} />

@@ -32,7 +32,7 @@ export const timeEntries = pgTable(
     createdBy: integer('created_by')
       .notNull()
       .references(() => people.id),
-    /** Invoiced before JET Time was used; imported history. */
+    /** Invoiced before JETStream was used; imported history. */
     billedOutside: boolean('billed_outside').notNull().default(false),
     /** Identifies the source, such as a calendar event, so that it is imported once. */
     externalReference: text('external_reference'),

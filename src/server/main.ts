@@ -1,3 +1,4 @@
+import { productName } from '../shared/product'
 import { loadConfig } from './config'
 import { describeError, StartupError } from './errors'
 import { type RunningServer, startServer, StoppedError } from './server'
@@ -5,7 +6,7 @@ import { type RunningServer, startServer, StoppedError } from './server'
 const shutdownLimitMs = 4500
 
 function fail(error: unknown): never {
-  console.error(error instanceof StartupError ? `JET Time: ${error.message}` : `JET Time stopped.\n${describeError(error)}`)
+  console.error(error instanceof StartupError ? `${productName}: ${error.message}` : `${productName} stopped.\n${describeError(error)}`)
   process.exit(1)
 }
 
@@ -19,7 +20,7 @@ function stop() {
   stopping = true
   stopped.abort()
   setTimeout(() => {
-    console.error('JET Time: did not stop in time, exiting.')
+    console.error(`${productName}: did not stop in time, exiting.`)
     process.exit(1)
   }, shutdownLimitMs).unref()
   void (async () => {
@@ -49,10 +50,10 @@ try {
   if (config.mode === 'demo') {
     const { database } = config
     const where = database.kind === 'embedded' ? database.dataDir : ''
-    console.log(`DEMO MODE: for showing JET Time on this computer only. Data is kept in ${where}`)
+    console.log(`DEMO MODE: for showing ${productName} on this computer only. Data is kept in ${where}`)
   }
   for (const message of messages) console.log(message)
-  console.log(config.mode === 'development' ? 'API ready' : `JET Time is running at ${url}`)
+  console.log(config.mode === 'development' ? 'API ready' : `${productName} is running at ${url}`)
 } catch (error) {
   if (!(error instanceof StoppedError)) fail(error) // Otherwise stop() ends the process.
 }

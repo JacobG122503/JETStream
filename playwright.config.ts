@@ -12,6 +12,6 @@ export default defineConfig<object, WorkerOptions>({
   use: { trace: 'retain-on-failure' },
   projects: [
     { name: 'root', use: { ...chromium, basePath: '/' } },
-    { name: 'base path', use: { ...chromium, basePath: '/jettime/' } },
+    { name: 'base path', use: { ...chromium, basePath: '/jetstream/' } },
   ],
 })

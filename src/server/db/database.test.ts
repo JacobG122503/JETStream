@@ -74,7 +74,7 @@ describe('embedded database folder', () => {
   it('is opened by one process at a time', async () => {
     const dataDir = join(await createTempDir(), 'db')
     const unlock = await lockDataDir(dataDir)
-    await expect(lockDataDir(dataDir, 0)).rejects.toThrow('in use')
+    await expect(lockDataDir(dataDir, 0)).rejects.toThrow(/in use by process \d+\. Stop it first; if it is not JETStream, delete /)
     await unlock()
     await (await lockDataDir(dataDir, 0))()
   })

@@ -41,7 +41,7 @@ export function parsePort(value = '3000'): number {
 
 export function parseBasePath(value = '/'): string {
   if (!value.startsWith('/')) {
-    throw new StartupError(`BASE_PATH must start with "/" (for example /jettime), not "${value}".`)
+    throw new StartupError(`BASE_PATH must start with "/" (for example /jetstream), not "${value}".`)
   }
   const path = value.replace(/\/$/, '')
   // The path goes into HTML and routes, so only plain URL characters are accepted.

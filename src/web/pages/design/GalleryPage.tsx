@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { productName } from '../../../shared/product'
 import { Page } from '../../shell/Page'
 import { ServerStatus } from '../../ServerStatus'
 import { ButtonsSection } from './ButtonsSection'
@@ -35,7 +36,7 @@ export function GalleryPage() {
   }, [])
 
   return (
-    <Page title="Design system" description="The shared components of JET Time, for people who build and check it. Everything here is sample data: the people, companies and figures are fictional.">
+    <Page title="Design system" description={`The shared components of ${productName}, for people who build and check it. Everything here is sample data: the people, companies and figures are fictional.`}>
       <nav aria-label="Sections of this page" className="gallery-index no-print">
         <ul>
           {sections.map(([id, title]) => (

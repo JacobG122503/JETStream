@@ -38,7 +38,7 @@ describe('App', () => {
   it.each(notBuilt.map((item) => [item.path, item.label]))('%s is the page "%s", and says that it is not available', async (path, label) => {
     await renderAt(path)
     expect(screen.getAllByRole('heading', { level: 1 }).map((heading) => heading.textContent)).toEqual([label])
-    expect(document.title).toBe(`${label} | JET Time`)
+    expect(document.title).toBe(`${label} | JETStream`)
     const main = within(screen.getByRole('main'))
     expect(main.getByRole('heading', { level: 2, name: 'Not available yet' })).toBeInTheDocument()
     expect(main.queryAllByRole('button')).toHaveLength(0)
@@ -48,8 +48,9 @@ describe('App', () => {
   it.each(['/no-such-page', '/time/nope', '/no/such/page'])('shows "Page not found" inside the shell at %s', async (path) => {
     await renderAt(path)
     expect(screen.getByRole('heading', { level: 1, name: 'Page not found' })).toBeInTheDocument()
-    expect(document.title).toBe('Page not found | JET Time')
+    expect(document.title).toBe('Page not found | JETStream')
     expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument()
+    expect(screen.getAllByText('JETStream')[0]).toHaveClass('brand-name')
   })
 
   it('goes to Time from "Page not found"', async () => {
@@ -60,15 +61,17 @@ describe('App', () => {
   })
 
   it('keeps the base path in links', async () => {
-    await renderAt('/jettime/no/such/page', '/jettime/')
+    await renderAt('/jetstream/no/such/page', '/jetstream/')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Page not found')
-    expect(screen.getByRole('link', { name: 'Go to Time' })).toHaveAttribute('href', '/jettime/time')
+    expect(screen.getByRole('link', { name: 'Go to Time' })).toHaveAttribute('href', '/jetstream/time')
   })
 
   it('has a layout without navigation', async () => {
     await renderAt('/design/plain')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Layout without navigation')
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
+    expect(within(screen.getByRole('banner')).getByText('JETStream')).toBeInTheDocument()
+    expect(within(screen.getByRole('banner')).getByText('by JET Engineering')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^Appearance/ })).toBeInTheDocument()
   })
 

@@ -19,8 +19,8 @@ describe('loadConfig', () => {
 
   it.each([
     ['/', '/'],
-    ['/jettime', '/jettime/'],
-    ['/jettime/', '/jettime/'],
+    ['/jetstream', '/jetstream/'],
+    ['/jetstream/', '/jetstream/'],
     ['/a/b-c.d', '/a/b-c.d/'],
   ])('reads BASE_PATH %s as %s', (value, expected) => {
     expect(loadConfig(['--demo'], { BASE_PATH: value }).basePath).toBe(expected)
@@ -84,9 +84,9 @@ describe('loadConfig', () => {
     it.each([
       ['https://time.example.com', undefined, 'https://time.example.com/'],
       ['https://time.example.com/', '/', 'https://time.example.com/'],
-      ['https://example.com/jettime', '/jettime/', 'https://example.com/jettime/'],
-      ['https://example.com/jettime/', '/jettime', 'https://example.com/jettime/'],
-      ['https://example.com:8443/jettime', '/jettime', 'https://example.com:8443/jettime/'],
+      ['https://example.com/jetstream', '/jetstream/', 'https://example.com/jetstream/'],
+      ['https://example.com/jetstream/', '/jetstream', 'https://example.com/jetstream/'],
+      ['https://example.com:8443/jetstream', '/jetstream', 'https://example.com:8443/jetstream/'],
       ['http://localhost:3000', undefined, 'http://localhost:3000/'],
       ['http://127.0.0.1:3000', undefined, 'http://127.0.0.1:3000/'],
       ['http://[::1]:3000', undefined, 'http://[::1]:3000/'],
@@ -96,10 +96,10 @@ describe('loadConfig', () => {
     })
 
     it.each([
-      ['https://example.com/jettime', '/'],
-      ['https://example.com/', '/jettime'],
-      ['https://example.com/jettime2', '/jettime'],
-      ['https://example.com/JetTime', '/jettime'],
+      ['https://example.com/jetstream', '/'],
+      ['https://example.com/', '/jetstream'],
+      ['https://example.com/jetstream2', '/jetstream'],
+      ['https://example.com/JetStream', '/jetstream'],
     ])('refuses %s with BASE_PATH %s', (value, basePath) => {
       expect(() => production({ PUBLIC_URL: value, BASE_PATH: basePath })).toThrow(/PUBLIC_URL.*BASE_PATH/)
     })
@@ -115,7 +115,7 @@ describe('loadConfig', () => {
     })
 
     it('is the printed address in development and demo', () => {
-      expect(loadConfig(['--demo'], { PORT: '3100', BASE_PATH: '/jettime' }).publicUrl).toBe('http://127.0.0.1:3100/jettime/')
+      expect(loadConfig(['--demo'], { PORT: '3100', BASE_PATH: '/jetstream' }).publicUrl).toBe('http://127.0.0.1:3100/jetstream/')
       expect(loadConfig(['--dev'], { HOST: '::1' }).publicUrl).toBe('http://[::1]:3000/')
     })
   })

@@ -1,5 +1,6 @@
 import { Fragment, type ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
+import { productName } from '../../shared/product'
 import { PlainLayout } from '../shell/PlainLayout'
 import { useDocumentTitle } from '../shell/useDocumentTitle'
 import { ErrorState, LoadingState, PageHeader } from '../ui'
@@ -10,14 +11,14 @@ import { signInPath } from './returnPath'
 /** What is shown while it is not known who is signed in; null once it is. */
 function Undecided({ auth }: { auth: Auth }) {
   useDocumentTitle(auth.status === 'failed' ? 'Cannot reach the server' : 'Loading')
-  if (auth.status === 'loading') return <LoadingState size="page" label="Loading JET Time" />
+  if (auth.status === 'loading') return <LoadingState size="page" label={`Loading ${productName}`} />
   return (
     <>
       <PageHeader title="Cannot reach the server" />
       <ErrorState
         size="page"
         headingLevel={2}
-        title="JET Time does not answer"
+        title={`${productName} does not answer`}
         message="Check your connection and try again."
         retryLabel="Try again"
         onRetry={() => void auth.refresh()}

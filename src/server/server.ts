@@ -1,5 +1,6 @@
 import { createServer, type Server } from 'node:http'
 import { connect } from 'node:net'
+import { productName } from '../shared/product'
 import { createApp } from './app'
 import { startCleaning } from './auth/cleanUp'
 import { type ServerConfig, serverUrl } from './config'
@@ -106,7 +107,7 @@ async function productionMessages(db: Db): Promise<string[]> {
     messages.push('WARNING: this database holds demo data, with accounts whose password is publicly known.')
   }
   if (!(await activeAdministratorWithPassword(db))) {
-    messages.push('Nobody can administer JET Time yet. Create the first administrator with npm run admin:create.')
+    messages.push(`Nobody can administer ${productName} yet. Create the first administrator with npm run admin:create.`)
   }
   return messages
 }

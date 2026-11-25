@@ -69,9 +69,19 @@ describe('navigation', () => {
     )
   })
 
+  it('has the name of the product in the sidebar and the header, leading to Time', () => {
+    renderShell('/reports')
+    const brands = screen.getAllByText('JETStream').map((name) => name.closest('a'))
+    expect(brands).toHaveLength(2)
+    for (const brand of brands) {
+      expect(brand).toHaveAttribute('href', '/time')
+      expect(brand).toHaveTextContent('by JET Engineering')
+    }
+  })
+
   it('has the base path in addresses', () => {
-    renderShell('/jettime/time', {}, '/jettime/')
-    expect(links()[0]).toHaveAttribute('href', '/jettime/time')
+    renderShell('/jetstream/time', {}, '/jetstream/')
+    expect(links()[0]).toHaveAttribute('href', '/jetstream/time')
   })
 
   it.each([
@@ -131,7 +141,7 @@ describe('route changes', () => {
 
   it('set the document title', () => {
     renderShell('/breaking')
-    expect(document.title).toBe('Breaking | JET Time')
+    expect(document.title).toBe('Breaking | JETStream')
   })
 })
 
@@ -227,11 +237,11 @@ describe('an error while a page renders', () => {
     renderShell('/breaking')
     await userEvent.click(screen.getByRole('button', { name: 'Break' }))
     expect(screen.getByRole('heading', { level: 1, name: 'Something went wrong' })).toHaveFocus()
-    expect(document.title).toBe('Something went wrong | JET Time')
+    expect(document.title).toBe('Something went wrong | JETStream')
     expect(links()).toHaveLength(11)
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(screen.getByRole('button', { name: 'Break' })).toBeInTheDocument()
-    expect(document.title).toBe('Breaking | JET Time')
+    expect(document.title).toBe('Breaking | JETStream')
     await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Breaking' })).toHaveFocus())
   })
 

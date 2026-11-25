@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { productName } from '../../shared/product'
 import { BrandMark } from './BrandMark'
 
 export function Brand({ onClick }: { onClick?: () => void }) {
@@ -6,7 +7,7 @@ export function Brand({ onClick }: { onClick?: () => void }) {
     <Link to="/time" className="brand" onClick={onClick}>
       <BrandMark />
       <span className="brand-text">
-        <span className="brand-name">JET Time</span>
+        <span className="brand-name">{productName}</span>
         <span className="brand-owner">by JET Engineering</span>
       </span>
     </Link>

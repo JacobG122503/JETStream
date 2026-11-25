@@ -3,6 +3,7 @@ import { createInterface } from 'node:readline'
 import { Writable } from 'node:stream'
 import { parseArgs } from 'node:util'
 import { isEmail, nameLength, normalizeEmail, passwordLength } from '../shared/accounts'
+import { productName } from '../shared/product'
 import { type DatabaseConfig, defaultDataDir, parseDatabaseUrl } from './config'
 import { type Db, openDatabase } from './db'
 import { countPendingMigrations } from './db/migrations'
@@ -167,6 +168,6 @@ try {
     await database.close()
   }
 } catch (error) {
-  console.error(error instanceof StartupError ? `JET Time: ${error.message}` : `The command failed.\n${describeError(error)}`)
+  console.error(error instanceof StartupError ? `${productName}: ${error.message}` : `The command failed.\n${describeError(error)}`)
   process.exitCode = 1
 }

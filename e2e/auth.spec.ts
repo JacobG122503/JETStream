@@ -10,8 +10,10 @@ test('each demo account is one press away, and signing out leaves nothing behind
     await page.getByRole('button', { name: new RegExp(`^${label}`) }).click()
     await expect(pageTitle(page)).toHaveText('Time')
     await expect(accountButton(page)).toHaveAccessibleName(new RegExp(`${role}$`))
-    const [cookie] = await context.cookies()
-    expect(cookie).toMatchObject({ httpOnly: true, sameSite: 'Lax', path: basePath, secure: false, expires: -1 })
+    const cookies = await context.cookies()
+    expect(cookies).toHaveLength(1)
+    const [cookie] = cookies
+    expect(cookie).toMatchObject({ name: 'jetstream_session', httpOnly: true, sameSite: 'Lax', path: basePath, secure: false, expires: -1 })
     expect(await page.evaluate(() => document.cookie + JSON.stringify({ ...localStorage, ...sessionStorage }))).not.toContain(cookie?.value)
     await accountButton(page).click()
     await page.getByRole('menuitem', { name: 'Account' }).click()
