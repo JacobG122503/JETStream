@@ -28,3 +28,4 @@ _PM fills this in after QA passes._
 - 2026-11-23 created
 - 2026-11-23 ORCH: replaced the GitHub Pages scope
 - 2026-11-24 PM: note added (from 004 acceptance)
+- 2026-11-25 built by the main session without the dev team, and tested with unit and end-to-end tests. README, docs/self-hosting.md, service file, proxy examples and .env.example. Not tried: a real PostgreSQL, mail server, HTTPS proxy, Linux service or Windows. Left out: CI workflow and Dockerfile.

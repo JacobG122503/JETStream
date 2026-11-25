@@ -36,7 +36,7 @@ test.describe('at 1440px', () => {
     await page.goBack()
     await expect(pageTitle(page)).toHaveText('Reports')
     await page.goBack()
-    await expect(pageTitle(page)).toHaveText('Invoices')
+    await expect(pageTitle(page)).toHaveText('Approvals')
     await page.goForward()
     await expect(pageTitle(page)).toHaveText('Reports')
     await expectSameDocument(page)

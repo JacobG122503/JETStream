@@ -30,3 +30,4 @@ _PM fills this in after QA passes._
 ## History
 - 2026-11-23 created
 - 2026-11-23 ORCH: request updated, user moved the target from GitHub Pages to JET's servers
+- 2026-11-25 built by the main session without the dev team, and tested with unit and end-to-end tests. Payments, refunds, taking back, write-offs, retainers, recurring invoices, late reminders and statements work. Online payment was left out on the user's word (2026-11-25). Money on a retainer is recorded by hand, also after its invoice is paid.

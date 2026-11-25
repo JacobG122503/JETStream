@@ -24,3 +24,4 @@ _PM fills this in after QA passes._
 ## History
 - 2026-11-23 created
 - 2026-11-23 ORCH: updated for server hosting
+- 2026-11-25 built by the main session without the dev team, and tested with unit and end-to-end tests. e2e/story.spec.ts walks from an hour to a paid invoice with three people and a client, each in a browser of their own, and an estimate to an invoice. Chromium only.

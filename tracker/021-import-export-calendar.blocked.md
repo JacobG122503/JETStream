@@ -29,3 +29,4 @@ _PM fills this in after QA passes._
 
 ## History
 - 2026-11-23 created
+- 2026-11-25 Waits for the user's meeting. Built: CSV export of everything (Settings, Export) and backup instructions. Not built: import, restore in the app, calendar import, accounting exports.

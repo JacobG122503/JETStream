@@ -35,9 +35,17 @@ export function MonthView({ month, today, personId, onDay }: MonthViewProps) {
           <span key={`before ${index}`} className="month-day is-empty" />
         ))}
         {Array.from({ length: count }, (_, index) => addDays(first, index)).map((day) => (
-          <button key={day} type="button" className={classNames('month-day', day === today && 'is-now')} aria-current={day === today ? 'date' : undefined} aria-label={`${partsOf(day).day}, ${formatDay(day)}, ${formatHours(on(day))} hours`} onClick={() => onDay(day)}>
-            <span>{partsOf(day).day}</span>
-            {on(day) > 0 && <span className="figure">{formatHours(on(day))}</span>}
+          <button key={day} type="button" className={classNames('month-day', day === today && 'is-now')} aria-current={day === today ? 'date' : undefined} onClick={() => onDay(day)}>
+            <span>
+              <span aria-hidden="true">{partsOf(day).day}</span>
+              <span className="sr-only">{formatDay(day)}</span>
+            </span>
+            {on(day) > 0 && (
+              <span className="figure">
+                {formatHours(on(day))}
+                <span className="sr-only"> hours</span>
+              </span>
+            )}
           </button>
         ))}
         {Array.from({ length: (7 - ((before + count) % 7)) % 7 }, (_, index) => (

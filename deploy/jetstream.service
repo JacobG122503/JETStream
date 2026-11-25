@@ -1,0 +1,21 @@
+# /etc/systemd/system/jetstream.service
+# sudo useradd --system jetstream; sudo systemctl daemon-reload; sudo systemctl enable --now jetstream
+[Unit]
+Description=JETStream
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+User=jetstream
+WorkingDirectory=/opt/jetstream
+EnvironmentFile=/etc/jetstream.env
+ExecStart=/usr/bin/node dist/server/main.js
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

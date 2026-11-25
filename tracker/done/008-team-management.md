@@ -147,3 +147,4 @@ _PM fills this in after QA passes._
 - 2026-11-24 PM: groomed
 - 2026-11-24 ORCH: todo -> groomed
 - 2026-11-24 PM: AC9, AC18, scenario 9 and an engineer note extended (from 004 acceptance)
+- 2026-11-25 built by the main session without the dev team, and tested with unit and end-to-end tests. People, labels, capacity, rates with dates and archiving work. Left out: a breakdown of hours on the person's page (it is in Reports, Detailed time).

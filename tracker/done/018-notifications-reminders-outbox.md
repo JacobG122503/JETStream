@@ -26,3 +26,4 @@ _PM fills this in after QA passes._
 ## History
 - 2026-11-23 created
 - 2026-11-23 ORCH: request updated, user moved the target from GitHub Pages to JET's servers
+- 2026-11-25 built by the main session without the dev team, and tested with unit and end-to-end tests. Notifications with preferences, Outbox, SMTP, and a scheduler (recurring invoices, late reminders, timesheet reminders, budget alerts) work. SMTP was tested with a stand-in only, not with a mail server. Left out: editing the wording of messages.

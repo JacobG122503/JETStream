@@ -29,3 +29,4 @@ _PM fills this in after QA passes._
 
 ## History
 - 2026-11-23 created
+- 2026-11-25 built by the main session without the dev team, and tested with unit and end-to-end tests. Timer, day, week and month, start and end times, favorites, copying, required notes, time for others and keyboard shortcuts work.

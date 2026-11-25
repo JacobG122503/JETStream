@@ -27,3 +27,4 @@ _PM fills this in after QA passes._
 ## History
 - 2026-11-23 created (split from 004 by PM)
 - 2026-11-24 PM: note added (from 004 acceptance)
+- 2026-11-25 Waits for the user's meeting about which features are needed. Nothing built.

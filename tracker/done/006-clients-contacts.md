@@ -152,3 +152,4 @@ _PM fills this in after QA passes._
 - 2026-11-23 created
 - 2026-11-24 PM: groomed
 - 2026-11-24 ORCH: todo -> groomed
+- 2026-11-25 built by the main session without the dev team, and tested with unit and end-to-end tests. Clients, contacts, archiving, deleting, defaults and statements work. Left out: estimates on the client page.

@@ -40,7 +40,7 @@ export const allPages = [
   ['invoices/retainers', 'Retainers'],
   ['invoices/retainers/1', 'Turbine retainer'],
   ['clients/1/statement', 'Statement'],
-  ['estimates/1', /^Estimate /],
+  ['estimates/1', 'Estimate EST-0001'],
   ['estimates/new?client=1', 'New estimate'],
   ['reports/detailed', 'Detailed time'],
   ['reports/expenses', 'Expenses report'],
@@ -68,7 +68,9 @@ export const phone = { width: 375, height: 812 }
 export const desktop = { width: 1440, height: 900 }
 
 /** Opens a page and waits until it is there and nothing is being requested. */
-export async function open(page: Page, path: string, heading?: string | RegExp) {
+export async function open(page: Page, path: string, heading?: string) {
+  // What the page before still asks for would be cut off.
+  await settled(page)
   await page.goto(path)
   const title = page.getByRole('heading', { level: 1 })
   if (heading) await expect(title).toHaveText(heading)

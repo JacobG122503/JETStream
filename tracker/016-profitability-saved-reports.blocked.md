@@ -26,3 +26,4 @@ _PM fills this in after QA passes._
 ## History
 - 2026-11-23 created
 - 2026-11-23 ORCH: request updated, user moved the target from GitHub Pages to JET's servers
+- 2026-11-25 Waits for the user's meeting about which features are needed. Nothing built.

@@ -29,3 +29,4 @@ _PM fills this in after QA passes._
 
 ## History
 - 2026-11-23 created
+- 2026-11-25 built by the main session without the dev team, and tested with unit and end-to-end tests. Time, detailed time, expenses, budgets, uninvoiced, invoices and payments, with filters, CSV and print. Left out: a contractor report and Excel files (CSV opens in Excel).

@@ -14,7 +14,7 @@ test('the navigation shows what each account may open', async ({ adminPage, lead
     return mainNav(page).getByRole('link').allTextContents()
   }
   expect(await shown(adminPage)).toEqual(sections.map(([, label]) => label))
-  expect(await shown(leadPage)).toEqual(['Home', 'Timesheet', 'Expenses', 'Team', 'Clients', 'Projects', 'Reports', 'Settings'])
+  expect(await shown(leadPage)).toEqual(['Home', 'Timesheet', 'Expenses', 'Team', 'Clients', 'Projects', 'Approvals', 'Reports', 'Settings'])
   expect(await shown(employeePage)).toEqual(everyone)
 })
 

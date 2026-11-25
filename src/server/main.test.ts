@@ -29,7 +29,8 @@ async function expectFailure(
   limitMs = 5000,
 ) {
   const begin = Date.now()
-  const server = start(args, settings)
+  // Whatever is on the default port is not what this is about.
+  const server = start(args, { PORT: String(await findFreePort()), ...settings })
   expect(await server.exited).toBe(1)
   expect(Date.now() - begin).toBeLessThan(limitMs)
   expect(server.output()).toContain(message)

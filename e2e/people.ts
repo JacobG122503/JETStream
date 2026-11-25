@@ -1,5 +1,5 @@
 import type { Browser, Page } from '@playwright/test'
-import { expect, watch } from './fixtures'
+import { expect, settled, watch } from './fixtures'
 import { open } from './pages'
 
 /** Makes a person through the pages' own API, as the administrator signed in on the page. */
@@ -62,6 +62,8 @@ export async function signIn(page: Page, email: string, password = goodPassword)
 export const accountButton = (page: Page) => page.getByRole('button', { name: /^Account: / })
 
 export async function signOut(page: Page) {
+  // What the page is still asking for would be refused.
+  await settled(page)
   await accountButton(page).click()
   await page.getByRole('menuitem', { name: 'Sign out' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sign in')

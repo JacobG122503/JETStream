@@ -30,7 +30,7 @@ test('from an hour worked to a paid invoice, with three people and a client', as
   await expense.getByLabel('Notes').fill(notes)
   await expense.getByLabel('Attach receipt').setInputFiles({ name: 'receipt.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 receipt') })
   await expense.getByRole('button', { name: 'Add expense' }).click()
-  await expect(employeePage.getByText('Receipt', { exact: true })).toBeVisible()
+  await expect(employeePage.getByRole('row').filter({ hasText: notes }).getByText('Receipt', { exact: true })).toBeVisible()
 
   await open(employeePage, 'time', 'Timesheet')
   await employeePage.getByRole('button', { name: 'Submit week for approval' }).click()

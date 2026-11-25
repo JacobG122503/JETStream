@@ -21,3 +21,4 @@ _PM fills this in after QA passes._
 
 ## History
 - 2026-11-23 created
+- 2026-11-25 built by the main session without the dev team, and tested with unit and end-to-end tests. Submitting, approving (whole week or the part one manages), sending back, reopening, locking by date, unlocking and reminders work.

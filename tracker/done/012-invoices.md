@@ -38,3 +38,4 @@ _PM fills this in after QA passes._
 ## History
 - 2026-11-23 created
 - 2026-11-23 ORCH: request updated, user moved the target from GitHub Pages to JET's servers
+- 2026-11-25 built by the main session without the dev team, and tested with unit and end-to-end tests. Invoices from time and expenses or typed, editing, duplicates, attachments, messages, client links that can be revoked, print/PDF. Decided: hours at rate 0 show on the invoice, a refund on a closed invoice is refused, an invoice of 0 is paid once sent. PDF is made by printing.
