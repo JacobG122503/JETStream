@@ -23,7 +23,7 @@ function isRouter(handler: RequestHandler): handler is Router {
 }
 
 function guard(handler: RequestHandler): RequestHandler {
-  return async (req, res, next) => {
+  const guarded: RequestHandler = async (req, res, next) => {
     try {
       await handler(req, res, next)
     } catch (error) {
@@ -31,4 +31,6 @@ function guard(handler: RequestHandler): RequestHandler {
       throw new Error('A value that is not an error was thrown', { cause: error })
     }
   }
+  // Keeps what marks a handler, such as its access level.
+  return Object.assign(guarded, handler)
 }

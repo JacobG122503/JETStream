@@ -31,11 +31,47 @@ export async function verifyPassword(password: string, stored: string): Promise<
   return timingSafeEqual(actual, expected)
 }
 
-function derive(password: string, salt: Buffer, { logN, r, p }: typeof cost, length: number): Promise<Buffer> {
+/** Whether a stored hash was made with other parameters than new ones are. */
+export function needsRehash(stored: string): boolean {
+  return !stored.startsWith(`$scrypt$ln=${cost.logN},r=${cost.r},p=${cost.p}$`)
+}
+
+/** As slow as verifying a password, for when there is none to verify. */
+export async function spendVerification(password: string): Promise<false> {
+  await derive(password, randomBytes(saltBytes), cost, hashBytes)
+  return false
+}
+
+async function derive(password: string, salt: Buffer, { logN, r, p }: typeof cost, length: number): Promise<Buffer> {
   const options: ScryptOptions = { N: 2 ** logN, r, p, maxmem: memoryLimit }
   // The same characters can be typed in different encodings.
   const text = password.normalize('NFKC')
-  return new Promise((resolve, reject) => {
-    scrypt(text, salt, length, options, (error, hash) => (error ? reject(error) : resolve(hash)))
-  })
+  await takeTurn()
+  try {
+    return await new Promise<Buffer>((resolve, reject) => {
+      scrypt(text, salt, length, options, (error, hash) => (error ? reject(error) : resolve(hash)))
+    })
+  } finally {
+    endTurn()
+  }
+}
+
+/**
+ * Hashing runs on Node's few worker threads, which file and network name lookups need too. Only
+ * some hash at a time, so that the rest of the server goes on and memory use stays small.
+ */
+const maxHashing = 2
+let hashing = 0
+const waiting: (() => void)[] = []
+
+async function takeTurn() {
+  if (hashing < maxHashing) hashing++
+  else await new Promise<void>((resolve) => waiting.push(resolve))
+}
+
+function endTurn() {
+  const next = waiting.shift()
+  // The turn is handed on, so the count stays.
+  if (next) next()
+  else hashing--
 }

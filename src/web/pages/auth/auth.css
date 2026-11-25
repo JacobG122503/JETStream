@@ -1,0 +1,88 @@
+.auth-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 28rem;
+  margin: 0 auto;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.form-wide > .btn {
+  width: 100%;
+}
+
+.form-problem:focus-visible {
+  border-radius: var(--radius-md);
+}
+
+.auth-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-4);
+}
+
+.auth-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-md);
+}
+
+.demo-accounts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.demo-accounts .btn {
+  width: 100%;
+  height: auto;
+  min-height: var(--control-md);
+}
+
+.demo-account {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 var(--space-2);
+  overflow-wrap: anywhere;
+}
+
+.demo-account-label {
+  font-weight: var(--weight-heavy);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: minmax(5rem, max-content) minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+}
+
+.facts dt {
+  color: var(--c-text-muted);
+}
+
+.facts dd {
+  overflow-wrap: anywhere;
+}
+
+.photo-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-6);
+}

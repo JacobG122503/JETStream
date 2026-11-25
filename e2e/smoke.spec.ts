@@ -1,5 +1,7 @@
 import { expect, test } from './fixtures'
 
+test.use({ account: 'admin' })
+
 test('the gallery shows that the server is connected, and can be reloaded, left and returned to', async ({ page }) => {
   const heading = page.getByRole('heading', { level: 1 })
   const status = page.locator('#server').getByRole('status')

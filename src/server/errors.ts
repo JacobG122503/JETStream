@@ -7,9 +7,17 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: string,
     message: string,
+    readonly more: ErrorDetails = {},
   ) {
     super(message)
   }
+}
+
+export interface ErrorDetails {
+  /** What is wrong with each named input. */
+  fields?: Record<string, string>
+  /** Sent as Retry-After as well. */
+  retryAfterSeconds?: number
 }
 
 /**
@@ -33,6 +41,31 @@ export function errorCode(error: unknown): string | undefined {
     if ('code' in current && typeof current.code === 'string') return current.code
   }
   return undefined
+}
+
+/**
+ * What may be logged about an unexpected error: names, codes and places. Never messages, details
+ * or parameters, because those repeat what people typed (an email, a password, a token).
+ */
+export function describeError(error: unknown): string {
+  const lines: string[] = []
+  let current = error
+  for (let depth = 0; depth < 5 && current instanceof Error; depth++) {
+    const name = /^\w{1,60}$/.test(current.name) ? current.name : 'Error'
+    const facts = [`${depth > 0 ? 'caused by ' : ''}${name}`]
+    if ('code' in current && typeof current.code === 'string' && /^\w{1,40}$/.test(current.code)) facts.push(`code ${current.code}`)
+    if ('constraint' in current && typeof current.constraint === 'string') facts.push(`constraint ${current.constraint}`)
+    lines.push(facts.join(', '))
+    // The stack begins with the message, which can span lines and look like anything.
+    const message = current.message
+    const stack = current.stack ?? ''
+    const end = message === '' ? 0 : stack.indexOf(message) + message.length
+    const known = message === '' || stack.includes(message)
+    const places = known ? stack.slice(end).split('\n').filter((line) => /^ {4}at /.test(line)) : []
+    lines.push(...places.slice(0, 12))
+    current = current.cause
+  }
+  return lines.length > 0 ? lines.join('\n') : 'A value that is not an error was thrown'
 }
 
 /** Rejects with `message` if the promise takes longer than `ms`. */

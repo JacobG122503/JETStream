@@ -1,0 +1,67 @@
+.assignment-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.assignment-client {
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+}
+
+.assignment-projects {
+  display: flex;
+  flex-direction: column;
+  margin-left: var(--space-2);
+  padding-left: var(--space-4);
+  border-left: 2px solid var(--c-border);
+}
+
+.assignment-none {
+  padding-block: var(--space-1);
+  color: var(--c-text-muted);
+  font-size: var(--text-sm);
+}
+
+.person-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.person-cell > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.row-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.confirm-list {
+  margin-top: var(--space-2);
+  padding-left: var(--space-5);
+  list-style: disc;
+}

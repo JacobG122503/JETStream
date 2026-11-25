@@ -22,6 +22,20 @@
       "when": 1795506553890,
       "tag": "0002_reference_data",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795510022522,
+      "tag": "0003_sign_in",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795571545811,
+      "tag": "0004_password_version",
+      "breakpoints": true
     }
   ]
 }

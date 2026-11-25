@@ -25,6 +25,9 @@ it('refuses to start in production with pending migrations, and does not apply t
     port: await findFreePort(),
     basePath: '/',
     database: { kind: 'postgres', url: 'postgres://unused' },
+    publicUrl: 'https://time.example.com/',
+    trustProxy: 0,
+    warnings: [],
   }
   await expect(startServer(config)).rejects.toThrow('npm run db:migrate')
   expect(runMigrations).not.toHaveBeenCalled()
@@ -46,7 +49,7 @@ it('seeds the demo once, says how to use it, and never erases', { timeout: 30_00
 it('does not seed development or production', async () => {
   await applyMigrations(database)
   expect((await prepareData({ mode: 'development' }, database)).join()).toContain('npm run db:seed')
-  expect(await prepareData({ mode: 'production' }, database)).toEqual([])
+  expect((await prepareData({ mode: 'production' }, database)).join()).toContain('npm run admin:create')
   expect(await database.db.select().from(people)).toEqual([])
   await makeRecords(database.db).person()
   expect(await prepareData({ mode: 'development' }, database)).toEqual([])

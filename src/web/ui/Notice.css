@@ -1,0 +1,51 @@
+.notice {
+  display: flex;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  overflow-wrap: anywhere;
+}
+
+.notice > .icon {
+  margin-top: 0.15em;
+}
+
+.notice-body {
+  min-width: 0;
+}
+
+.notice-title {
+  font-weight: var(--weight-strong);
+}
+
+.notice-action {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.notice-info {
+  background: var(--c-info-soft);
+  color: var(--c-on-info-soft);
+}
+
+.notice-success {
+  background: var(--c-success-soft);
+  color: var(--c-on-success-soft);
+}
+
+.notice-warning {
+  background: var(--c-warning-soft);
+  color: var(--c-on-warning-soft);
+}
+
+.notice-danger {
+  background: var(--c-danger-soft);
+  color: var(--c-on-danger-soft);
+}
+
+.notice a {
+  color: inherit;
+}

@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { Router } from 'express'
 import request from 'supertest'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { jsonBody } from './api/body'
 import { createApp } from './app'
 import type { Database, Db } from './db/database'
 import { createTempDir, createTestDatabase } from './testing/testDatabase'
@@ -102,37 +103,37 @@ describe('API errors', () => {
       createApp({
         db: database.db,
         basePath: '/',
-        extend: (api) => {
-          api.post('/echo', (req, res) => res.json(req.body))
-          api.get('/throw', () => {
+        extend: (api, access) => {
+          api.post('/echo', access.public, jsonBody, (req, res) => res.json(req.body))
+          api.get('/throw', access.public, () => {
             throw new Error('boom')
           })
-          api.get('/reject', () => Promise.reject(new Error('boom')))
+          api.get('/reject', access.public, () => Promise.reject(new Error('boom')))
           for (const status of [400, 401, 404, 413, 429, 503]) {
             const error = () => new AdapterError('boom', status)
-            api.get(`/adapter/${status}`, () => Promise.reject(error()))
-            api.post(`/adapter/${status}`, (_req, _res, next) => next(error()))
+            api.get(`/adapter/${status}`, access.public, () => Promise.reject(error()))
+            api.post(`/adapter/${status}`, access.public, (_req, _res, next) => next(error()))
           }
-          api.get('/missing-file', (_req, res) => res.sendFile('/boom/no-such-file'))
+          api.get('/missing-file', access.public, (_req, res) => res.sendFile('/boom/no-such-file'))
           const notErrors = { null: null, undefined, route: 'route', router: 'router' }
           for (const [name, value] of Object.entries<unknown>(notErrors)) {
-            api.get(`/throw/${name}`, () => {
+            api.get(`/throw/${name}`, access.public, () => {
               throw value
             })
             // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
-            api.get(`/reject/${name}`, () => Promise.reject(value))
+            api.get(`/reject/${name}`, access.public, () => Promise.reject(value))
           }
           const nothing: unknown = null
           const nested = Router()
           nested.use('/middleware', () => {
             throw nothing
           })
-          nested.route('/route').get(() => {
+          nested.route('/route').get(access.public, () => {
             throw nothing
           })
           api.use('/nested', nested)
-          api.get('/skip', (_req, _res, next) => next('route'))
-          api.get('/things/:id', (req, res) => res.json(req.params.id))
+          api.get('/skip', access.public, (_req, _res, next) => next('route'))
+          api.get('/things/:id', access.public, (req, res) => res.json(req.params.id))
         },
       })
 
@@ -209,7 +210,7 @@ describe('API errors', () => {
     const app = createApp({
       db: database.db,
       basePath: '/',
-      extend: (api) => api.post('/echo', (req, res) => res.json(req.body)),
+      extend: (api, access) => api.post('/echo', access.public, jsonBody, (req, res) => res.json(req.body)),
     })
     expect((await request(app).post('/api/echo').send({ a: 1 })).body).toEqual({ a: 1 })
     const response = await request(app).post('/api/echo').send({ a: 'x'.repeat(200_000) })

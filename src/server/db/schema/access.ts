@@ -18,6 +18,11 @@ export const personCredentials = pgTable('person_credentials', {
   /** Self-describing: names the algorithm, its parameters, the salt and the hash. */
   passwordHash: text('password_hash').notNull(),
   changedAt: instant('changed_at').notNull().defaultNow(),
+  /**
+   * Counts the passwords there have been. Whoever checked a password against an older version must
+   * check again. Stays the same when only the hash is renewed.
+   */
+  version: version(),
 })
 
 export const personTotp = pgTable('person_totp', {
@@ -71,7 +76,8 @@ export const invites = pgTable(
   'invites',
   {
     id: id(),
-    tokenHash: text('token_hash').notNull().unique(),
+    /** Null once the link can never work again. */
+    tokenHash: text('token_hash').unique(),
     name: text('name').notNull(),
     email: text('email').notNull(),
     roleId: integer('role_id')
@@ -140,14 +146,33 @@ export const passwordResets = pgTable(
   (t) => indexes(t.personId, t.createdBy),
 )
 
+/** People who could not sign in and asked for help. One open request per person. */
+export const helpRequests = pgTable(
+  'help_requests',
+  {
+    id: id(),
+    personId: integer('person_id')
+      .notNull()
+      .references(() => people.id, { onDelete: 'cascade' }),
+    createdAt: createdAt(),
+    closedAt: instant('closed_at'),
+  },
+  (t) => [
+    uniqueIndex('help_requests_open_person_key')
+      .on(t.personId)
+      .where(sql`${t.closedAt} is null`),
+    ...indexes(t.personId),
+  ],
+)
+
 /** For limiting guesses. Addresses without an account count alike. */
 export const signInAttempts = pgTable(
   'sign_in_attempts',
   {
     id: id(),
-    /** What is being limited, such as sign_in or sign_up (004). */
+    /** What is being limited, such as sign_in or sign_up (src/server/auth/limits.ts). */
     kind: text('kind').notNull().default('sign_in'),
-    /** In lower case. */
+    /** In lower case; empty where only the address counts. */
     email: text('email').notNull(),
     address: text('address').notNull(),
     succeeded: boolean('succeeded').notNull(),

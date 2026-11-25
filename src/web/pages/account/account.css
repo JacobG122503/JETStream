@@ -1,0 +1,17 @@
+.photo-preview {
+  width: 8rem;
+  height: 8rem;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+}
+
+.account-form {
+  max-width: 32rem;
+}
+
+.device {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}

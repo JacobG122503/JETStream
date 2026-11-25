@@ -75,6 +75,8 @@
   --c-avatar-2: light-dark(#d8e6f7, #1e3f5c);
   --c-avatar-3: light-dark(#f7e4c1, #4d3a14);
   --c-avatar-4: light-dark(#eadff5, #43305a);
+  /* Behind the transparent parts of an uploaded picture; also read by account/shrinkPhoto.ts. */
+  --c-photo-ground: #ffffff;
   --c-avatar-text: light-dark(#11211a, #e7f0ea);
 
   /* Spacing */

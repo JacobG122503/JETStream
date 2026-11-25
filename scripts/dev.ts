@@ -5,10 +5,10 @@ import { createServer as createNetServer, type AddressInfo } from 'node:net'
 import { createRequire } from 'node:module'
 import { setTimeout as delay } from 'node:timers/promises'
 import { createServer, type ViteDevServer } from 'vite'
-import { loadConfig } from '../src/server/config'
+import { loadConfig, serverUrl } from '../src/server/config'
 import { StartupError } from '../src/server/errors'
 import { projectRoot } from '../src/server/paths'
-import { checkPortIsFree, serverUrl } from '../src/server/server'
+import { checkPortIsFree } from '../src/server/server'
 
 async function freePort(): Promise<number> {
   const server = createNetServer()
@@ -18,7 +18,7 @@ async function freePort(): Promise<number> {
   return port
 }
 
-function startApi(port: number, dataDir: string) {
+function startApi(port: number, dataDir: string, publicUrl: string) {
   const tsx = createRequire(import.meta.url).resolve('tsx/cli')
   return spawn(
     process.execPath,
@@ -31,7 +31,8 @@ function startApi(port: number, dataDir: string) {
       // the terminal's group it cannot read the keyboard.
       detached: process.platform !== 'win32',
       stdio: ['ignore', 'inherit', 'inherit'],
-      env: { ...process.env, HOST: '127.0.0.1', PORT: String(port) },
+      // The address people use is the one of Vite, not of the API behind it.
+      env: { ...process.env, HOST: '127.0.0.1', PORT: String(port), PUBLIC_URL: publicUrl },
     },
   )
 }
@@ -52,7 +53,7 @@ try {
   }
 
   const apiPort = await freePort()
-  const api = startApi(apiPort, config.database.kind === 'embedded' ? config.database.dataDir : '')
+  const api = startApi(apiPort, config.database.kind === 'embedded' ? config.database.dataDir : '', config.publicUrl)
   let vite: ViteDevServer | undefined = undefined
   let stopping = false
   const stop = async (exitCode: number) => {
@@ -83,7 +84,11 @@ try {
       port: config.port,
       strictPort: true,
       proxy: {
-        [`^${config.basePath.replaceAll('.', '\\.')}api(?=[/?]|$)`]: `http://127.0.0.1:${apiPort}`,
+        [`^${config.basePath.replaceAll('.', '\\.')}api(?=[/?]|$)`]: {
+          target: `http://127.0.0.1:${apiPort}`,
+          // The API compares the Origin with the Host the browser used, such as localhost.
+          changeOrigin: false,
+        },
       },
     },
   })

@@ -9,13 +9,6 @@ import {
 } from '../db/schema'
 import type { DemoDates, DemoRows } from './builder'
 
-export const demoAccounts = [
-  { key: 'admin', email: 'admin@jet.demo', label: 'Administrator' },
-  { key: 'lead', email: 'lead@jet.demo', label: 'Project lead' },
-  { key: 'employee', email: 'employee@jet.demo', label: 'Employee' },
-] as const
-export const demoPassword = 'jetdemo123'
-
 export interface RoleIds {
   administrator: number
   manager: number

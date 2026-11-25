@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
+import { request } from 'node:http'
 import { join } from 'node:path'
 import { expect, it, onTestFinished } from 'vitest'
 import { findFreePort, startServerProcess } from '../src/server/testing/serverProcess'
@@ -60,3 +61,41 @@ it.skipIf(process.platform === 'win32')(
     expect(existsSync(`${dataDir}.lock`)).toBe(false)
   },
 )
+
+it('npm run dev takes changes from the addresses it is opened at, and from no other', { timeout: 60_000 }, async () => {
+  const dev = startServerProcess(
+    ['--import', 'tsx', 'scripts/dev.ts', '--data-dir', 'memory://'],
+    { PORT: String(await findFreePort()) },
+    true,
+  )
+  onTestFinished(async () => {
+    await dev.stop()
+  })
+  const url = new URL(await dev.ready)
+  const post = async (route: string, origin: string) => {
+    const response = await fetch(`${url.href}api/${route}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: origin },
+      body: JSON.stringify({ email: 'a@client.example', password: 'wrong', account: 'admin' }),
+    })
+    return [response.status, ((await response.json()) as { error: { code: string } }).error.code]
+  }
+  expect(await post('session/sign-in', url.origin)).toEqual([401, 'invalid_credentials'])
+  expect(await localhostPost(url)).toBe(401)
+  expect(await post('session/sign-in', 'https://evil.example')).toEqual([403, 'csrf'])
+  expect(await post('session/demo', url.origin)).toEqual([404, 'not_found'])
+})
+
+/** Signs in as a page opened at http://localhost would. */
+function localhostPost({ hostname, port }: URL): Promise<number | undefined> {
+  return new Promise((resolve, reject) => {
+    const host = `localhost:${port}`
+    const headers = { Host: host, Origin: `http://${host}`, 'Content-Type': 'application/json' }
+    request({ hostname, port, path: '/api/session/sign-in', method: 'POST', headers }, (response) => {
+      response.resume()
+      resolve(response.statusCode)
+    })
+      .on('error', reject)
+      .end(JSON.stringify({ email: 'a@client.example', password: 'wrong' }))
+  })
+}

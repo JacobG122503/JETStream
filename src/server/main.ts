@@ -1,11 +1,11 @@
 import { loadConfig } from './config'
-import { StartupError } from './errors'
+import { describeError, StartupError } from './errors'
 import { type RunningServer, startServer, StoppedError } from './server'
 
 const shutdownLimitMs = 4500
 
 function fail(error: unknown): never {
-  console.error(error instanceof StartupError ? `JET Time: ${error.message}` : error)
+  console.error(error instanceof StartupError ? `JET Time: ${error.message}` : `JET Time stopped.\n${describeError(error)}`)
   process.exit(1)
 }
 
@@ -33,6 +33,9 @@ function stop() {
   })()
 }
 
+// Node would print the whole error, with whatever people had typed.
+process.on('uncaughtException', fail)
+process.on('unhandledRejection', fail)
 process.on('SIGINT', stop)
 process.on('SIGTERM', stop)
 

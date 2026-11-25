@@ -141,13 +141,167 @@ People at JET Engineering can get an account, sign in safely and look after it t
 L (upper end), after splitting off 026 (two-factor). Build order: configuration and headers, sessions and access levels, sign-in and demo, command, account, sign-up and links, People screens.
 
 ## Implementation notes
-_Software engineer fills this in._
+Done (2026-11-24, finished in a third session after two interruptions).
+
+**Files changed and why**
+- Configuration and headers: `src/server/config.ts` (`PUBLIC_URL`, `TRUST_PROXY`, `ALLOW_INSECURE_HTTP`, warnings), `headers.ts`, `context.ts`, `app.ts`, `server.ts`, `main.ts` (warnings, cleaning up, no raw errors printed), `errors.ts` (`describeError`: names, codes, places only).
+- Sessions and access: `src/server/auth/` (`access.ts` access levels, CSRF and origin; `sessions.ts`; `tokens.ts`; `limits.ts`; `clientAddress.ts`; `signIn.ts`, in two steps for 026; `cleanUp.ts`). `isAdministrator` in `sessions.ts` is the one place 005 replaces.
+- API: `src/server/api/router.ts`, `body.ts` (`bodyReader`, JSON only), `input.ts`, `routes/`.
+- People: `src/server/people/` (sign-up and approval, invites, resets, account, photo, assignments, `membership.ts` as the shared check for later tasks, first administrator), `src/server/email/` (sender interface, capture adapter, wording), `security/passwordPolicy.ts`, `commonPasswords.ts`.
+- Command: `src/server/adminCreate.ts`, `scripts/admin-create.mjs`, `package.json`. Demo: `demo/marker.ts`, `demo/accounts.ts` (split so that production loads no demo data).
+- Database: `drizzle/0003_sign_in.sql` (table `help_requests`; `invites.token_hash` may be null once a link is dead), `docs/data-model.md`.
+- Web: `src/web/api.ts`, `auth/` (provider, guards, return path, forms), `pages/auth/`, `pages/account/`, `pages/team/`, `shell/AccountMenu.tsx`, `routes.tsx`, `ui/CopyField`, `ui/Notice`, show-password field.
+- `scripts/dev.ts`: the API is told the address of Vite and receives the browser's own Host, so `localhost` and `127.0.0.1` both work.
+- No new dependencies.
+
+**Acceptance criteria**
+- AC1, AC4, AC5: `auth/access.ts`; a route without a level stops the server and the tests (`auth/access.test.ts` lists all routes). Judged from the database on each request (`sessions.test.ts`).
+- AC2, AC3, AC11: `auth/sessions.ts`, `cleanUp.ts` (at start and every 30 minutes) (`sessions.test.ts`, controlled clock).
+- AC6, AC17, AC19, AC21: `web/auth/`, `AccountMenu` (`auth.test.tsx`, `returnPath.test.ts`, `e2e/auth.spec.ts`).
+- AC7: `headers.ts`; e2e fails on any console message, at both base paths (`auth.spec.ts`, `smoke`, `theme`).
+- AC8, AC9: `config.ts`, `clientAddress.ts`, `people/links.ts` (`config.test.ts`, `main.test.ts`, `signIn.test.ts`, `joining.test.ts`).
+- AC10: `describeError`, `api/logging.test.ts`.
+- AC12, AC13: `security/` (at most 2 hashes at once) (`passwords.test.ts`, `passwordPolicy.test.ts`, `signIn.test.ts`).
+- AC14, AC15, AC16: `auth/limits.ts`, attempts counted before they are made, under a lock (`signIn.test.ts`, `joining.test.ts`, `account.test.ts`).
+- AC18, AC20: `auth/signIn.ts`, `routes/session.ts` (`signIn.test.ts`, `dev.test.ts`, e2e).
+- AC22-AC24: `people/requests.ts`, `RequestsPanel`. AC25-AC27: `people/invites.ts`, `InvitesPanel`, `InvitePage`. AC28, AC29: `people/resets.ts`, `HelpPanel`, `ResetLink`. AC30: `email/` (all in `joining.test.ts`, `team.test.tsx`, e2e).
+- AC31, AC32: `people/account.ts`, `image.ts` (own PNG and JPEG reader that rewrites the file), `pages/account/` (`account.test.ts`, `image.test.ts`, `account.test.tsx`, e2e).
+- AC33-AC35: `people/assignments.ts`, `membership.ts`, `pages/team/` (`assignments.test.ts`, `team.test.tsx`, e2e).
+- AC36-AC38: `adminCreate.ts`, `people/firstAdministrator.ts` (`firstAdministrator.test.ts`).
+- AC39, AC40: `e2e/accessibility.spec.ts` (axe in both modes at 375 and 1440, no sideways scroll at 320, 375, 1440), `e2e/fixtures.ts` (`account` option; `adminPage`, `leadPage`, `employeePage`).
+
+**Commands run in the last session (Node 18.20.8), all exit 0**
+- `npm run lint`; `npm run build`
+- `npm test`: 46 files, 1304 passed, 16 skipped (003's concurrency tests that need `TEST_DATABASE_URL`)
+- `npm run e2e`: 189 passed, 105 skipped (specs that run at one base path only)
+- By hand: `npm run dev` (changes from `localhost` and `127.0.0.1`, foreign origin 403, demo route 404); `node dist/server/adminCreate.js` in a pseudo-terminal (hidden input, differing passwords, create, refuse second, `--reset`); screenshots of sign-in, account menu, account, team and person at 375 and 1280.
+
+Fixed in the last session: changes refused in development when opened as `http://localhost` (Vite rewrote Host; test added in `scripts/dev.test.ts`); the sign-up switch lost keyboard focus while saving; three e2e specs that had wrong expectations (Back into an empty tab, a switch that moves only after the server agrees, a gallery spec needing to be signed in).
+
+**Rework after QA fail 1 (2026-11-24)**
+- An earlier version of these notes called the gap between checking a password and making the session "milliseconds". That was wrong: it was the whole verification, and anyone with the old password could use it at will.
+- Bug 1 (AC29, AC31, AC38): `checkSignIn` now gives a proof (person and version of the password checked). `beginSession` makes the session in one transaction that locks the person and refuses (the same 401 as a wrong password) if they are archived or gone or the password version differs; for a demo account, if it is not active. All that ends sessions locks the person first (own change, reset link, `--reset`; archiving is an update of that row), so it comes wholly before or after; as locks and version are in the database, this also covers the separate process.
+- `person_credentials.version` (migration `0004_password_version.sql`) counts up with each new password, and by default with any other write; renewing the hash of the same password keeps it, so the server's own rehash ends neither a sign-in nor a change. A rehash writes only over the very hash that was checked (already so).
+- Changing the password: refused with 401 if the session ended or the person is no longer active meanwhile, with 409 if the password version is no longer the one that was checked. Before, a session that had been ended could still finish its change.
+- Accepting an invite for an existing person locks that person and checks again (archived, or given a password, meanwhile: 410).
+- Finding 2: a PNG with anything after its compressed stream is refused; a palette in a picture that does not need one and transparency of a wrong size are dropped, since they could carry text too.
+- Findings 1, 3, 4 and 5 are left to the PM.
+- Tests: `auth/signInRaces.test.ts` (21) holds a hash computation open across a password change, a reset link, `--reset` (its function, in the same process), archiving and declining, for sign-in, rehash, password change and invite; with the check taken out 10 of them fail. `image.test.ts` extended.
+- Run: `npm run lint` 0, `npm run build` 0, `npm test` 0 (47 files, 1325 passed, 16 skipped), `npm run e2e` 0 (189 passed, 105 skipped). QA's `race-http.mjs` against the built server: 0 of 5 survive; `race.mts 12`: 0 of 12. A copy of `.data/demo` migrates, and signing in works.
+
+**Not tried**: a real PostgreSQL (advisory locks and row locks ran on PGlite only, which runs one transaction at a time, so true parallelism across connections is not shown), HTTPS cookies in a browser, a real reverse proxy, Windows, browsers other than Chromium. `npm run admin:create` uses the build only where development tools are not installed (as `db:migrate` does); the built file was run directly. `npm run demo` itself was not started; the same build and mode runs in e2e and by hand with an in-memory database.
+
+**Assumptions and limitations**
+- In development Vite serves the pages, without the Content-Security-Policy (it needs inline scripts); API answers have it.
+- Reloading an invite or reset page loses the token, which is only in memory: the page says to open the link again.
+- An invite is also void while its maker is not an active administrator and works again if they become one before it expires or is replaced.
+- JPEG is checked by its structure, not by decoding every pixel.
+
+**Follow-ups**
+- 026: keep the `SignInProof` (person and password version) between the steps and pass it to `beginSession`, which checks it again.
+- 008: archiving must lock the person (an update of the row does) and call `endSessions` in the same transaction; until then an archived person's sessions are removed at their next request, so one that is not used in between would work again after a restore.
+- 027: the cookie name `jettime_session` and message texts carry the old name.
 
 ## QA report
-_QA tester fills this in._
+Second pass, for the version after "Rework after QA fail 1". The first pass failed on AC29 and AC31 (Bug 1: a sign-in with the old password under way survived a password change or reset).
+
+**Overall: PASS**
+
+Environment: macOS, Node 18.20.8, Chromium (Playwright), 2026-11-24. No real PostgreSQL server, HTTPS or proxy.
+
+**Suites (run by QA):** `npm run lint` exit 0; `npm run build` exit 0; `npm test` exit 0: 47 files, 1325 passed, 16 skipped (need `TEST_DATABASE_URL`); `npm run e2e` exit 0: 189 passed, 105 skipped (one base path only). All throwaway API and browser scripts of the first pass run again: 179 API checks, 68 browser checks, ten logging cases, no difference but the fixes (axe `region` on the brand as before).
+
+**Rig for separate processes:** the folder lock keeps `admin:create` out while a server has an embedded database open (seen: exit 1 "in use by process"), so there the race cannot happen. With `DATABASE_URL` it can, so QA put PGlite behind a small server for the PostgreSQL protocol, outside the repository, and ran the built production server (`PUBLIC_URL=https://...`, `TRUST_PROXY=1`), `db:migrate` and the built command against it as real processes through `pg`. It runs one transaction at a time, so transactions interleaving inside PostgreSQL are still not shown; the locks were reviewed for that (person locked first everywhere that ends sessions; the version is read in a later statement; no lock order cycle found).
+
+#### Bug 1: fixed
+| Case | Result |
+|---|---|
+| First pass reproductions (`race-http.mjs`, `race.mts`) | 0 of 5, 0 of 20 survive (were 5 of 5, 12 of 12) |
+| `admin:create --reset` as a second process, three sign-in loops | 0 of 9 survive; each time sign-ins under way get 401, the new password works |
+| Own password change, production mode, three loops | 0 of 3 survive |
+| Same rig, copy of the source with the new check taken out | 3 of 3 survive, all three loops: the rig finds the bug |
+| Old hash format, 8 sign-ins arriving during the change, 14 runs | change 200, all 112 sign-ins 401, new password works, old one does not, new hash stays |
+| Old hash format, sign-ins first, 14 runs | all 200, then ended by the change; the rehash does not make the change fail |
+| Intruder's change in flight against a reset link, 14 runs | reset first: late change 401, victim's password valid (10); change first: link 410 (4) |
+| Archiving against 3 sign-ins, 14 runs; restored afterwards | no session left or alive |
+| Archiving against a password change, 14 runs | change 401, old password stays |
+| Invite for an existing person: two accepts, or archived meanwhile, 14 runs | 200 and 410; 410 and 410 without credential; never a second person |
+| Demo sign-in against archiving, 120 sign-ins | 200 or 403 `demo_unavailable`, none alive afterwards, no 5xx |
+| Three sign-ins at once with one cookie | all 200, no 5xx |
+
+The 21 new tests in `signInRaces.test.ts` were tried on a copy with parts taken out: check in `beginSession` (10 fail), hash condition of the rehash (3), version kept by the rehash (2), version check of the change (1), session check of the change (2). Not covered: the second look at an invite after locking the person, which the embedded database cannot show.
+
+**Migration 0004:** a database at 0003 (the demo of the first pass) has 1 pending, then 0; hashes unchanged, version 1, not null; a second run changes nothing. A copy of `.data/demo` at 0000 goes to 0004 and signing in works. `admin:create` on a pending database is refused with the message. `npm run demo` on it migrates, serves, stops.
+
+**PNG change:** all 12,738 real PNG files found on this machine within the limits (colour types 0, 2, 3, 4, 6, depths 1 to 16, interlaced or not; 96 Apple CgBI files are not standard PNG) are accepted. 86 made ones (every type and depth, interlaced, transparency, suggested palette, IDAT in single bytes, empty IDAT, level 0 and 9, small window, sizes at zlib buffer boundaries): all accepted but two that are over 1 MB; all 84 decode in Chromium to the same pixels before and after. Same result on Node 23.7. The bytes after the compressed stream are now refused with 400.
+
+| AC | Result | Evidence |
+|---|---|---|
+| AC1 | PASS | `access.test.ts` lists all routes; own sweep: pending 403 `pending_approval` on 5 routes, Member 403/404 on 12, signed out 401; HEAD, trailing slash, double slash, upper case, method override give no way around |
+| AC2 | PASS | Cookie `HttpOnly; SameSite=Lax; Path` = base path, `Secure` with https; new at sign-in and password change (old cookie 401); no raw token in `sessions`, `invites`, `password_resets`; browser storage and `document.cookie` empty |
+| AC3 | PASS | 12 h 1 min idle 401; hourly use, 24 h 1 min 401; keep: 30 days less 1 min 200, then 30 days 1 min 401, cookie 90 days; last use unchanged after 30 s, written after 66 s |
+| AC4 | PASS | Demoted administrator 403 on the next request, archived 401 and sessions removed |
+| AC5 | PASS | No token, empty, another session's: 403 `csrf`, password unchanged; six foreign or odd origins incl. `null`, other port and scheme: 403; `Host: evil.example` with the same Origin in production 403; demo and dev accept `localhost` and `127.0.0.1`, refuse `evil.example`; five other content types 415 |
+| AC6 | PASS | Browser: other person signs in in tab 2, saving in tab 1 is refused, administrator not renamed, tab 1 shows the new person and the message. Same person after a password change in another tab: the save goes through |
+| AC7 | PASS | All three headers on pages, assets, 302, 401, 404, `/%ff`; policy as required; no console message in browser runs in light and dark (not in dev pages, see below) |
+| AC8 | PASS | All cases exit 1 naming the variable; `DATABASE_URL` first; `http://127.0.0.1.evil.test` not taken for loopback; warning covered by `config.test.ts` |
+| AC9 | PASS | Links begin with `PUBLIC_URL` under hostile `Host` and `X-Forwarded-Host`; `TRUST_PROXY=0` ignores `X-Forwarded-For`; `1` counts only the last address |
+| AC10 | PASS | Ten tables renamed away in turn, nine requests each: 500s logged with names and places, 0 leaks of name, email, password, token or cookie |
+| AC11 | PASS | `cleanUp` leaves 0 sessions, attempts and resets; runs at start and each 30 minutes (`cleanUp.ts`); e2e and demo stop in time |
+| AC12 | PASS | 20 sign-ins under way on the built server: slowest health answer 17 ms, all 20 finished in 1.9 s; rehash covered by `signIn.test.ts` |
+| AC13 | PASS | 18 passwords incl. full-width `jetdemo123`, upper case, 10 spaces, 10 emoji, 129 refused, 10, 128 and `correct horse battery` accepted; command refuses `jetdemo123` |
+| AC14 | PASS | 5, 50 and 30 limits exact; right password 429 with `Retry-After`; 15 minutes later in; success clears the first only; sessions go on; current password 5 then 429; page: "Try again in 15 minutes, at 7:59 PM" |
+| AC15 | PASS | 20 at once: 5 times 401, 15 times 429, in the app and over HTTP; still 429 after a restart; email case and spaces ignored; unknown email alike; IPv6 by /64 |
+| AC16 | PASS | 20, 10 and 20 exact; third forgot per email is the last to create anything |
+| AC17 | PASS | Five deep links came back with query; 12 bad addresses stayed in the app (the spec's at `/`, which leads to `/time`); signed in, sign-in leads to `/` |
+| AC18 | PASS | Five kinds of failure byte-identical; hash count by `signIn.test.ts`; waiting page has Check again and Sign out only (besides the appearance menu) |
+| AC19 | PASS | No console problems on sign-in; cookie removed: "Your session has ended", same person back to the page |
+| AC20 | PASS | Three buttons work, also after a password change; dev and production 404, also on a seeded production database; 403 without the marker; both warnings seen |
+| AC21 | PASS | Menu, old cookie 401, Back shows sign-in without data, other tab goes to sign-in on focus |
+| AC22 | PASS | Scenarios 2 and 3: same answer for taken and invited addresses, credential unchanged, notice without the stranger's text |
+| AC23 | PASS | Switch off 403 and `signUpOpen` false; no administrator: 403, page says so, no link |
+| AC24 | PASS | Browser and API; approve against decline at once: 200 and 409 `already_handled`; address free after decline; approve and decline of an active person 409 |
+| AC25 | PASS | Four specific refusals; new link voids the old; person without a password gets one, no second person |
+| AC26 | PASS | Two at once: 200 and 410; project archived since left out; sent `roleId`, `email`, `status` ignored; signed-in person asked to sign out |
+| AC27 | PASS | Address bar clean, token in no URL, referrer, storage or history state; three checks do not use it up; used, unknown, null, revoked, expired (7 d 1 min), void, replaced: identical 410 |
+| AC28 | PASS | Same answer, help request once, truthful text; stand-in sends the link |
+| AC29 | PASS | Bug 1 gone: 0 of 10 survive a reset under a sign-in loop; a late password change by an intruder is refused (401) when the reset came first, 14 runs. 1 hour, one use at once, old void, advice shown |
+| AC30 | PASS | Outbox rows hold "[link hidden]" only; stand-in links work |
+| AC31 | PASS | Bug 1 gone: 0 of 10 in the app, 0 of 5 over HTTP in demo mode, 0 of 3 in production mode. Two changes at once: one 200, one 401, one password valid. Stale 409 keeps the text and offers reload, renewed cookie, device list, confirmation, others' sessions 404, email and role in the body ignored |
+| AC32 | PASS | 10 bad files, 2 MB, gzip bomb, IDAT bomb refused, old photo stays; real JPEG with EXIF, XMP, comment and trailer stored without; 401 signed out; a file that is not a photo 404; 3000x2000 JPEG, WebP, PNG saved as 512x512; PNG rework below |
+| AC33 | PASS | Client alone assigns no project, project assigns client, two saves at once 200 and 409, archived refused and not offered, unknown id 400 |
+| AC34 | PASS | Rows keep manager flag through removal and back; rate 15000 by `assignments.test.ts`; confirmation names the project |
+| AC35 | PASS | Tabs, search, person page; Member sees "You do not have access to this page" on `/team` and `/team/1`; log entries found, without secrets |
+| AC36 | PASS | Scenario 13, `--password=...` not repeated, hidden input in a pseudo-terminal, missing migrations, folder in use, no `hunter2` |
+| AC37 | PASS | Refuses with an administrator present; two processes at once: one created, one refused, on a data folder and over `DATABASE_URL` with `NODE_ENV=production`; start creates nobody; hint shown |
+| AC38 | PASS | Works for the administrator, refuses the Manager, an unknown email and a weak password; racing as a second process: 0 of 9 runs leave a session (see below) |
+| AC39 | PASS | axe at 320 and 1440 in both modes on 11 pages with all rules: only the best-practice `region` on the brand, already there in 002; no sideways scroll, also with a 95-character name; triple Enter and double click send once; keyboard order right |
+| AC40 | PASS | Suites above; `docs/data-model.md` has `help_requests` |
+
+#### Other findings (not blocking)
+1. Low, unchanged, for the PM: a link that was void because its maker lost the role works again when they get it back within its life.
+2. Low, unchanged: the invite list shows when an invite was revoked, but not by whom (the activity log does).
+3. Low, unchanged: successful sign-ins, and so sessions per person, are not limited.
+4. Low, new: two password changes at once from one browser: the second is told "Sign in first" though the person is signed in. Nothing is lost.
+5. For 008, as noted by the engineer: archiving must end the sessions itself; now they end at the next request only.
+6. Info: in development Vite serves pages without the policy; demo links begin with `http://0.0.0.0` with that `HOST` unless `PUBLIC_URL` is set.
+7. Not tried, as for the engineer: interleaved transactions on a real PostgreSQL, HTTPS, a real proxy, other browsers.
 
 ## PM acceptance
-_PM fills this in after QA passes._
+**ACCEPTED** (2026-11-24)
+
+The Goal is delivered and every criterion has passing evidence from QA. Bug 1 is closed where it matters: what a sign-in proved is checked again in the transaction that makes the session, and QA showed that its rig finds the bug when the check is taken out. I read the code of sign-in, sessions, access levels, invites, resets and the invite screens against the spec; I could not run the app and rely on QA for behaviour.
+
+QA's findings:
+1. Void link works again after its maker is re-promoted: accepted here. The Links rule and scenario 4 are met at all times while the maker is not an active administrator, 004 has no way to demote, archive or restore anyone, and the list shows such an invite with Revoke. It must not stay so once there is one (demoted over misuse, old link alive again later). So 005 AC14 now makes void through lost access final, with a scenario, and 008 AC18 the same for archive and restore.
+2. Who revoked an invite: accepted. AC25 is met by who invited and when, plus the time it was revoked; the activity log has the rest. Added to 008 AC9.
+3. Successful sign-ins and sessions not limited: accepted, since each needs the right password, hashing is bounded and sessions expire. Named in 023's note.
+4. "Sign in first" for the second of two simultaneous password changes: accepted. One wins, nothing is lost, and the form itself sends once.
+5. Archiving ends sessions at the next request: meets AC4. 008 AC18 already ends them in its transaction; how, and a test for a session not used in between, were added there.
+6. No policy on Vite's development pages, `0.0.0.0` links: accepted; AC7 is met by what the server serves. Handed to 023.
+7. Not tried (real PostgreSQL, HTTPS, proxy, other browsers): expected by this spec, reported honestly. Handed to 023.
+
+Engineer's follow-up for 026 was added to that task; the cookie name and message texts are in 027.
 
 ## History
 - 2026-11-23 created
@@ -155,3 +309,14 @@ _PM fills this in after QA passes._
 - 2026-11-23 PM: groomed (two-factor split off to 026)
 - 2026-11-23 ORCH: todo -> groomed
 - 2026-11-24 ORCH: groomed -> in-progress
+- 2026-11-24 ORCH: implementation interrupted by usage limit, resumed
+- 2026-11-24 ORCH: resumed in a new session; product rename to JETStream queued as 027, not part of this task
+- 2026-11-24 SWE: implemented
+- 2026-11-24 ORCH: in-progress -> qa
+- 2026-11-24 QA: fail (AC29, AC31)
+- 2026-11-24 ORCH: qa -> in-progress (QA fail 1: AC29, AC31)
+- 2026-11-24 SWE: reworked (QA fail 1)
+- 2026-11-24 ORCH: in-progress -> qa
+- 2026-11-24 QA: pass (second pass, after rework)
+- 2026-11-24 ORCH: qa -> review
+- 2026-11-24 PM: accepted

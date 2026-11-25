@@ -1,4 +1,4 @@
-import { type KeyboardEvent, useEffect, useId, useRef, useState } from 'react'
+import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react'
 import { Button, type ButtonSize, type ButtonVariant, IconButton } from './Button'
 import { classNames } from './classNames'
 import { Icon, type IconName } from './Icon'
@@ -28,10 +28,14 @@ export interface MenuProps {
   size?: ButtonSize
   align?: 'start' | 'end'
   className?: string
+  /** Shown on the button in place of the label, which then must be part of it. */
+  content?: ReactNode
+  /** Shown above the items. */
+  header?: ReactNode
 }
 
 /** A button that opens a list of actions or choices. */
-export function Menu({ label, items, icon, iconOnly = false, variant, size, align = 'start', className }: MenuProps) {
+export function Menu({ label, items, icon, iconOnly = false, variant, size, align = 'start', className, content, header }: MenuProps) {
   const menuId = useId()
   const anchor = useRef<HTMLDivElement>(null)
   const button = useRef<HTMLButtonElement>(null)
@@ -129,39 +133,33 @@ export function Menu({ label, items, icon, iconOnly = false, variant, size, alig
         <IconButton {...trigger} label={label} icon={icon ?? 'more'} variant={variant ?? 'quiet'} />
       ) : (
         <Button {...trigger} icon={icon} variant={variant}>
-          {label}
+          {content ?? label}
           <Icon name="chevronDown" className="menu-chevron" />
         </Button>
       )}
       {open && (
-        <div
-          {...popupAttributes}
-          ref={popup}
-          id={menuId}
-          role="menu"
-          aria-label={label}
-          className="popup menu"
-          style={style}
-          onKeyDown={onMenuKeyDown}
-        >
-          {items.map((item, index) => (
-            <div
-              key={item.id}
-              role={item.checked === undefined ? 'menuitem' : 'menuitemradio'}
-              aria-checked={item.checked}
-              aria-disabled={item.disabled || undefined}
-              tabIndex={index === active ? 0 : -1}
-              className={classNames('menu-item', item.destructive && 'is-destructive')}
-              onClick={() => select(item)}
-              onPointerMove={() => {
-                if (index !== active) setActive(index)
-              }}
-            >
-              {item.icon && <Icon name={item.icon} />}
-              <span className="menu-item-label">{item.label}</span>
-              {item.checked !== undefined && <Icon name="check" className={classNames(!item.checked && 'is-hidden')} />}
-            </div>
-          ))}
+        <div {...popupAttributes} ref={popup} className="popup menu" style={style} onKeyDown={onMenuKeyDown}>
+          {header}
+          <div id={menuId} role="menu" aria-label={label}>
+            {items.map((item, index) => (
+              <div
+                key={item.id}
+                role={item.checked === undefined ? 'menuitem' : 'menuitemradio'}
+                aria-checked={item.checked}
+                aria-disabled={item.disabled || undefined}
+                tabIndex={index === active ? 0 : -1}
+                className={classNames('menu-item', item.destructive && 'is-destructive')}
+                onClick={() => select(item)}
+                onPointerMove={() => {
+                  if (index !== active) setActive(index)
+                }}
+              >
+                {item.icon && <Icon name={item.icon} />}
+                <span className="menu-item-label">{item.label}</span>
+                {item.checked !== undefined && <Icon name="check" className={classNames(!item.checked && 'is-hidden')} />}
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

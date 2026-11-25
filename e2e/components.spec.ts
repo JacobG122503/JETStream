@@ -3,6 +3,7 @@ import { expect, test } from './fixtures'
 import { desktop, dialog, expectNoSidewaysScroll, expectSameDocument, mainNav, markDocument, open, pageTitle, phone } from './pages'
 
 // What the shared components do in a real browser, in the gallery. The base path does not matter.
+test.use({ account: 'admin' })
 test.skip(({ basePath }) => basePath !== '/', 'once is enough')
 
 const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true })

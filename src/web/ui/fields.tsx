@@ -6,6 +6,7 @@ import {
   type TextareaHTMLAttributes,
   useEffect,
   useRef,
+  useState,
 } from 'react'
 import { IconButton } from './Button'
 import { classNames } from './classNames'
@@ -42,6 +43,46 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function T
     </FieldFrame>
   )
 })
+
+export type PasswordFieldProps = Omit<TextFieldProps, 'type'>
+
+/** A password that can be looked at. */
+export function PasswordField({
+  label, hideLabel, hint, error, required, disabled, id, className, onChange, ...rest
+}: PasswordFieldProps) {
+  const ids = useFieldIds({ id, hint, error })
+  const [shown, setShown] = useState(false)
+  return (
+    <FieldFrame {...{ ids, label, hideLabel, hint, error, required, className }}>
+      <div className="control-wrap">
+        <input
+          spellCheck={false}
+          autoCapitalize="none"
+          {...rest}
+          id={ids.controlId}
+          type={shown ? 'text' : 'password'}
+          className="control control-has-1-button"
+          required={required}
+          disabled={disabled}
+          aria-invalid={ids.invalid}
+          aria-describedby={ids.describedBy}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        <div className="control-buttons">
+          <IconButton
+            icon={shown ? 'eyeOff' : 'eye'}
+            label={`Show ${label.toLowerCase()}`}
+            aria-pressed={shown}
+            aria-controls={ids.controlId}
+            className="control-button"
+            disabled={disabled}
+            onClick={() => setShown(!shown)}
+          />
+        </div>
+      </div>
+    </FieldFrame>
+  )
+}
 
 export interface TextAreaProps extends FieldProps, Native<TextareaHTMLAttributes<HTMLTextAreaElement>> {
   value: string

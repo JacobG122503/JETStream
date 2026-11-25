@@ -2,6 +2,8 @@ import type { Page } from '@playwright/test'
 import { expect, test } from './fixtures'
 import { open, pageTitle } from './pages'
 
+test.use({ account: 'admin' })
+
 // Everything here runs at both base paths.
 
 const background = (page: Page) => page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor)

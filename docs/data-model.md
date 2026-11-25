@@ -59,15 +59,16 @@ Use `src/server/db` for all access. It gives the same interface for the embedded
 | `person_rates` | Dated billable and cost rates of a person | 008 |
 | `person_managers` | Who manages whom | 005 |
 | `person_clients` | Client companies a person is assigned to | 004 |
-| `person_credentials` | Salted password hash of a person | 004 |
+| `person_credentials` | Salted password hash of a person, with a version that each new password (not a renewed hash) counts up | 004 |
 | `person_totp` | Two-factor secret, as ciphertext, and the last accepted step | 004, 026 |
 | `person_recovery_codes` | Hashes of one-time recovery codes | 004, 026 |
 | `sessions` | Signed-in browsers, by hash of their token | 004 |
-| `invites` | Invitations by link, by hash of their token | 004 |
+| `invites` | Invitations by link, by hash of their token, which is erased once the link can no longer work | 004 |
 | `invite_clients` | Client companies an invited person will be assigned to | 004 |
 | `invite_projects` | Projects an invited person will be assigned to | 004 |
-| `password_resets` | Password-reset links, by hash of their token | 004 |
-| `sign_in_attempts` | Attempts, for limiting guesses | 004 |
+| `password_resets` | Password-reset links, by hash of their token; removed when used or expired | 004 |
+| `help_requests` | People who forgot their password and wait for a link from an administrator | 004 |
+| `sign_in_attempts` | Attempts at sign-in, sign-up, links and the like, for limiting guesses; kept for an hour | 004 |
 | `api_tokens` | Personal API tokens, by hash | 025 |
 | `sso_identities` | Accounts at the sign-on provider and the people they belong to | 025 |
 
@@ -179,7 +180,7 @@ Where each item of the 003 specification is stored.
 | Task | What | Tables |
 |---|---|---|
 | 004 | People and credentials | `people`, `files`, `person_credentials`, `person_totp`, `person_recovery_codes` |
-| 004 | Sessions, links, attempts | `sessions`, `invites`, `invite_clients`, `invite_projects`, `password_resets`, `sign_in_attempts` |
+| 004 | Sessions, links, attempts | `sessions`, `invites`, `invite_clients`, `invite_projects`, `password_resets`, `help_requests`, `sign_in_attempts` |
 | 004 | Person-to-client and project assignment | `person_clients`, `project_members` |
 | 005 | Roles, one per person, managers | `roles`, `people.role_id`, `person_managers` |
 | 006 | Clients and contacts | `clients`, `contacts` |

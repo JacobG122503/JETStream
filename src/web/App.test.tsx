@@ -6,31 +6,37 @@ import { App } from './App'
 import { routerFuture, routes } from './routes'
 import { ServerStatus } from './ServerStatus'
 import { navItems } from './shell/navigation'
+import { person, sessionInfo } from './test/session'
 
-function renderAt(path: string) {
-  const router = createMemoryRouter(routes, { initialEntries: [path], future: routerFuture })
+/** Signed in as an employee. */
+async function renderAt(path: string, basename?: string) {
+  const router = createMemoryRouter(routes, { basename, initialEntries: [path], future: routerFuture })
   const { unmount } = render(<App router={router} />)
+  await screen.findByRole('heading', { level: 1 })
   return { router, unmount }
 }
 
 const fetchMock = vi.fn<typeof fetch>()
 beforeEach(() => {
-  fetchMock.mockReset().mockImplementation(() => Promise.resolve(new Response('{}')))
+  fetchMock.mockReset().mockImplementation((url) =>
+    Promise.resolve(new Response(url === '/api/session' ? JSON.stringify(sessionInfo({ person })) : '{}')),
+  )
   vi.stubGlobal('fetch', fetchMock)
   return () => vi.unstubAllGlobals()
 })
 
 describe('App', () => {
   it('leads from the root to Time without a history entry of its own', async () => {
-    const { router } = renderAt('/')
+    const { router } = await renderAt('/')
     expect(await screen.findByRole('heading', { level: 1, name: 'Time' })).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/time')
     expect(router.state.historyAction).toBe('REPLACE')
     expect(document.body).toHaveFocus()
   })
 
-  it.each(navItems.map((item) => [item.path, item.label]))('%s is the page "%s", and says that it is not available', (path, label) => {
-    renderAt(path)
+  const notBuilt = navItems.filter(({ id }) => id !== 'team')
+  it.each(notBuilt.map((item) => [item.path, item.label]))('%s is the page "%s", and says that it is not available', async (path, label) => {
+    await renderAt(path)
     expect(screen.getAllByRole('heading', { level: 1 }).map((heading) => heading.textContent)).toEqual([label])
     expect(document.title).toBe(`${label} | JET Time`)
     const main = within(screen.getByRole('main'))
@@ -39,40 +45,35 @@ describe('App', () => {
     expect(main.queryAllByRole('link')).toHaveLength(0)
   })
 
-  it.each(['/no-such-page', '/time/nope', '/no/such/page'])('shows "Page not found" inside the shell at %s', (path) => {
-    renderAt(path)
+  it.each(['/no-such-page', '/time/nope', '/no/such/page'])('shows "Page not found" inside the shell at %s', async (path) => {
+    await renderAt(path)
     expect(screen.getByRole('heading', { level: 1, name: 'Page not found' })).toBeInTheDocument()
     expect(document.title).toBe('Page not found | JET Time')
     expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument()
   })
 
   it('goes to Time from "Page not found"', async () => {
-    const { router } = renderAt('/no-such-page')
+    const { router } = await renderAt('/no-such-page')
     await userEvent.click(screen.getByRole('link', { name: 'Go to Time' }))
     expect(await screen.findByRole('heading', { level: 1, name: 'Time' })).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/time')
   })
 
-  it('keeps the base path in links', () => {
-    const router = createMemoryRouter(routes, {
-      basename: '/jettime/',
-      initialEntries: ['/jettime/no/such/page'],
-      future: routerFuture,
-    })
-    render(<App router={router} />)
+  it('keeps the base path in links', async () => {
+    await renderAt('/jettime/no/such/page', '/jettime/')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Page not found')
     expect(screen.getByRole('link', { name: 'Go to Time' })).toHaveAttribute('href', '/jettime/time')
   })
 
-  it('has a layout without navigation', () => {
-    renderAt('/design/plain')
+  it('has a layout without navigation', async () => {
+    await renderAt('/design/plain')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Layout without navigation')
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^Appearance/ })).toBeInTheDocument()
   })
 
   it('has a gallery that is not in the navigation and calls its data fictional', async () => {
-    renderAt('/design')
+    await renderAt('/design')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Design system')
     expect(screen.getByText(/the people, companies and figures are fictional/)).toBeInTheDocument()
     expect(within(screen.getByRole('navigation', { name: 'Main' })).queryByRole('link', { name: /design/i })).not.toBeInTheDocument()

@@ -45,6 +45,7 @@ async function listenOn(server: Server) {
 }
 
 const unreachable = 'postgres://u:hunter2@127.0.0.1:1/x'
+const publicUrl = 'https://time.example.com/'
 
 describe('server process', { timeout: 30_000 }, () => {
   it.each([
@@ -53,14 +54,18 @@ describe('server process', { timeout: 30_000 }, () => {
     ['PORT=abc', ['--demo'], { PORT: 'abc' }, 'PORT'],
     ['PORT=70000', ['--demo'], { PORT: '70000' }, 'PORT'],
     ['BASE_PATH=jet', ['--demo'], { BASE_PATH: 'jet' }, 'BASE_PATH'],
-    ['an unreadable DATABASE_URL', [], { DATABASE_URL: 'postgres://u:hunter2/@:x:/y' }, 'DATABASE_URL'],
+    ['an unreadable DATABASE_URL', [], { DATABASE_URL: 'postgres://u:hunter2/@:x:/y', PUBLIC_URL: publicUrl }, 'DATABASE_URL'],
+    ['production without PUBLIC_URL', [], { DATABASE_URL: unreachable }, 'PUBLIC_URL'],
+    ['a PUBLIC_URL under another path', [], { DATABASE_URL: unreachable, PUBLIC_URL: `${publicUrl}x` }, 'PUBLIC_URL'],
+    ['a PUBLIC_URL without https', [], { DATABASE_URL: unreachable, PUBLIC_URL: 'http://time.example.com' }, 'PUBLIC_URL'],
+    ['TRUST_PROXY=6', ['--demo'], { TRUST_PROXY: '6' }, 'TRUST_PROXY'],
   ])('refuses to start: %s', async (_name, args, settings, message) => {
     await expectFailure(args, settings, message)
   })
 
   it('refuses to start when the database cannot be reached', async () => {
     const port = String(await findFreePort())
-    const output = await expectFailure([], { DATABASE_URL: unreachable, PORT: port }, 'Cannot connect', 15_000)
+    const output = await expectFailure([], { DATABASE_URL: unreachable, PUBLIC_URL: publicUrl, PORT: port }, 'Cannot connect', 15_000)
     expect(output).toContain('ECONNREFUSED')
   })
 
@@ -71,6 +76,7 @@ describe('server process', { timeout: 30_000 }, () => {
     try {
       const settings = {
         DATABASE_URL: `postgres://u:hunter2@127.0.0.1:${databasePort}/x`,
+        PUBLIC_URL: publicUrl,
         PORT: String(await findFreePort()),
       }
       await expectFailure([], settings, 'Cannot connect', 15_000)

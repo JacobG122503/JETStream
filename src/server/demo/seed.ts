@@ -10,20 +10,13 @@ import { appMeta, clients, companySettings, people, personCredentials, roles } f
 import { errorCode, StartupError } from '../errors'
 import { migrationsDir } from '../paths'
 import { hashPassword } from '../security/passwords'
+import { demoAccounts, demoPassword } from './accounts'
 import { Choices, demoDates, DemoRows } from './builder'
-import { addCompany, demoAccounts, demoPassword, type RoleIds } from './company'
+import { addCompany, type RoleIds } from './company'
 import { addExtras } from './extras'
 import { addMoney } from './money'
+import { demoSeedDate, markerKey } from './marker'
 import { addWork } from './work'
-
-/** Key of the demo marker in app_meta. Its value is the date the data was made for. */
-const markerKey = 'demo_seed'
-
-/** The date the demo data was made for, or null when the database does not hold demo data. */
-export async function demoSeedDate(db: Db): Promise<IsoDate | null> {
-  const rows = await db.select().from(appMeta)
-  return rows.find(({ key }) => key === markerKey)?.value ?? null
-}
 
 async function holdsAny(db: Db, table: typeof people | typeof clients): Promise<boolean> {
   return (await db.select({ id: table.id }).from(table).limit(1)).length > 0

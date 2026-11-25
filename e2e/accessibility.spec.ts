@@ -3,7 +3,10 @@ import { createRequire } from 'node:module'
 import type { Page } from '@playwright/test'
 import type axe from 'axe-core'
 import { expect, test } from './fixtures'
-import { allPages, desktop, dialog, open, phone } from './pages'
+import { allPages, desktop, dialog, expectNoSidewaysScroll, open, pageTitle, phone, signedOutPages } from './pages'
+import { accountButton, api, goodPassword, inviteLink, newEmail, signIn } from './people'
+
+test.use({ account: 'admin' })
 
 test.skip(({ basePath }) => basePath !== '/', 'once is enough')
 
@@ -135,3 +138,97 @@ test('everything in the gallery can be reached with Tab and shows focus', async 
   expect(withoutIndicator).toEqual([])
   expect(seen.size).toBeGreaterThanOrEqual(expected)
 })
+
+/** Every screen of accounts and people, one after another. The page is signed in as administrator. */
+async function* accountScreens(page: Page, appUrl: string) {
+  await open(page, 'team', 'Team')
+  const { link } = await inviteLink(page)
+  await open(page, 'team', 'Team')
+  await expect(page.getByRole('link', { name: 'Casey Lindgren' })).toBeVisible()
+  yield 'people'
+  for (const tab of ['requests', 'invites', 'help']) {
+    await open(page, `team?tab=${tab}`, 'Team')
+    yield tab
+  }
+  await open(page, 'team?tab=requests', 'Team')
+  await page.getByRole('button', { name: /^Approve/ }).first().click()
+  await expect(dialog(page).getByLabel(/^Role/)).toBeVisible()
+  yield 'approve'
+  await open(page, 'team?tab=invites', 'Team')
+  await page.getByRole('button', { name: 'Invite someone' }).click()
+  await expect(dialog(page).getByLabel(/^Role/)).toBeVisible()
+  await dialog(page).getByRole('button', { name: 'Make invite link' }).click()
+  await expect(dialog(page).getByRole('group', { name: /problems$/ })).toBeFocused()
+  yield 'invite with errors'
+  await open(page, 'team?tab=invites', 'Team')
+  await page.getByRole('button', { name: /^New link for/ }).first().click()
+  await dialog(page).getByRole('button', { name: 'Make a new link' }).click()
+  await expect(dialog(page, 'Invite link')).toBeVisible()
+  yield 'link'
+  await open(page, 'team', 'Team')
+  await page.getByRole('link', { name: 'Casey Lindgren' }).click()
+  await expect(pageTitle(page)).toHaveText('Casey Lindgren')
+  yield 'person'
+  await open(page, 'account', 'Account')
+  await accountButton(page).click()
+  yield 'account menu'
+  await page.getByRole('menuitem', { name: 'Sign out' }).click()
+  await expect(pageTitle(page)).toHaveText('Sign in')
+  yield 'sign in after signing out'
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+  await expect(page.getByRole('group', { name: /problems$/ })).toBeFocused()
+  yield 'sign in with errors'
+  for (const [path, heading] of signedOutPages) {
+    await open(page, path, heading)
+    yield path
+  }
+  await page.goto(`${appUrl}sign-in`)
+  // Another link: the first was replaced above.
+  await page.getByRole('button', { name: /^Administrator/ }).click()
+  await expect(pageTitle(page)).toHaveText('Time')
+  const pending = newEmail()
+  const fresh = await inviteLink(page)
+  expect(link).not.toBe(fresh.link)
+  await page.goto(fresh.link)
+  await page.getByRole('button', { name: 'Sign out and go on' }).click()
+  await expect(page.getByRole('textbox', { name: /^Password/ })).toBeVisible()
+  yield 'accept an invite'
+  await api(page, 'POST', 'sign-up', { name: 'Pat Fictional', email: pending, password: goodPassword, timeZone: 'UTC' })
+  await signIn(page, pending)
+  await expect(pageTitle(page)).toHaveText('Waiting for approval')
+  yield 'waiting'
+}
+
+for (const colorScheme of ['light', 'dark'] as const) {
+  for (const viewport of [phone, desktop]) {
+    test.describe(`accounts and people, ${colorScheme}, ${viewport.width}px`, () => {
+      test.use({ colorScheme, viewport, contextOptions: { reducedMotion: 'reduce' } })
+      test.slow()
+      test('have no violations', async ({ page, appUrl, pageProblems }) => {
+        for await (const screen of accountScreens(page, appUrl)) await scan(page, screen)
+        expect(pageProblems).toEqual([])
+      })
+    })
+  }
+}
+
+for (const width of [320, 375, 1440]) {
+  test.describe(`accounts and people at ${width}px`, () => {
+    test.use({ viewport: { width, height: 800 } })
+    test.slow()
+    test('do not scroll sideways, and have large enough touch targets', async ({ page, appUrl }) => {
+      for await (const screen of accountScreens(page, appUrl)) {
+        await expectNoSidewaysScroll(page, screen)
+        if (width >= 1024) continue
+        const small = await page.evaluate(() =>
+          [...document.querySelectorAll<HTMLElement>('button, .btn, input, select')]
+            .filter((element) => element.checkVisibility() && !element.closest('.sr-only') && !element.classList.contains('sr-only'))
+            .map((element) => (element.matches('[type="checkbox"]') ? (element.closest('label') ?? element) : element))
+            .filter((element) => element.getBoundingClientRect().height < 43.99)
+            .map((element) => `${element.tagName} ${element.textContent} ${element.getBoundingClientRect().height}`),
+        )
+        expect(small, screen).toEqual([])
+      }
+    })
+  })
+}

@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { expect } from './fixtures'
+import { expect, settled } from './fixtures'
 
 /** Path (relative to the base path) and heading of every section, in the order of the navigation. */
 export const sections = [
@@ -16,8 +16,18 @@ export const sections = [
   ['settings', 'Settings'],
 ] as const
 
+/** Before signing in. */
+export const signedOutPages = [
+  ['sign-in', 'Sign in'],
+  ['sign-up', 'Ask for an account'],
+  ['forgot-password', 'Forgot password'],
+  ['invite', 'This link no longer works'],
+  ['reset-password', 'This link no longer works'],
+] as const
+
 export const allPages = [
   ...sections,
+  ['account', 'Account'],
   ['nope', 'Page not found'],
   ['design', 'Design system'],
   ['design/plain', 'Layout without navigation'],
@@ -34,6 +44,7 @@ export async function open(page: Page, path: string, heading?: string) {
   else await expect(title).toBeVisible()
   if (/^design\/?(?:[?#]|$)/.test(path)) await expect(page.getByText('Server connected')).toBeVisible()
   await page.evaluate(() => document.fonts.ready)
+  await settled(page)
 }
 
 /** Leaves a mark that is gone after the document is loaded again. */

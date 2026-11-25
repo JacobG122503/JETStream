@@ -1,5 +1,7 @@
-import { expect, test } from './fixtures'
+import { expect, settled, test } from './fixtures'
 import { allPages, desktop, dialog, expectNoSidewaysScroll, expectSameDocument, mainNav, markDocument, open, pageTitle, phone, sections } from './pages'
+
+test.use({ account: 'admin' })
 
 // Everything here runs at both base paths.
 
@@ -170,6 +172,8 @@ test('every page can be opened and reloaded directly, styled, with every file fo
   for (const [path, heading] of allPages) {
     await open(page, path, heading)
     await page.reload()
+    await expect(pageTitle(page)).toHaveText(heading)
+    await settled(page)
     await open(page, path, heading)
     await expect(page).toHaveTitle(`${heading} | JET Time`)
     await expect(page.locator('h1')).toHaveCount(1)

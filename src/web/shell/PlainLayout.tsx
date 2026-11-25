@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { BrandMark } from './BrandMark'
 import { PageBoundary } from './PageBoundary'
 import { mainId, SkipLink } from './SkipLink'
@@ -5,7 +6,7 @@ import { ThemeMenu } from './ThemeMenu'
 import './shell.css'
 
 /** For pages without navigation: signing in, and what clients see. */
-export function PlainLayout() {
+export function PlainLayout({ children }: { children?: ReactNode }) {
   return (
     <div className="plain">
       <SkipLink />
@@ -20,7 +21,7 @@ export function PlainLayout() {
         <ThemeMenu />
       </header>
       <main id={mainId} tabIndex={-1} className="plain-main">
-        <PageBoundary />
+        {children ?? <PageBoundary />}
       </main>
     </div>
   )

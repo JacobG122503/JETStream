@@ -30,7 +30,10 @@ export interface ServerProcess {
  */
 export function startServerProcess(args: string[], settings: Record<string, string> = {}, ownGroup = false): ServerProcess {
   const env: NodeJS.ProcessEnv = { ...process.env }
-  const ours = ['DATABASE_URL', 'TEST_DATABASE_URL', 'HOST', 'PORT', 'BASE_PATH', 'ALLOW_DEMO_DATA']
+  const ours = [
+    'DATABASE_URL', 'TEST_DATABASE_URL', 'HOST', 'PORT', 'BASE_PATH', 'ALLOW_DEMO_DATA', 'PUBLIC_URL', 'TRUST_PROXY',
+    'ALLOW_INSECURE_HTTP',
+  ]
   for (const name of [...ours, 'NODE_ENV', 'NODE_OPTIONS']) delete env[name]
   const child = spawn(process.execPath, args, { cwd: projectRoot, env: { ...env, ...settings }, detached: ownGroup })
 

@@ -1,10 +1,13 @@
 import { createServer, type Server } from 'node:http'
 import { connect } from 'node:net'
 import { createApp } from './app'
-import type { ServerConfig } from './config'
-import { type Database, openDatabase } from './db/database'
+import { startCleaning } from './auth/cleanUp'
+import { type ServerConfig, serverUrl } from './config'
+import { type Database, type Db, openDatabase } from './db/database'
 import { applyMigrations, countPendingMigrations } from './db/migrations'
+import { demoSeedDate } from './demo/marker'
 import { errorCode, StartupError } from './errors'
+import { activeAdministratorWithPassword } from './people/lookup'
 import { webBuildDir } from './paths'
 
 export interface RunningServer {
@@ -32,19 +35,30 @@ export async function startServer(config: ServerConfig, signal?: AbortSignal): P
     goOn()
     await prepareSchema(config, database)
     goOn()
-    const messages = await prepareData(config, database)
+    const messages = [...config.warnings, ...(await prepareData(config, database))]
+    const { mode, basePath, publicUrl, trustProxy } = config
     const app = createApp({
       db: database.db,
-      basePath: config.basePath,
-      webDir: config.mode === 'development' ? undefined : webBuildDir,
+      basePath,
+      publicUrl,
+      trustProxy,
+      mode,
+      webDir: mode === 'development' ? undefined : webBuildDir,
     })
+    goOn()
     const server = createServer(app)
-    await listen(server, config)
+    const stopCleaning = await startCleaning({ db: database.db, now: () => new Date() })
+    try {
+      await listen(server, config)
+    } catch (error) {
+      await stopCleaning()
+      throw error
+    }
     return {
       url: serverUrl(config),
       messages,
       close: async () => {
-        await closeServer(server)
+        await Promise.all([closeServer(server), stopCleaning()])
         await database.close()
       },
     }
@@ -69,12 +83,14 @@ async function prepareSchema(config: ServerConfig, database: Database) {
 
 /** The demo fills its database when nobody is in it yet. Nothing else ever adds demo data here. */
 export async function prepareData({ mode }: Pick<ServerConfig, 'mode'>, { db }: Database): Promise<string[]> {
-  if (mode === 'production') return []
+  if (mode === 'production') return productionMessages(db)
   // Loaded on demand: production never loads the demo data.
   const { demoAccountLines, demoSeedDate, holdsPeople, seedDemo } = await import('./demo')
   const empty = !(await holdsPeople(db))
   if (mode === 'development') {
-    return empty ? ['The database is empty. For demo data, stop this and run npm run db:seed.'] : []
+    return empty ? [
+      'The database is empty. For demo data, stop this and run npm run db:seed; for an account of your own, npm run admin:create.',
+    ] : []
   }
   const date = empty ? await seedDemo(db) : await demoSeedDate(db)
   if (date === null) return []
@@ -84,8 +100,15 @@ export async function prepareData({ mode }: Pick<ServerConfig, 'mode'>, { db }: 
   ]
 }
 
-export function serverUrl({ host, port, basePath }: Pick<ServerConfig, 'host' | 'port' | 'basePath'>) {
-  return `http://${host.includes(':') ? `[${host}]` : host}:${port}${basePath}`
+async function productionMessages(db: Db): Promise<string[]> {
+  const messages: string[] = []
+  if ((await demoSeedDate(db)) !== null) {
+    messages.push('WARNING: this database holds demo data, with accounts whose password is publicly known.')
+  }
+  if (!(await activeAdministratorWithPassword(db))) {
+    messages.push('Nobody can administer JET Time yet. Create the first administrator with npm run admin:create.')
+  }
+  return messages
 }
 
 const portInUse = (port: number) =>
