@@ -9,7 +9,7 @@ import { isCurrentItem, navItems } from './navigation'
 import { Page } from './Page'
 import { RouteEffects } from './RouteEffects'
 
-const labels = ['Home', 'Timesheet', 'Expenses', 'Team', 'Clients', 'Projects', 'Tasks', 'Invoices', 'Approvals', 'Reports', 'Settings']
+const labels = ['Home', 'Timesheet', 'Expenses', 'Team', 'Clients', 'Projects', 'Tasks', 'Estimates', 'Invoices', 'Approvals', 'Reports', 'Settings']
 
 function Breaking() {
   const [broken, setBroken] = useState(false)
@@ -65,7 +65,7 @@ describe('navigation', () => {
     renderShell('/time')
     expect(links().map((link) => link.textContent)).toEqual(labels)
     expect(links().map((link) => link.getAttribute('href'))).toEqual(
-      ['/home', '/time', '/expenses', '/team', '/clients', '/projects', '/tasks', '/invoices', '/approvals', '/reports', '/settings'],
+      ['/home', '/time', '/expenses', '/team', '/clients', '/projects', '/tasks', '/estimates', '/invoices', '/approvals', '/reports', '/settings'],
     )
   })
 

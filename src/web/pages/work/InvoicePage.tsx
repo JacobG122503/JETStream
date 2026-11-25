@@ -1,32 +1,94 @@
-import { type FormEvent, useId, useState } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import type { InvoiceDetails, MessageInput, PaymentRow } from '../../../shared/billing'
 import { productName } from '../../../shared/product'
-import type { InvoiceDetails } from '../../../shared/work'
 import { callApi, errorMessage } from '../../api'
-import { useWeekStart } from '../../auth/authContext'
-import { FormMessages } from '../../auth/FormMessages'
-import { useForm } from '../../auth/useForm'
+import { useAuth } from '../../auth/authContext'
 import { useLoad } from '../../auth/useLoad'
-import { BrandMark } from '../../shell/BrandMark'
+import { apiUrl } from '../../basePath'
 import { Page } from '../../shell/Page'
-import { Button, Card, ConfirmDialog, DatePicker, Dialog, ErrorState, formatDate, LinkButton, LoadingState, Notice, Select, TextField, todayOnDevice, useToast } from '../../ui'
-import { formatHours, formatMoney, moneyInput, parseMoney } from '../../work/format'
+import { Button, Card, ErrorState, formatDate, IconButton, LinkButton, LoadingState, Menu, Notice, todayOnDevice, useToast } from '../../ui'
+import { methodLabels } from '../../work/billing'
+import { FileButton } from '../../work/FileButton'
+import { FormDialog } from '../../work/FormDialog'
+import { formatMoney } from '../../work/format'
+import { LinkDialog } from '../../work/LinkDialog'
+import { MessageDialog } from '../../work/MessageDialog'
+import { MessageHistory } from '../../work/MessageHistory'
+import { PrintedDocument } from '../../work/PrintedDocument'
+import { useActions } from '../../work/useActions'
+import { AddUnbilledDialog } from './AddUnbilledDialog'
 import { InvoiceStatusBadge } from './InvoiceStatusBadge'
 import '../../work/work.css'
-
-const methods = { check: 'Check', bank_transfer: 'Bank transfer', card: 'Card', cash: 'Cash', online: 'Online', retainer: 'From retainer', other: 'Other' } as const
 
 export function InvoicePage() {
   const { id = '' } = useParams()
   return <InvoiceLoader key={id} id={id} />
 }
 
+type Open = 'pay' | 'retainer' | 'write-off' | 'note' | 'add' | Exclude<MessageInput['kind'], 'note'> | { refund: PaymentRow } | { link: string } | null
+
+const messageTitles = { sent: 'Send invoice', reminder: 'Send a reminder', thank_you: 'Say thank you' } as const
+
 function InvoiceLoader({ id }: { id: string }) {
   const { status, data, error, reload, setData } = useLoad<InvoiceDetails>(`invoices/${encodeURIComponent(id)}`)
-  const [dialog, setDialog] = useState<'send' | 'pay' | 'delete' | null>(null)
+  const { info } = useAuth()
+  const [open, setOpen] = useState<Open>(null)
+  const { ask, run, dialog } = useActions()
   const toast = useToast()
   const navigate = useNavigate()
-  const close = () => setDialog(null)
+  const close = () => setOpen(null)
+  const done = (message: string) => (next: InvoiceDetails) => {
+    setData(next)
+    close()
+    toast.success(message)
+  }
+  const route = `invoices/${id}`
+  const post = async (path: string, body: object, message: string) => done(message)(await callApi<InvoiceDetails>('POST', `${route}/${path}`, body))
+  const version = data?.version
+
+  const menu = data
+    ? [
+        ...(data.status === 'draft'
+          ? [{ id: 'mark', label: 'Mark as sent', onSelect: () => ask({ title: 'Mark as sent?', message: `The invoice becomes open and counts as outstanding. ${productName} sends nothing: send it to the client yourself.`, confirmLabel: 'Mark as sent', route: `${route}/send`, body: { version }, done: 'Marked as sent', then: setData }) }]
+          : []),
+        ...(data.status === 'draft' || data.status === 'open' ? [{ id: 'add', label: 'Add time and expenses', onSelect: () => setOpen('add') }] : []),
+        ...(data.status === 'open' ? [{ id: 'reminder', label: 'Send a reminder', onSelect: () => setOpen('reminder') }] : []),
+        ...(data.status === 'open' || data.status === 'paid' ? [{ id: 'resend', label: 'Send again', onSelect: () => setOpen('sent') }] : []),
+        ...(data.payments.length > 0 ? [{ id: 'thanks', label: 'Say thank you', onSelect: () => setOpen('thank_you') }] : []),
+        ...(data.status !== 'draft'
+          ? [
+              {
+                id: 'link',
+                label: 'Make a client link',
+                onSelect: () => {
+                  callApi<{ link: string }>('POST', `${route}/link`).then(setOpen, (reason: unknown) => toast.error(errorMessage(reason)))
+                },
+              },
+            ]
+          : []),
+        { id: 'note', label: 'Add a note', onSelect: () => setOpen('note') },
+        { id: 'duplicate', label: 'Duplicate', onSelect: () => void run('POST', `${route}/duplicate`, undefined, 'Draft created', ({ id: copy }: { id: number }) => navigate(`/invoices/${copy}`)) },
+        ...(data.status === 'open' && data.payments.length === 0
+          ? [{ id: 'draft', label: 'Make it a draft again', onSelect: () => ask({ title: 'Make it a draft again?', message: 'The links sent to the client stop working.', confirmLabel: 'Make it a draft', route: `${route}/draft`, body: { version }, done: 'It is a draft again', then: setData }) }]
+          : []),
+        ...(data.status === 'open' && data.canManagePayments ? [{ id: 'write-off', label: 'Write off', onSelect: () => setOpen('write-off') }] : []),
+        ...(data.status === 'closed' && data.canManagePayments ? [{ id: 'reopen', label: 'Reopen', onSelect: () => void run('POST', `${route}/reopen`, { version }, 'Invoice reopened', setData) }] : []),
+        ...(data.payments.length === 0 && data.status !== 'closed'
+          ? [
+              {
+                id: 'delete', label: 'Delete', destructive: true,
+                onSelect: () =>
+                  ask({
+                    title: `Delete invoice ${data.number}?`, message: 'Its hours and expenses can be invoiced again. The number is not used again.', confirmLabel: 'Delete invoice', destructive: true,
+                    route: `${route}/delete`, body: { version }, done: 'Invoice deleted', then: () => navigate('/invoices'),
+                  }),
+              },
+            ]
+          : []),
+      ]
+    : []
+
   return (
     <Page
       title={data ? `Invoice ${data.number}` : 'Invoice'}
@@ -36,6 +98,7 @@ function InvoiceLoader({ id }: { id: string }) {
             <InvoiceStatusBadge invoice={data} />
             <Link to={`/clients/${data.client.id}`}>{data.client.name}</Link>
             <span>Due {formatDate(data.dueOn)}</span>
+            {data.recurring && <span>Recurring</span>}
           </span>
         )
       }
@@ -45,22 +108,25 @@ function InvoiceLoader({ id }: { id: string }) {
             Invoices
           </LinkButton>
           {data && (
-            <Button icon="printer" onClick={() => window.print()}>
-              Print or PDF
-            </Button>
-          )}
-          {data?.status === 'draft' && (
             <>
-              <Button icon="trash" onClick={() => setDialog('delete')}>
-                Delete draft
+              <Button icon="printer" onClick={() => window.print()}>
+                Print or PDF
               </Button>
-              <Button variant="primary" icon="send" onClick={() => setDialog('send')}>
-                Mark as sent
-              </Button>
+              <Menu label="More" align="end" items={menu} />
+              {(data.status === 'draft' || data.status === 'open') && (
+                <LinkButton to={`/invoices/${data.id}/edit`} icon="edit">
+                  Edit
+                </LinkButton>
+              )}
             </>
           )}
+          {data?.status === 'draft' && (
+            <Button variant="primary" icon="send" onClick={() => setOpen('sent')}>
+              Send
+            </Button>
+          )}
           {data?.canPay && (
-            <Button variant="primary" icon="dollar" onClick={() => setDialog('pay')}>
+            <Button variant="primary" icon="dollar" onClick={() => setOpen('pay')}>
               Record payment
             </Button>
           )}
@@ -71,237 +137,242 @@ function InvoiceLoader({ id }: { id: string }) {
       {status === 'error' && <ErrorState size="page" headingLevel={2} message={error === 'Not found' ? 'There is no such invoice.' : error} onRetry={reload} />}
       {data && (
         <>
-          <Document invoice={data} />
-          {data.payments.length > 0 && (
-            <Card title="Payments">
-              <ul className="payments">
-                {data.payments.map(({ id: paymentId, paidOn, amount, method, reference, simulated }) => (
-                  <li key={paymentId}>
-                    <span>
-                      <span className="strong">{formatMoney(amount, data.currency)}</span> <span className="muted">{[methods[method], reference].filter(Boolean).join(', ')}</span>
-                      {simulated && <span className="muted"> (simulated, no real money)</span>}
-                    </span>
-                    <span className="muted">{formatDate(paidOn)}</span>
-                  </li>
-                ))}
-              </ul>
+          {data.writeOff && (
+            <Notice tone="warning" title={`${formatMoney(data.writeOff.amount, data.currency)} was written off on ${formatDate(data.writeOff.on)}`}>
+              {data.writeOff.reason || 'No reason was given.'}
+            </Notice>
+          )}
+          <PrintedDocument
+            word="Invoice"
+            document={data}
+            facts={[{ label: 'Due', value: formatDate(data.dueOn) }]}
+            sums={
+              data.paidAmount === 0 && data.status !== 'closed'
+                ? []
+                : [
+                    { label: 'Paid', amount: -data.paidAmount },
+                    { label: data.status === 'closed' ? 'Not collected' : 'Still due', amount: data.dueAmount, strong: true },
+                  ]
+            }
+          />
+          <Payments invoice={data} onRetainer={() => setOpen('retainer')} onRefund={(refund) => setOpen({ refund })} onRemove={(payment) =>
+            ask({
+              title: 'Take this payment back?',
+              message: `${formatMoney(payment.amount, data.currency)} of ${formatDate(payment.paidOn)} is removed, as if it was never recorded.${payment.method === 'retainer' ? ' The money goes back to the retainer.' : ''}`,
+              confirmLabel: 'Take back', destructive: true, route: `${route}/remove-payment`, body: { paymentId: payment.id }, done: 'Payment taken back', then: setData,
+            })}
+          />
+          <Attachments invoice={data} onChange={setData} />
+          {data.links.length > 0 && (
+            <Card
+              title="Client links"
+              actions={
+                <Button size="small" onClick={() => ask({ title: 'Revoke all links?', message: 'Clients can no longer open the invoice with them.', confirmLabel: 'Revoke all', destructive: true, route: `${route}/revoke-links`, done: 'Links revoked', then: setData })}>
+                  Revoke all
+                </Button>
+              }
+            >
+              <p className="muted">
+                {data.links.length === 1 ? '1 link works' : `${data.links.length} links work`}.{' '}
+                {data.links.some(({ lastViewedAt }) => lastViewedAt !== null) ? `Last opened ${formatDate(data.links.map(({ lastViewedAt }) => lastViewedAt ?? '').sort().at(-1)?.slice(0, 10) ?? '')}.` : 'Not opened yet.'}
+              </p>
             </Card>
           )}
-          <ConfirmDialog
-            open={dialog === 'send'}
-            onClose={close}
-            title="Mark as sent?"
-            message={`The invoice becomes open and counts as outstanding. ${productName} does not send it: print it, or save it as PDF, and send it to the client yourself.`}
-            confirmLabel="Mark as sent"
-            onConfirm={async () => {
-              try {
-                setData(await callApi<InvoiceDetails>('POST', `invoices/${data.id}/send`, { version: data.version }))
-                toast.success('Marked as sent')
-              } catch (reason) {
-                throw new Error(errorMessage(reason), { cause: reason })
-              }
-            }}
-          />
-          <ConfirmDialog
-            open={dialog === 'delete'}
-            onClose={close}
-            title="Delete this draft?"
-            message="Its hours and expenses can be invoiced again. The number is not used again."
-            confirmLabel="Delete draft"
-            destructive
-            onConfirm={async () => {
-              try {
-                await callApi('POST', `invoices/${data.id}/delete`, { version: data.version })
-                toast.success('Draft deleted')
-                navigate('/invoices')
-              } catch (reason) {
-                throw new Error(errorMessage(reason), { cause: reason })
-              }
-            }}
-          />
-          {dialog === 'pay' && (
-            <PaymentDialog
-              invoice={data}
-              onClose={close}
-              onPaid={(invoice) => {
-                setData(invoice)
-                close()
-                toast.success(invoice.status === 'paid' ? 'Paid in full' : 'Payment recorded')
-              }}
-            />
-          )}
+          <MessageHistory messages={data.messages} />
         </>
       )}
+      {data && open === 'pay' && (
+        <FormDialog
+          title="Record payment"
+          submitLabel="Record payment"
+          intro={<Notice>For money you have already received. Nothing is charged here.</Notice>}
+          initial={{ amount: data.dueAmount, paidOn: todayOnDevice(), method: 'check' }}
+          fields={[
+            { name: 'amount', label: 'Amount', type: 'money', currency: data.currency, required: true, half: true },
+            { name: 'paidOn', label: 'Received', type: 'date', required: true, half: true },
+            { name: 'method', label: 'Method', type: 'select', half: true, options: (['check', 'bank_transfer', 'card', 'cash', 'other'] as const).map((value) => ({ value, label: methodLabels[value] })) },
+            { name: 'reference', label: 'Reference', type: 'text', placeholder: 'Check 1042', half: true },
+            { name: 'notes', label: 'Notes', type: 'area', rows: 2 },
+          ]}
+          onClose={close}
+          onSubmit={async (values) => {
+            const next = await callApi<InvoiceDetails>('POST', `${route}/payments`, values)
+            done(next.status === 'paid' ? 'Paid in full' : 'Payment recorded')(next)
+          }}
+        />
+      )}
+      {data && open === 'retainer' && (
+        <FormDialog
+          title="Pay from a retainer"
+          submitLabel="Pay"
+          initial={{ retainerId: data.retainers[0]?.id, amount: Math.min(data.dueAmount, data.retainers[0]?.balance ?? 0) }}
+          fields={[
+            { name: 'retainerId', label: 'Retainer', type: 'id', required: true, options: data.retainers.map(({ id: value, name, balance }) => ({ value: String(value), label: `${name}, ${formatMoney(balance, data.currency)} left` })) },
+            { name: 'amount', label: 'Amount', type: 'money', currency: data.currency, required: true },
+          ]}
+          onClose={close}
+          onSubmit={(values) => post('pay-from-retainer', values, 'Paid from the retainer')}
+        />
+      )}
+      {data && open === 'write-off' && (
+        <FormDialog
+          title={`Write off ${formatMoney(data.dueAmount, data.currency)}?`}
+          submitLabel="Write off"
+          intro={<p className="muted">The invoice is closed, and what is due no longer counts as outstanding. It can be reopened.</p>}
+          fields={[{ name: 'reason', label: 'Reason', type: 'area', rows: 2 }]}
+          onClose={close}
+          onReload={reload}
+          onSubmit={(values) => post('write-off', { ...values, version: data.version }, 'Written off')}
+        />
+      )}
+      {data && open === 'note' && (
+        <FormDialog
+          title="Add a note"
+          submitLabel="Add note"
+          intro={<p className="muted">Only your company sees it.</p>}
+          fields={[{ name: 'body', label: 'Note', type: 'area', required: true }]}
+          onClose={close}
+          onReload={reload}
+          onSubmit={(values) => post('messages', { ...values, kind: 'note', recipients: [], subject: '', version: data.version }, 'Note added')}
+        />
+      )}
+      {data && open === 'add' && <AddUnbilledDialog invoice={data} onClose={close} onAdded={done('Added')} />}
+      {data && (open === 'sent' || open === 'reminder' || open === 'thank_you') && (
+        <MessageDialog
+          title={messageTitles[open]}
+          submitLabel="Send"
+          kind={open}
+          route={`${route}/message?kind=${open}`}
+          contacts={data.contacts}
+          onClose={close}
+          onSend={(message) => post('messages', { ...message, version: data.version }, info?.emailDelivers ? 'Sent' : 'Kept in the Outbox')}
+        />
+      )}
+      {data && open !== null && typeof open === 'object' && 'refund' in open && (
+        <FormDialog
+          title="Record a refund"
+          submitLabel="Record refund"
+          intro={<Notice>For money you have already given back. Nothing is paid from here.</Notice>}
+          initial={{ amount: open.refund.amount - open.refund.refunds.reduce((sum, { amount }) => sum + amount, 0), refundedOn: todayOnDevice() }}
+          fields={[
+            { name: 'amount', label: 'Amount', type: 'money', currency: data.currency, required: true, half: true },
+            { name: 'refundedOn', label: 'Given back', type: 'date', required: true, half: true },
+            { name: 'reason', label: 'Reason', type: 'area', rows: 2 },
+          ]}
+          onClose={close}
+          onSubmit={(values) => post('refund', { ...values, paymentId: open.refund.id }, 'Refund recorded')}
+        />
+      )}
+      {open !== null && typeof open === 'object' && 'link' in open && (
+        <LinkDialog
+          link={open.link}
+          onClose={() => {
+            close()
+            reload()
+          }}
+        />
+      )}
+      {dialog}
     </Page>
   )
 }
 
-const quantity = new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 })
-const percent = (thousandths: number | null) => `${quantity.format((thousandths ?? 0) / 1000)}%`
+interface PaymentsProps {
+  invoice: InvoiceDetails
+  onRetainer: () => void
+  onRefund: (payment: PaymentRow) => void
+  onRemove: (payment: PaymentRow) => void
+}
 
-function Document({ invoice }: { invoice: InvoiceDetails }) {
-  const { currency, company, client } = invoice
-  const money = (amount: number) => formatMoney(amount, currency)
+function Payments({ invoice, onRetainer, onRefund, onRemove }: PaymentsProps) {
+  const { payments, currency, canManagePayments, canPay, retainers, status } = invoice
+  if (payments.length === 0 && (!canPay || retainers.length === 0)) return null
   return (
-    <article className="paper" aria-label={`Invoice ${invoice.number}`}>
-      <header className="paper-head">
-        <div className="paper-company">
-          <BrandMark />
-          <div>
-            <p className="paper-name">{company.name}</p>
-            <p className="lines muted">{company.address}</p>
-          </div>
-        </div>
-        <div className="paper-title">
-          <p className="paper-word">Invoice</p>
-          <p className="figure">{invoice.number}</p>
-        </div>
-      </header>
-      <div className="paper-facts">
-        <div>
-          <p className="paper-label">Billed to</p>
-          <p className="strong">{client.name}</p>
-          <p className="lines">{invoice.clientAddress}</p>
-        </div>
-        <dl>
-          <dt>Issued</dt>
-          <dd>{formatDate(invoice.issuedOn)}</dd>
-          <dt>Due</dt>
-          <dd>{formatDate(invoice.dueOn)}</dd>
-          {invoice.purchaseOrder && (
-            <>
-              <dt>Purchase order</dt>
-              <dd>{invoice.purchaseOrder}</dd>
-            </>
-          )}
-          {invoice.subject && (
-            <>
-              <dt>Subject</dt>
-              <dd>{invoice.subject}</dd>
-            </>
-          )}
-        </dl>
-      </div>
-      <div className="table-scroll" tabIndex={0} role="region" aria-label="Lines">
-        <table className="paper-lines">
-          <thead>
-            <tr>
-              <th scope="col">Description</th>
-              <th scope="col">Quantity</th>
-              <th scope="col">Price</th>
-              <th scope="col">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {invoice.lines.map((line) => (
-              <tr key={line.id}>
-                <td>{line.description}</td>
-                <td>{line.minutes === null ? quantity.format(line.quantity / 1000) : formatHours(line.minutes)}</td>
-                <td>{money(line.unitPrice)}</td>
-                <td>{money(line.amount)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="paper-foot">
-        <p className="lines muted">{invoice.notes}</p>
-        <dl className="sum">
-          <dt>Subtotal</dt>
-          <dd>{money(invoice.subtotal)}</dd>
-          {invoice.discountAmount !== 0 && (
-            <>
-              <dt>Discount ({percent(invoice.discountPercent)})</dt>
-              <dd>{money(-invoice.discountAmount)}</dd>
-            </>
-          )}
-          {invoice.tax1Amount !== 0 && (
-            <>
-              <dt>
-                {invoice.tax1Name} ({percent(invoice.tax1Percent)})
-              </dt>
-              <dd>{money(invoice.tax1Amount)}</dd>
-            </>
-          )}
-          {invoice.tax2Amount !== 0 && (
-            <>
-              <dt>
-                {invoice.tax2Name} ({percent(invoice.tax2Percent)})
-              </dt>
-              <dd>{money(invoice.tax2Amount)}</dd>
-            </>
-          )}
-          <dt className="sum-total">Total</dt>
-          <dd className="sum-total">{money(invoice.total)}</dd>
-          {invoice.paidAmount !== 0 && (
-            <>
-              <dt>Paid</dt>
-              <dd>{money(-invoice.paidAmount)}</dd>
-              <dt className="sum-total">{invoice.status === 'closed' ? 'Not collected' : 'Still due'}</dt>
-              <dd className="sum-total">{money(invoice.dueAmount)}</dd>
-            </>
-          )}
-        </dl>
-      </div>
-    </article>
+    <Card
+      title="Payments"
+      actions={
+        canPay && retainers.length > 0 ? (
+          <Button size="small" onClick={onRetainer}>
+            Pay from a retainer
+          </Button>
+        ) : undefined
+      }
+    >
+      {payments.length === 0 && <p className="muted">Nothing was paid yet.</p>}
+      <ul className="payments">
+        {payments.map((payment) => {
+          const refunded = payment.refunds.reduce((sum, { amount }) => sum + amount, 0)
+          const what = `payment of ${formatMoney(payment.amount, currency)}, ${formatDate(payment.paidOn)}`
+          return (
+            <li key={payment.id}>
+              <span className="cell-two">
+                <span>
+                  <span className="strong">{formatMoney(payment.amount, currency)}</span> <span className="muted">{[methodLabels[payment.method], payment.reference].filter(Boolean).join(', ')}</span>
+                  {payment.simulated && <span className="muted"> (simulated, no real money)</span>}
+                </span>
+                {payment.notes && <span className="cell-sub">{payment.notes}</span>}
+                {payment.refunds.map(({ id, amount, refundedOn, reason }) => (
+                  <span key={id} className="cell-sub">
+                    {formatMoney(amount, currency)} given back on {formatDate(refundedOn)}
+                    {reason && `, ${reason}`}
+                  </span>
+                ))}
+              </span>
+              <span className="payment-end">
+                <span className="muted">{formatDate(payment.paidOn)}</span>
+                {canManagePayments && status !== 'closed' && (
+                  <Menu
+                    label={`Actions for the ${what}`}
+                    icon="more"
+                    iconOnly
+                    size="small"
+                    align="end"
+                    items={[
+                      ...(payment.method !== 'retainer' && refunded < payment.amount ? [{ id: 'refund', label: 'Record a refund', onSelect: () => onRefund(payment) }] : []),
+                      ...(payment.method !== 'online' || payment.simulated ? [{ id: 'remove', label: 'Take back', destructive: true, onSelect: () => onRemove(payment) }] : []),
+                    ]}
+                  />
+                )}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </Card>
   )
 }
 
-const fields = ['amount', 'paidOn', 'method', 'reference'] as const
+const mostBytes = 5 * 1024 * 1024
 
-function PaymentDialog({ invoice, onClose, onPaid }: { invoice: InvoiceDetails; onClose: () => void; onPaid: (invoice: InvoiceDetails) => void }) {
-  const weekStart = useWeekStart()
-  const formId = useId()
-  const form = useForm('payment', fields)
-  const [amount, setAmount] = useState(moneyInput(invoice.dueAmount, invoice.currency))
-  const [paidOn, setPaidOn] = useState(todayOnDevice())
-  const [method, setMethod] = useState('check')
-  const [reference, setReference] = useState('')
-  const parsed = parseMoney(amount, invoice.currency)
-  const submit = (event: FormEvent) => {
-    event.preventDefault()
-    void form.submit(
-      async () => onPaid(await callApi<InvoiceDetails>('POST', `invoices/${invoice.id}/payments`, { amount: parsed, paidOn, method, reference })),
-      {
-        amount: parsed === null || parsed === 0 ? 'Enter an amount.' : parsed > invoice.dueAmount ? `At most ${formatMoney(invoice.dueAmount, invoice.currency)} is due.` : null,
-        paidOn: paidOn === '' ? 'Enter a date.' : null,
-      },
-    )
-  }
+function Attachments({ invoice, onChange }: { invoice: InvoiceDetails; onChange: (invoice: InvoiceDetails) => void }) {
+  const { run } = useActions()
+  const toast = useToast()
+  const route = `invoices/${invoice.id}`
   return (
-    <Dialog
-      open
-      onClose={onClose}
-      title="Record payment"
-      closeOnOutsidePress={false}
-      busy={form.busy}
-      footer={
-        <>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button type="submit" form={formId} variant="primary" loading={form.busy} loadingLabel="Recording the payment">
-            Record payment
+    <Card title="Attachments">
+      <div className="receipts">
+        {invoice.attachments.length === 0 && <span className="muted">Nothing is attached.</span>}
+        {invoice.attachments.map(({ id, name }) => (
+          <span key={id} className="badges">
+            <a href={apiUrl(`${route}/attachments/${id}`)}>{name}</a>
+            <IconButton icon="close" size="small" variant="quiet" label={`Remove ${name}`} onClick={() => void run('POST', `${route}/detach`, { fileId: id }, 'Removed', onChange)} />
+          </span>
+        ))}
+        {invoice.receipts > 0 && (
+          <Button size="small" onClick={() => void run('POST', `${route}/attach-receipts`, undefined, 'Receipts attached', onChange)}>
+            Attach {invoice.receipts === 1 ? 'the receipt' : `${invoice.receipts} receipts`} of its expenses
           </Button>
-        </>
-      }
-    >
-      <form id={formId} className="stack" noValidate onSubmit={submit}>
-        <FormMessages form={form} />
-        <Notice>For money you have already received. Nothing is charged here.</Notice>
-        <div className="form-pair">
-          <TextField label={`Amount (${invoice.currency})`} required inputMode="decimal" value={amount} onChange={setAmount} {...form.field('amount')} />
-          <DatePicker weekStart={weekStart} label="Received" required value={paidOn} onChange={setPaidOn} {...form.field('paidOn')} />
-        </div>
-        <div className="form-pair">
-          <Select
-            label="Method"
-            value={method}
-            options={(['check', 'bank_transfer', 'card', 'cash', 'other'] as const).map((value) => ({ value, label: methods[value] }))}
-            onChange={setMethod}
-            {...form.field('method')}
-          />
-          <TextField label="Reference" placeholder="Check 1042" value={reference} onChange={setReference} {...form.field('reference')} />
-        </div>
-      </form>
-    </Dialog>
+        )}
+        <FileButton
+          accept="image/png,image/jpeg,application/pdf"
+          icon="plus"
+          label="Attach a file"
+          onChoose={(file) => {
+            if (file.size > mostBytes) toast.error('A file can have 5 MB at most.')
+            else void run('PUT', `${route}/attachments?name=${encodeURIComponent(file.name)}`, file, 'Attached', onChange)
+          }}
+        />
+      </div>
+    </Card>
   )
 }

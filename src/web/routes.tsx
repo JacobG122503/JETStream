@@ -18,6 +18,12 @@ import { SettingsPage } from './pages/settings/SettingsPage'
 import { CategoriesPage } from './pages/settings/CategoriesPage'
 import { NotificationSettingsPage, NotificationsPage } from './pages/settings/NotificationsPage'
 import { ApprovalsPage } from './pages/work/ApprovalsPage'
+import { ClientEstimatePage, ClientInvoicePage } from './pages/client/ClientPages'
+import { EstimateEditPage, InvoiceEditPage, RecurringEditPage } from './pages/work/DocumentPages'
+import { EstimatePage, EstimatesPage } from './pages/work/EstimatesPage'
+import { RecurringPage } from './pages/work/RecurringPage'
+import { RetainerPage, RetainersPage } from './pages/work/RetainersPage'
+import { StatementPage } from './pages/work/StatementPage'
 import { ActivityPage } from './pages/settings/ActivityPage'
 import { CompanyPage } from './pages/settings/CompanyPage'
 import { ProjectEditPage } from './pages/work/ProjectEditPage'
@@ -53,7 +59,7 @@ export const routerFuture = {
 
 const pages: Record<string, ReactElement> = {
   home: <HomePage />, time: <TimePage />, expenses: <ExpensesPage />, projects: <ProjectsPage />, clients: <ClientsPage />, tasks: <TasksPage />, team: <TeamPage />,
-  approvals: <ApprovalsPage />, reports: <ReportsPage />, invoices: <InvoicesPage />, settings: <SettingsPage />,
+  approvals: <ApprovalsPage />, reports: <ReportsPage />, invoices: <InvoicesPage />, estimates: <EstimatesPage />, settings: <SettingsPage />,
 }
 
 const sectionPage = ({ needs, ...item }: NavItem) => {
@@ -86,6 +92,17 @@ export const routes: RouteObject[] = [
           { path: '/settings/activity', element: <Needs any={['activity.view']} title="Activity log"><ActivityPage /></Needs> },
           { path: '/clients/:id', element: <Needs any={['clients.view']} title="Client"><ClientPage /></Needs> },
           { path: '/invoices/new', element: <Needs any={['invoices.manage']} title="New invoice"><NewInvoicePage /></Needs> },
+          { path: '/invoices/free', element: <Needs any={['invoices.manage']} title="New invoice"><InvoiceEditPage key="new" /></Needs> },
+          { path: '/invoices/recurring', element: <Needs any={['invoices.manage']} title="Recurring invoices"><RecurringPage /></Needs> },
+          { path: '/invoices/recurring/new', element: <Needs any={['invoices.manage']} title="New recurring invoice"><RecurringEditPage key="new" /></Needs> },
+          { path: '/invoices/recurring/:id', element: <Needs any={['invoices.manage']} title="Recurring invoice"><RecurringEditPage key="edit" /></Needs> },
+          { path: '/invoices/retainers', element: <Needs any={['payments.manage']} title="Retainers"><RetainersPage /></Needs> },
+          { path: '/invoices/retainers/:id', element: <Needs any={['payments.manage']} title="Retainer"><RetainerPage /></Needs> },
+          { path: '/invoices/:id/edit', element: <Needs any={['invoices.manage']} title="Edit invoice"><InvoiceEditPage key="edit" /></Needs> },
+          { path: '/clients/:id/statement', element: <Needs any={['invoices.manage']} title="Statement"><StatementPage /></Needs> },
+          { path: '/estimates/new', element: <Needs any={['estimates.manage']} title="New estimate"><EstimateEditPage key="new" /></Needs> },
+          { path: '/estimates/:id', element: <Needs any={['estimates.manage']} title="Estimate"><EstimatePage /></Needs> },
+          { path: '/estimates/:id/edit', element: <Needs any={['estimates.manage']} title="Edit estimate"><EstimateEditPage key="edit" /></Needs> },
           { path: '/invoices/:id', element: <Needs any={['invoices.manage']} title="Invoice"><InvoicePage /></Needs> },
           { path: '/settings/roles', element: <Needs any={['roles.manage']} title="Roles"><RolesPage /></Needs> },
           { path: '/settings/roles/:id', element: <Needs any={['roles.manage']} title="Role"><RolePage /></Needs> },
@@ -98,6 +115,8 @@ export const routes: RouteObject[] = [
         element: <PlainLayout />,
         children: [
           { path: '/design/plain', element: <PlainLayoutPage /> },
+          { path: '/client/invoice', element: <ClientInvoicePage /> },
+          { path: '/client/estimate', element: <ClientEstimatePage /> },
           { path: '/sign-in', element: <KnownSession><SignInPage /></KnownSession> },
           { path: '/sign-up', element: <SignedOutOnly><SignUpPage /></SignedOutOnly> },
           { path: '/forgot-password', element: <SignedOutOnly><ForgotPasswordPage /></SignedOutOnly> },

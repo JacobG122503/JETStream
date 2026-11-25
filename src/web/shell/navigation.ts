@@ -27,6 +27,7 @@ export const navItems: readonly NavItem[] = [
   { id: 'clients', label: 'Clients', path: '/clients', icon: 'clients', group: 'manage', needs: ['clients.view'] },
   { id: 'projects', label: 'Projects', path: '/projects', icon: 'projects', group: 'manage' },
   { id: 'tasks', label: 'Tasks', path: '/tasks', icon: 'tasks', group: 'manage', needs: ['tasks.manage'] },
+  { id: 'estimates', label: 'Estimates', path: '/estimates', icon: 'estimates', group: 'billing', needs: ['estimates.manage'], module: 'estimates' },
   { id: 'invoices', label: 'Invoices', path: '/invoices', icon: 'invoices', group: 'billing', needs: ['invoices.manage'], module: 'invoices' },
   { id: 'approvals', label: 'Approvals', path: '/approvals', icon: 'approvals', group: 'review', needs: ['time.approve'], module: 'approval' },
   { id: 'reports', label: 'Reports', path: '/reports', icon: 'reports', group: 'review' },

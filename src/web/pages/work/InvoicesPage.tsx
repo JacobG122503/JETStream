@@ -4,6 +4,7 @@ import { useLoad } from '../../auth/useLoad'
 import { Page } from '../../shell/Page'
 import { LinkButton, StatTile, Table, Tabs } from '../../ui'
 import { Amounts } from '../../work/parts'
+import { BillingNav } from './BillingNav'
 import { invoiceColumns } from './invoiceColumns'
 import '../../work/work.css'
 
@@ -12,6 +13,7 @@ const views: { id: string; label: string; shows: (invoice: InvoiceRow) => boolea
   { id: 'open', label: 'Open', shows: ({ status }) => status === 'open' },
   { id: 'late', label: 'Late', shows: ({ late }) => late },
   { id: 'draft', label: 'Drafts', shows: ({ status }) => status === 'draft' },
+  { id: 'closed', label: 'Closed', shows: ({ status }) => status === 'closed' },
   { id: 'paid', label: 'Paid', shows: ({ status }) => status === 'paid' },
 ]
 
@@ -32,11 +34,15 @@ export function InvoicesPage() {
       title="Invoices"
       description="What clients owe, and what they have paid."
       actions={
-        <LinkButton to="/invoices/new" variant="primary" icon="plus">
-          New invoice
-        </LinkButton>
+        <>
+          <LinkButton to="/invoices/free">Empty invoice</LinkButton>
+          <LinkButton to="/invoices/new" variant="primary" icon="plus">
+            New invoice
+          </LinkButton>
+        </>
       }
     >
+      <BillingNav current="/invoices" />
       {data && (
         <div className="tiles">
           <StatTile label="Outstanding" value={<Amounts amounts={dueByCurrency(open)} />} detail={`${open.length} open invoices`} />

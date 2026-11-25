@@ -10,6 +10,7 @@ export const sections = [
   ['clients', 'Clients'],
   ['projects', 'Projects'],
   ['tasks', 'Tasks'],
+  ['estimates', 'Estimates'],
   ['invoices', 'Invoices'],
   ['approvals', 'Approvals'],
   ['reports', 'Reports'],
@@ -33,6 +34,14 @@ export const allPages = [
   ['clients/1', 'Tallgrass Wind Cooperative'],
   ['invoices/new', 'New invoice'],
   ['invoices/1', 'Invoice INV-0001'],
+  ['invoices/free?client=1', 'New invoice'],
+  ['invoices/recurring', 'Recurring invoices'],
+  ['invoices/recurring/1', 'Edit recurring invoice'],
+  ['invoices/retainers', 'Retainers'],
+  ['invoices/retainers/1', 'Turbine retainer'],
+  ['clients/1/statement', 'Statement'],
+  ['estimates/1', /^Estimate /],
+  ['estimates/new?client=1', 'New estimate'],
   ['notifications', 'Notifications'],
   ['settings/notifications', 'Notifications'],
   ['settings/categories', 'Expense categories'],
@@ -51,7 +60,7 @@ export const phone = { width: 375, height: 812 }
 export const desktop = { width: 1440, height: 900 }
 
 /** Opens a page and waits until it is there and nothing is being requested. */
-export async function open(page: Page, path: string, heading?: string) {
+export async function open(page: Page, path: string, heading?: string | RegExp) {
   await page.goto(path)
   const title = page.getByRole('heading', { level: 1 })
   if (heading) await expect(title).toHaveText(heading)

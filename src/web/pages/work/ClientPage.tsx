@@ -33,6 +33,7 @@ function ClientLoader({ id }: { id: string }) {
           <LinkButton to="/clients" icon="chevronLeft">
             Clients
           </LinkButton>
+          {data?.invoices && <LinkButton to={`/clients/${data.id}/statement`}>Statement</LinkButton>}
           {data?.canManage && (
             <>
               <Menu
