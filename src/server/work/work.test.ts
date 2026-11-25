@@ -298,8 +298,7 @@ describe('reports and home', () => {
     for (const rows of [all.byClient, all.byProject, all.byTask, all.byPerson]) {
       expect(rows.reduce((sum, { minutes }) => sum + minutes, 0)).toBe(all.minutes)
     }
-    expect(all.byDay.reduce((sum, { billable, other }) => sum + billable + other, 0)).toBe(all.minutes)
-    expect(own).toMatchObject({ scope: 'own', amounts: [] })
+    expect(own).toMatchObject({ scope: 'own', showAmounts: false, amounts: [], uninvoiced: [] })
     expect(own.byPerson.map(({ name }) => name)).toEqual(['Casey Test'])
     expect(own.byProject.every(({ amount }) => amount === null)).toBe(true)
     const led = await report(lead)
@@ -308,6 +307,17 @@ describe('reports and home', () => {
     const entries = await database.db.select().from(timeEntries)
     const mine = entries.filter(({ spentOn }) => spentOn >= addDays(today, -30) && spentOn <= today)
     expect(all.minutes).toBe(mine.reduce((sum, { minutes }) => sum + minutes, 0))
+  })
+
+  it('can leave out archived projects, and tell what is not invoiced', async () => {
+    const period = `from=${addDays(today, -180)}&to=${today}`
+    const all = await get<TimeReport>(admin, `/reports/time?${period}`)
+    const active = await get<TimeReport>(admin, `/reports/time?${period}&active=1`)
+    expect(all.byClient.map(({ name }) => name)).toContain('Old Quarry Materials')
+    expect(active.byClient.map(({ name }) => name)).not.toContain('Old Quarry Materials')
+    const usd = (rows: TimeReport['amounts']) => rows.find(({ currency }) => currency === 'USD')?.amount ?? 0
+    expect(usd(all.uninvoiced)).toBeGreaterThan(0)
+    expect(usd(all.uninvoiced)).toBeLessThan(usd(all.amounts))
   })
 
   it('refuse periods that make no sense', async () => {

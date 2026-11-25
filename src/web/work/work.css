@@ -818,13 +818,13 @@
   white-space: nowrap;
 }
 
-.team-member a {
+.team-table .team-member a {
   color: var(--c-text);
   font-weight: var(--weight-strong);
   text-decoration: none;
 }
 
-.team-member a:hover {
+.team-table .team-member a:hover {
   text-decoration: underline;
 }
 
@@ -858,8 +858,87 @@
   background: var(--c-surface-2);
 }
 
-.report-head {
-  max-width: 46rem;
+.report-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), auto));
+  align-items: center;
+  gap: var(--space-5) var(--space-6);
+  padding: var(--space-6);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  background: var(--c-surface-2);
+}
+
+.report-figure {
+  font-size: var(--text-2xl);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-strong);
+}
+
+.report-share {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.report-share .ring {
+  width: 5.5rem;
+  height: 5.5rem;
+}
+
+.report-share .ring strong {
+  font-size: var(--text-lg);
+}
+
+.report-share .ring-track {
+  stroke: var(--c-chart-rest);
+}
+
+.report-share .ring-fill {
+  stroke-linecap: butt;
+}
+
+.report-share dl {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: var(--space-1) var(--space-4);
+}
+
+.line {
+  display: block;
+}
+
+.report-share dt {
+  white-space: nowrap;
+}
+
+.report-share dd {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-strong);
+  text-align: end;
+}
+
+.report-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2) var(--space-3);
+}
+
+.share {
+  display: flex;
+  height: 1.25rem;
+}
+
+.team-table tbody th a {
+  color: var(--c-accent);
+}
+
+.team-table tfoot :is(th, td) {
+  border-top: 1px solid var(--c-border-strong);
+  border-bottom: 0;
+  font-weight: var(--weight-strong);
 }
 
 .pick-list {

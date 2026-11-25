@@ -187,7 +187,7 @@ export const workRoutes: AddRoutes = (api, access, ctx) => {
   })
 
   api.get('/reports/time', access.signedIn, async (req, res) => {
-    const { from, to } = readInput(req.query, { from: date, to: date })
-    res.json(await readTimeReport(ctx, requireActor(res), from, to))
+    const { from, to, active } = readInput(req.query, { from: date, to: date, active: optional(oneOf('1')) })
+    res.json(await readTimeReport(ctx, requireActor(res), { from, to, activeOnly: active !== null }))
   })
 }

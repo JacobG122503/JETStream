@@ -23,3 +23,4 @@ _PM fills this in after QA passes._
 
 ## History
 - 2026-11-23 created
+- 2026-11-25 todo -> blocked: not wanted, the user says JET does not use dashboards

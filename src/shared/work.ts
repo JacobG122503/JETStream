@@ -264,12 +264,14 @@ export interface TimeReport {
   scope: 'own' | 'team'
   minutes: number
   billableMinutes: number
+  /** Whether the actor sees any amounts. */
+  showAmounts: boolean
   amounts: { currency: string; amount: number }[]
+  uninvoiced: { currency: string; amount: number }[]
   byClient: ReportRow[]
   byProject: ReportRow[]
   byTask: ReportRow[]
   byPerson: ReportRow[]
-  byDay: WeekPoint[]
 }
 
 export interface HomeInfo {

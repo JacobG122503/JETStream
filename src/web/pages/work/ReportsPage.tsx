@@ -1,137 +1,250 @@
-import { useState } from 'react'
-import type { ReportRow, TimeReport } from '../../../shared/work'
+import { type ReactNode, useState } from 'react'
+import { Link } from 'react-router-dom'
+import type { PermissionKey } from '../../../shared/permissions'
 import { productName } from '../../../shared/product'
-import { usePerson, useWeekStart } from '../../auth/authContext'
+import type { ReportRow, TimeReport } from '../../../shared/work'
+import { useCan, usePerson, useWeekStart } from '../../auth/authContext'
 import { useLoad } from '../../auth/useLoad'
 import { Page } from '../../shell/Page'
-import { BarChart, Button, Card, type DateRange, DateRangePicker, ErrorState, formatDate, Legend, LoadingState, Meter, monthNames, partsOf, presetRange, StatTile, Table, type TableColumn, Tabs } from '../../ui'
-import { formatAmounts, formatDecimalHours, formatHours, formatMoney, percentOf } from '../../work/format'
-import { Amounts, hourSeries } from '../../work/parts'
+import { addDays, addMonths, Button, Checkbox, type DateRange, DateRangePicker, ErrorState, Icon, IconButton, LoadingState, partsOf, Ring, Select, startOfWeek, Tabs, toIso, type Weekday } from '../../ui'
+import { formatHours, formatMoney, formatWeek, percentOf } from '../../work/format'
+import { Amounts } from '../../work/parts'
 import '../../work/work.css'
 
-const groups = [
-  { id: 'byClient', label: 'Clients', one: 'Client' },
-  { id: 'byProject', label: 'Projects', one: 'Project' },
-  { id: 'byTask', label: 'Tasks', one: 'Task' },
-  { id: 'byPerson', label: 'People', one: 'Person' },
-] as const
-
-function todayIn(timeZone: string): string {
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
-  return parts.slice(0, 10)
+interface GroupInfo {
+  id: 'byClient' | 'byProject' | 'byTask' | 'byPerson'
+  label: string
+  /** Where a name leads, for those who may go there. */
+  path?: string
+  needs?: PermissionKey
 }
+
+const groups: GroupInfo[] = [
+  { id: 'byClient', label: 'Clients', path: '/clients', needs: 'clients.view' },
+  { id: 'byProject', label: 'Projects', path: '/projects' },
+  { id: 'byTask', label: 'Tasks' },
+  { id: 'byPerson', label: 'Teammates', path: '/team', needs: 'people.view' },
+]
+
+const months = { month: 1, quarter: 3, year: 12 } as const
+type Step = 'week' | keyof typeof months
+type Period = Step | 'custom'
+
+function rangeOf(step: Step, date: string, weekStart: Weekday): DateRange {
+  if (step === 'week') {
+    const start = startOfWeek(date, weekStart)
+    return { start, end: addDays(start, 6) }
+  }
+  const { year, month } = partsOf(date)
+  const start = toIso({ year, month: month - ((month - 1) % months[step]), day: 1 })
+  return { start, end: addDays(addMonths(start, months[step]), -1) }
+}
+
+const todayIn = (timeZone: string): string =>
+  new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()).slice(0, 10)
 
 export function ReportsPage() {
   const { timeZone } = usePerson()
   const weekStart = useWeekStart()
   const today = todayIn(timeZone)
-  const [range, setRange] = useState<DateRange>(() => presetRange('this-month', today, weekStart))
-  const { status, data, error, reload } = useLoad<TimeReport>(`reports/time?from=${range.start}&to=${range.end}`)
+  const [period, setPeriod] = useState<Period>('week')
+  const [range, setRange] = useState<DateRange>(() => rangeOf('week', today, weekStart))
+  const [activeOnly, setActiveOnly] = useState(false)
+  const { status, data, error, reload } = useLoad<TimeReport>(`reports/time?from=${range.start}&to=${range.end}${activeOnly ? '&active=1' : ''}`)
+
+  const choose = (next: Period) => {
+    setPeriod(next)
+    if (next !== 'custom') setRange(rangeOf(next, today, weekStart))
+  }
+  const move = (by: 1 | -1) => {
+    if (period === 'custom') return
+    setRange(period === 'week' ? rangeOf('week', addDays(range.start, by * 7), weekStart) : rangeOf(period, addMonths(range.start, by * months[period]), weekStart))
+  }
+  const current = today >= range.start && today <= range.end
+
   return (
-    <Page title="Reports" description={data?.scope === 'own' ? 'Your own hours.' : 'Hours and what they are worth.'}>
-      <div className="report-head">
-        <DateRangePicker label="Dates" weekStart={weekStart} value={range} onChange={setRange} today={today} />
+    <Page title="Reports">
+      <div className="time-bar no-print">
+        <Select
+          label="Period"
+          hideLabel
+          value={period}
+          options={[
+            { value: 'week', label: 'Week' },
+            { value: 'month', label: 'Month' },
+            { value: 'quarter', label: 'Quarter' },
+            { value: 'year', label: 'Year' },
+            { value: 'custom', label: 'Custom' },
+          ]}
+          onChange={(value) => choose(value as Period)}
+        />
+        {period === 'custom' ? (
+          <DateRangePicker label="Dates" weekStart={weekStart} value={range} onChange={setRange} today={today} />
+        ) : (
+          <div className="date-nav">
+            <IconButton icon="chevronLeft" label={`Previous ${period}`} onClick={() => move(-1)} />
+            <p aria-live="polite">
+              <Icon name="calendar" />
+              <span>
+                {current && <span className="muted">This {period} </span>}
+                {formatWeek(range.start, range.end)}
+              </span>
+            </p>
+            <IconButton icon="chevronRight" label={`Next ${period}`} onClick={() => move(1)} />
+          </div>
+        )}
+        {period !== 'custom' && !current && (
+          <button type="button" className="text-button" onClick={() => choose(period)}>
+            Return to this {period}
+          </button>
+        )}
       </div>
       {status === 'loading' && <LoadingState size="page" look="skeleton" label="Loading the report" />}
       {status === 'error' && <ErrorState size="page" headingLevel={2} message={error} onRetry={reload} />}
-      {data && <Report report={data} />}
+      {data && <Report report={data} activeOnly={activeOnly} onActiveOnly={setActiveOnly} />}
     </Page>
   )
 }
 
-function Report({ report }: { report: TimeReport }) {
-  const { minutes, billableMinutes, amounts, byDay, scope } = report
-  const showAmounts = amounts.length > 0
+interface ReportProps {
+  report: TimeReport
+  activeOnly: boolean
+  onActiveOnly: (on: boolean) => void
+}
+
+function Report({ report, activeOnly, onActiveOnly }: ReportProps) {
+  const can = useCan()
+  const { minutes, billableMinutes, showAmounts, amounts, uninvoiced, scope } = report
+  const percent = percentOf(billableMinutes, minutes)
+  const amount = (value: TimeReport['amounts']): ReactNode => (showAmounts ? <Amounts amounts={value} /> : 'N/A')
   return (
     <>
-      <div className="tiles">
-        <StatTile label="Hours" value={formatHours(minutes)} detail={`${formatDate(report.from)} to ${formatDate(report.to)}`} />
-        <StatTile label="Billable" value={`${percentOf(billableMinutes, minutes)}%`} detail={`${formatHours(billableMinutes)} hours`} />
-        {showAmounts && <StatTile label="Billable amount" value={<Amounts amounts={amounts} />} detail="hours billed at their rates" />}
+      <div className="report-panel">
+        <div>
+          <p>Total hours</p>
+          <p className="report-figure">{formatHours(minutes)}</p>
+        </div>
+        <div className="report-share">
+          <Ring percent={percent} label={`${percent}% billable`}>
+            <strong>{percent}%</strong>
+          </Ring>
+          <dl>
+            <dt>
+              <span className="legend-key key-billable" /> Billable
+            </dt>
+            <dd>{formatHours(billableMinutes)}</dd>
+            <dt>
+              <span className="legend-key key-other" /> Non-billable
+            </dt>
+            <dd>{formatHours(minutes - billableMinutes)}</dd>
+          </dl>
+        </div>
+        <div>
+          <p>Billable amount</p>
+          <p className="report-figure">{amount(amounts)}</p>
+        </div>
+        <div>
+          <p>Uninvoiced amount</p>
+          <p className="report-figure">{amount(uninvoiced)}</p>
+        </div>
       </div>
-      <Card title="Hours over time" actions={<Legend series={hourSeries} />}>
-        <BarChart
-          label="Hours over time"
-          series={hourSeries}
-          unit={60}
-          format={formatDecimalHours}
-          everyLabel={Math.max(1, Math.ceil(byDay.length / 10))}
-          points={byDay.map(({ from, billable, other }) => {
-            const { month, day } = partsOf(from)
-            return { id: from, label: `${monthNames[month - 1]?.slice(0, 3)} ${day}`, title: formatDate(from), values: [billable, other] }
-          })}
-        />
-      </Card>
       <Tabs
         label="Hours by"
         items={groups
           .filter(({ id }) => scope === 'team' || id !== 'byPerson')
-          .map(({ id, label, one }) => ({ id, label, content: <Group key={id} title={label} one={one} rows={report[id]} total={minutes} showAmounts={showAmounts} report={report} /> }))}
+          .map(({ id, label, path, needs }) => ({
+            id,
+            label,
+            content: (
+              <div className="stack">
+                <div className="report-tools no-print">
+                  <Checkbox label="Active projects only" checked={activeOnly} onChange={onActiveOnly} />
+                  <Button size="small" aria-disabled={report[id].length === 0 || undefined} onClick={() => download(label, report[id], report)}>
+                    Export CSV
+                  </Button>
+                  <IconButton size="small" variant="secondary" icon="printer" label="Print" onClick={() => window.print()} />
+                </div>
+                <Group title={label} rows={report[id]} report={report} path={path && (!needs || can(needs)) ? path : undefined} />
+              </div>
+            ),
+          }))}
       />
     </>
   )
 }
 
+/** One line for each currency. */
+const totals = (amounts: TimeReport['amounts']): ReactNode =>
+  amounts.map(({ currency, amount }) => (
+    <span key={currency} className="line">
+      {formatMoney(amount, currency)}
+    </span>
+  ))
+
 interface GroupProps {
   title: string
-  one: string
   rows: ReportRow[]
-  total: number
-  showAmounts: boolean
   report: TimeReport
+  path: string | undefined
 }
 
-function Group({ title, one, rows, total, showAmounts, report }: GroupProps) {
-  const columns: TableColumn<ReportRow>[] = [
-    {
-      id: 'name',
-      header: one,
-      cell: ({ name, sub }) => (
-        <span className="cell-two">
-          <span className="strong">{name}</span>
-          {sub && <span className="cell-sub">{sub}</span>}
-        </span>
-      ),
-      sortValue: ({ name }) => name,
-    },
-    { id: 'share', header: 'Share', cell: ({ minutes }) => <Meter percent={percentOf(minutes, rows[0]?.minutes ?? 0)} /> },
-    { id: 'hours', header: 'Hours', numeric: true, cell: ({ minutes }) => formatHours(minutes), sortValue: ({ minutes }) => minutes, total: formatHours(total) },
-    {
-      id: 'billable',
-      header: 'Billable',
-      numeric: true,
-      cell: ({ minutes, billableMinutes }) => `${percentOf(billableMinutes, minutes)}%`,
-      sortValue: ({ minutes, billableMinutes }) => percentOf(billableMinutes, minutes),
-      total: `${percentOf(report.billableMinutes, total)}%`,
-    },
-    ...(showAmounts
-      ? [{
-          id: 'amount',
-          header: 'Amount',
-          numeric: true,
-          cell: ({ amount, currency }: ReportRow) => (amount === null || currency === undefined ? <span className="muted">-</span> : formatMoney(amount, currency)),
-          sortValue: ({ amount }: ReportRow) => amount ?? -1,
-          total: formatAmounts(report.amounts),
-        }]
-      : []),
-  ]
+function Group({ title, rows, report, path }: GroupProps) {
+  const most = Math.max(1, ...rows.map(({ minutes }) => minutes))
+  const { showAmounts } = report
+  if (rows.length === 0) return <div className="day-empty">Nothing was tracked in this period.</div>
   return (
-    <div className="stack">
-      <div className="panel-head">
-        <p className="muted">{rows.length} in this period</p>
-        <Button icon="arrowDown" aria-disabled={rows.length === 0 || undefined} onClick={() => download(title, one, rows, report)}>
-          Download CSV
-        </Button>
-      </div>
-      <Table
-        caption={title}
-        hideCaption
-        columns={columns}
-        rows={rows}
-        rowKey={({ id }) => String(id)}
-        rowLabel={({ name }) => name}
-        empty={{ icon: 'reports', title: 'No hours', description: 'Nothing was tracked in this period.' }}
-      />
+    <div className="table-scroll team-scroll" tabIndex={0} role="region" aria-label={title}>
+      <table className="team-table">
+        <thead>
+          <tr>
+            <th scope="col">Name</th>
+            <th scope="col" className="is-numeric">
+              Hours
+            </th>
+            <th scope="col">
+              <span className="sr-only">Share</span>
+            </th>
+            <th scope="col" className="is-numeric">
+              Billable hours
+            </th>
+            {showAmounts && (
+              <th scope="col" className="is-numeric">
+                Billable amount
+              </th>
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({ id, name, sub, minutes, billableMinutes, amount, currency }) => (
+            <tr key={id}>
+              <th scope="row">
+                {path ? <Link to={`${path}/${id}`}>{name}</Link> : name}
+                {sub && <span className="muted"> ({sub})</span>}
+              </th>
+              <td className="is-numeric">{formatHours(minutes)}</td>
+              <td className="team-bar">
+                <span className="share" aria-hidden="true">
+                  <span className="key-billable" style={{ width: `${(billableMinutes / most) * 100}%` }} />
+                  <span className="key-other" style={{ width: `${((minutes - billableMinutes) / most) * 100}%` }} />
+                </span>
+              </td>
+              <td className="is-numeric">
+                {formatHours(billableMinutes)} <span className="muted">({percentOf(billableMinutes, minutes)}%)</span>
+              </td>
+              {showAmounts && <td className="is-numeric">{amount === null || currency === undefined ? <span className="muted">-</span> : formatMoney(amount, currency)}</td>}
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th scope="row">Total</th>
+            <td className="is-numeric">{formatHours(report.minutes)}</td>
+            <td />
+            <td className="is-numeric">{formatHours(report.billableMinutes)}</td>
+            {showAmounts && <td className="is-numeric">{totals(report.amounts)}</td>}
+          </tr>
+        </tfoot>
+      </table>
     </div>
   )
 }
@@ -142,9 +255,9 @@ const cellText = (value: string | number) => {
   return `"${text.replaceAll('"', '""')}"`
 }
 
-function download(title: string, one: string, rows: ReportRow[], { from, to }: TimeReport) {
+function download(title: string, rows: ReportRow[], { from, to }: TimeReport) {
   const lines = [
-    [one, 'Of', 'Hours', 'Billable hours', 'Amount', 'Currency'],
+    ['Name', 'Client', 'Hours', 'Billable hours', 'Amount', 'Currency'],
     ...rows.map(({ name, sub, minutes, billableMinutes, amount, currency }) => [
       name, sub ?? '', (minutes / 60).toFixed(2), (billableMinutes / 60).toFixed(2), amount === null ? '' : formatMoney(amount, currency ?? 'USD').replace(/[^\d.]/g, ''), amount === null ? '' : (currency ?? ''),
     ]),
