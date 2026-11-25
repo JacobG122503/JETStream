@@ -1,7 +1,7 @@
 import { type ChangeEvent, useEffect, useRef, useState } from 'react'
 import type { Account } from '../../../shared/api'
 import { callApi, errorMessage } from '../../api'
-import { photoUrl } from '../../shell/AccountMenu'
+import { photoUrl } from '../../shell/photo'
 import { Avatar, Button, Card, ConfirmDialog, Notice, useToast } from '../../ui'
 import { PhotoError, photoTypes, shrinkPhoto } from './shrinkPhoto'
 

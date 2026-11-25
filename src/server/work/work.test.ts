@@ -170,13 +170,13 @@ describe('expenses', () => {
     const mileage = categories.find(({ unitName }) => unitName !== null)
     const meals = categories.find(({ unitName }) => unitName === null)
     const body = { projectId: projects[0]?.id, spentOn: today, notes: 'Trip', billable: true, reimbursable: true, quantity: null, amount: 0 }
-    const list = async (response: { body: unknown }) => (response.body as { expenses: ExpenseRow[] }).expenses[0]
-    const driven = await list(await employee.post('/expenses', { ...body, categoryId: mileage?.id, quantity: 10_000 }))
+    const list = (response: { body: unknown }) => (response.body as { expenses: ExpenseRow[] }).expenses[0]
+    const driven = list(await employee.post('/expenses', { ...body, categoryId: mileage?.id, quantity: 10_000 }))
     expect(driven).toMatchObject({ quantity: 10_000, amount: Math.round((mileage?.unitPrice ?? 0) / 100), reimbursementStatus: 'pending' })
     expect(codeOf(await employee.post('/expenses', { ...body, categoryId: meals?.id }))).toEqual([400, 'invalid_input'])
-    const eaten = await list(await employee.post('/expenses', { ...body, categoryId: meals?.id, amount: 1850 }))
+    const eaten = list(await employee.post('/expenses', { ...body, categoryId: meals?.id, amount: 1850 }))
     const changed = await employee.put(`/expenses/${eaten?.id}`, { ...body, categoryId: meals?.id, amount: 2000, version: eaten?.version })
-    expect(await list(changed)).toMatchObject({ amount: 2000 })
+    expect(list(changed)).toMatchObject({ amount: 2000 })
     expect((await employee.post(`/expenses/${eaten?.id}/delete`, { version: (eaten?.version ?? 0) + 1 })).status).toBe(200)
     expect(codeOf(await lead.post(`/expenses/${driven?.id}/delete`, { version: driven?.version }))).toEqual([403, 'forbidden'])
   })

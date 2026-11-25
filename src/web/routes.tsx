@@ -11,11 +11,21 @@ import { SignUpPage } from './pages/auth/SignUpPage'
 import { GalleryPage } from './pages/design/GalleryPage'
 import { PlainLayoutPage } from './pages/design/PlainLayoutPage'
 import { NotFoundPage } from './pages/NotFoundPage'
-import { SectionPage } from './pages/SectionPage'
 import { PersonPage } from './pages/team/PersonPage'
 import { RolePage } from './pages/settings/RolePage'
 import { RolesPage } from './pages/settings/RolesPage'
 import { SettingsPage } from './pages/settings/SettingsPage'
+import { ClientPage } from './pages/work/ClientPage'
+import { ClientsPage } from './pages/work/ClientsPage'
+import { ExpensesPage } from './pages/work/ExpensesPage'
+import { HomePage } from './pages/work/HomePage'
+import { InvoicePage } from './pages/work/InvoicePage'
+import { InvoicesPage } from './pages/work/InvoicesPage'
+import { NewInvoicePage } from './pages/work/NewInvoicePage'
+import { ProjectPage } from './pages/work/ProjectPage'
+import { ProjectsPage } from './pages/work/ProjectsPage'
+import { ReportsPage } from './pages/work/ReportsPage'
+import { TimePage } from './pages/work/TimePage'
 import { TeamPage } from './pages/team/TeamPage'
 import { AccountMenu } from './shell/AccountMenu'
 import { AppShell } from './shell/AppShell'
@@ -33,11 +43,13 @@ export const routerFuture = {
   v7_skipActionErrorRevalidation: true,
 } as const
 
-/** Sections that have been built; the others say that they are not there yet. */
-const built: Partial<Record<string, ReactElement>> = { team: <TeamPage />, settings: <SettingsPage /> }
+const pages: Record<string, ReactElement> = {
+  home: <HomePage />, time: <TimePage />, expenses: <ExpensesPage />, projects: <ProjectsPage />, clients: <ClientsPage />, team: <TeamPage />,
+  reports: <ReportsPage />, invoices: <InvoicesPage />, settings: <SettingsPage />,
+}
 
 const sectionPage = ({ needs, ...item }: NavItem) => {
-  const page = built[item.id] ?? <SectionPage key={item.id} item={item} />
+  const page = pages[item.id]
   return needs ? (
     <Needs any={needs} title={item.label}>
       {page}
@@ -57,6 +69,10 @@ export const routes: RouteObject[] = [
         children: [
           ...navItems.map((item) => ({ path: item.path, element: sectionPage(item) })),
           { path: '/team/:id', element: <Needs any={['people.view']} title="Person"><PersonPage /></Needs> },
+          { path: '/projects/:id', element: <ProjectPage /> },
+          { path: '/clients/:id', element: <Needs any={['clients.view']} title="Client"><ClientPage /></Needs> },
+          { path: '/invoices/new', element: <Needs any={['invoices.manage']} title="New invoice"><NewInvoicePage /></Needs> },
+          { path: '/invoices/:id', element: <Needs any={['invoices.manage']} title="Invoice"><InvoicePage /></Needs> },
           { path: '/settings/roles', element: <Needs any={['roles.manage']} title="Roles"><RolesPage /></Needs> },
           { path: '/settings/roles/:id', element: <Needs any={['roles.manage']} title="Role"><RolePage /></Needs> },
           { path: '/account', element: <AccountPage /> },

@@ -146,6 +146,8 @@
   --shadow-3: 0 30px 80px -20px light-dark(rgb(8 40 28 / 0.38), rgb(0 0 0 / 0.75));
   --shadow-brand: inset 0 1px 0 rgb(255 255 255 / 0.28), 0 6px 16px -6px light-dark(rgb(23 122 74 / 0.5), rgb(0 0 0 / 0.5));
   --shadow-glass: inset 0 0 0 1px var(--c-glass-edge);
+  --shadow-ring: 0 0 0 2px var(--c-surface);
+  --shadow-picked: 0 0 0 1px var(--c-accent), var(--shadow-1);
   --shadow-outline: inset 0 0 0 1px currentColor;
   --shadow-invalid: inset 0 0 0 1px var(--c-danger);
 

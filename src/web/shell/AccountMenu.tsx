@@ -1,12 +1,8 @@
 import { useNavigate } from 'react-router-dom'
 import { errorMessage } from '../api'
 import { useAuth } from '../auth/authContext'
-import { apiUrl } from '../basePath'
 import { Avatar, Menu, useToast } from '../ui'
-
-/** Address of a person's photo, if there is one. */
-// eslint-disable-next-line react-refresh/only-export-components -- belongs to whatever shows people
-export const photoUrl = (photoId: number | null) => (photoId === null ? undefined : apiUrl(`photos/${photoId}`))
+import { photoUrl } from './photo'
 
 /** Who is signed in, in the header of the shell. Nothing while nobody is. */
 export function AccountMenu() {

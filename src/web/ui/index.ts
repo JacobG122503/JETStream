@@ -1,5 +1,6 @@
 /** The shared components. Screens build on these; /design shows each of them. */
 export { announce } from './announce'
+export { BarChart, type ChartPoint, type ChartSeries, Legend, Meter, Ring } from './charts'
 export { Button, type ButtonProps, IconButton, type IconButtonProps, LinkButton, type LinkButtonProps } from './Button'
 export { Combobox, type ComboboxProps, MultiCombobox, type MultiComboboxProps } from './Combobox'
 export type { ComboboxOption } from './comboboxFilter'

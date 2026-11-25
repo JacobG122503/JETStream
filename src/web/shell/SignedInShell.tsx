@@ -1,4 +1,6 @@
 import { useCan, usePerson } from '../auth/authContext'
+import { RunningTimer } from '../work/RunningTimer'
+import { TimerProvider } from '../work/TimerProvider'
 import { AccountMenu } from './AccountMenu'
 import { AppShell } from './AppShell'
 
@@ -7,10 +9,17 @@ export function SignedInShell() {
   const can = useCan()
   const { access } = usePerson()
   return (
-    <AppShell
-      headerContent={<AccountMenu />}
-      contentKey={access}
-      isNavItemVisible={({ needs }) => needs === undefined || needs.some((key) => can(key))}
-    />
+    <TimerProvider>
+      <AppShell
+        headerContent={
+          <>
+            <RunningTimer />
+            <AccountMenu />
+          </>
+        }
+        contentKey={access}
+        isNavItemVisible={({ needs }) => needs === undefined || needs.some((key) => can(key))}
+      />
+    </TimerProvider>
   )
 }

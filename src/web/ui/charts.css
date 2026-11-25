@@ -1,0 +1,250 @@
+.chart {
+  min-width: 0;
+  margin: 0;
+}
+
+.chart-plot {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-3);
+  height: 15rem;
+}
+
+.chart-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  margin-bottom: var(--space-6);
+  color: var(--c-text-muted);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-align: end;
+}
+
+.chart-area {
+  position: relative;
+  min-width: 0;
+}
+
+.chart-grid {
+  position: absolute;
+  inset: 0.375rem 0 var(--space-6);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.chart-grid span {
+  border-top: 1px dashed var(--c-border);
+}
+
+.chart-grid span:last-child {
+  border-top: 1px solid var(--c-border-strong);
+}
+
+.chart-bars {
+  position: absolute;
+  inset: 0.375rem 0 0;
+  display: flex;
+  gap: var(--space-1);
+}
+
+.chart-column {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  border-radius: var(--radius-sm);
+}
+
+.chart-column:hover {
+  background: linear-gradient(var(--c-surface-2), transparent);
+}
+
+.chart-stack {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  justify-content: center;
+}
+
+.chart-stacked {
+  flex-direction: column-reverse;
+  justify-content: flex-start;
+  align-items: center;
+  gap: var(--space-0);
+}
+
+.chart-stacked span {
+  width: min(62%, 2.5rem);
+  flex: none;
+  border-radius: 0.25em;
+}
+
+.chart-grouped {
+  align-items: flex-end;
+  gap: var(--space-1);
+}
+
+.chart-grouped span {
+  width: min(30%, 1.5rem);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.chart-label {
+  height: var(--space-6);
+  padding-top: var(--space-2);
+  color: var(--c-text-muted);
+  font-size: var(--text-xs);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.is-current .chart-label {
+  color: var(--c-text);
+  font-weight: var(--weight-strong);
+}
+
+.chart-tip {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: var(--z-raised);
+  display: none;
+  flex-direction: column;
+  gap: var(--space-0);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--c-tooltip-bg);
+  color: var(--c-tooltip-text);
+  box-shadow: var(--shadow-2);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.chart-column:first-child .chart-tip,
+.chart-column:nth-child(2) .chart-tip {
+  left: 0;
+  transform: none;
+}
+
+.chart-column:last-child .chart-tip,
+.chart-column:nth-last-child(2) .chart-tip {
+  right: 0;
+  left: auto;
+  transform: none;
+}
+
+.chart-column:hover .chart-tip {
+  display: flex;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  color: var(--c-text-muted);
+  font-size: var(--text-sm);
+}
+
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.legend-key {
+  display: inline-block;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 0.2em;
+}
+
+.ring {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 7rem;
+  height: 7rem;
+}
+
+.ring-large {
+  width: 9.5rem;
+  height: 9.5rem;
+}
+
+.ring svg {
+  position: absolute;
+  inset: 0;
+  fill: none;
+  stroke-width: 10;
+  transform: rotate(-90deg);
+}
+
+.ring-track {
+  stroke: var(--c-surface-3);
+}
+
+.ring-fill {
+  stroke: var(--c-chart-1);
+  stroke-linecap: round;
+  transition: stroke-dasharray 400ms ease-out;
+}
+
+.ring.is-over .ring-fill {
+  stroke: var(--c-danger);
+}
+
+.ring-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: var(--leading-tight);
+  text-align: center;
+}
+
+.ring-content strong {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.ring-content span {
+  color: var(--c-text-muted);
+  font-size: var(--text-xs);
+}
+
+.meter {
+  display: block;
+  width: 100%;
+  height: 0.375rem;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--c-surface-3);
+}
+
+.meter > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--g-progress);
+}
+
+.meter.is-over > span {
+  background: var(--c-danger);
+}
+
+@media (max-width: 639.98px) {
+  .chart-plot {
+    height: 12rem;
+  }
+}
