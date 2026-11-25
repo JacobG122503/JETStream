@@ -101,3 +101,7 @@
 .form-note:empty {
   display: none;
 }
+
+.panel > .field:first-child {
+  max-width: 26rem;
+}

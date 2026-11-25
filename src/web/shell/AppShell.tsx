@@ -6,6 +6,7 @@ import { NavDrawer } from './NavDrawer'
 import { type NavItem, navItems } from './navigation'
 import { PageBoundary } from './PageBoundary'
 import { mainId, SkipLink } from './SkipLink'
+import { StreamLines } from './StreamLines'
 import { ThemeMenu } from './ThemeMenu'
 import './shell.css'
 
@@ -29,6 +30,7 @@ export function AppShell({ isNavItemVisible = () => true, headerContent, content
       <div className="shell-sidebar">
         <Brand />
         <MainNav items={items} />
+        <StreamLines className="nav-art" count={9} width={260} height={260} />
       </div>
       <header className="shell-header">
         <IconButton

@@ -1,6 +1,5 @@
 import { type ThemeChoice, useThemeChoice } from '../theme/theme'
 import { type IconName, Menu } from '../ui'
-import { narrowQuery, useMediaQuery } from '../ui/useMediaQuery'
 
 const choices: { id: ThemeChoice; label: string; icon: IconName }[] = [
   { id: 'system', label: 'System', icon: 'monitor' },
@@ -10,13 +9,12 @@ const choices: { id: ThemeChoice; label: string; icon: IconName }[] = [
 
 export function ThemeMenu() {
   const [choice, setChoice] = useThemeChoice()
-  const narrow = useMediaQuery(narrowQuery)
   const current = choices.find(({ id }) => id === choice) ?? choices[0]
   return (
     <Menu
       label={`Appearance: ${current?.label}`}
       icon={current?.icon}
-      iconOnly={narrow}
+      iconOnly
       variant="quiet"
       align="end"
       items={choices.map(({ id, label, icon }) => ({

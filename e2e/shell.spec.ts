@@ -177,8 +177,8 @@ test('every page can be opened and reloaded directly, styled, with every file fo
     await open(page, path, heading)
     await expect(page).toHaveTitle(`${heading} | JETStream`)
     await expect(page.locator('h1')).toHaveCount(1)
-    expect(await pageTitle(page).evaluate((h1) => getComputedStyle(h1).fontFamily), path).toContain('Archivo')
-    expect(await page.evaluate(() => document.fonts.check('16px "Archivo Variable"')), path).toBe(true)
+    expect(await pageTitle(page).evaluate((h1) => getComputedStyle(h1).fontFamily), path).toContain('Bricolage Grotesque')
+    expect(await page.evaluate(() => document.fonts.check('16px "Geist Variable"')), path).toBe(true)
   }
 })
 

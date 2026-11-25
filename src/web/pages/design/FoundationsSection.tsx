@@ -43,7 +43,7 @@ export function FoundationsSection() {
         </ul>
       </Example>
       <Example title="Type" layout="block">
-        <p className="type-title">Page title, set wide</p>
+        <p className="type-title">Page title</p>
         <p className="type-xl">Dialog and section titles</p>
         <p className="type-lg">Card titles</p>
         <p>Text. Hours line up: 1,284.50 and 97.25.</p>
@@ -59,9 +59,6 @@ export function FoundationsSection() {
             </li>
           ))}
         </ul>
-      </Example>
-      <Example title="The ruler" layout="block" note="Under page titles: a tick for every quarter hour, a longer one for every hour.">
-        <div className="ruler" aria-hidden="true" />
       </Example>
       <Example title="Icons">
         {icons.map((name) => (

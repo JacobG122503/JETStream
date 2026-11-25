@@ -11,73 +11,95 @@
   /* Brand. Never put white text on it (2.67:1), and in light mode do not use it for thin lines
      or text on a light surface: --c-accent is the shade for that. */
   --c-brand: #3cb371;
-  --c-brand-hover: #54c485;
+  --c-brand-hover: #52c585;
   --c-brand-active: #34a366;
   --c-on-brand: #04210f;
 
   /* Surfaces and text */
-  --c-bg: light-dark(#f3f7f4, #0d1611);
-  --c-surface: light-dark(#ffffff, #142019);
-  --c-surface-2: light-dark(#eaf1ed, #1b2a21);
-  --c-surface-3: light-dark(#dde8e1, #26382d);
-  --c-text: light-dark(#11211a, #e7f0ea);
-  --c-text-muted: light-dark(#4a5c53, #a6b8ad);
-  --c-border: light-dark(#d2dfd7, #2b3d33);
-  --c-border-strong: light-dark(#6b8075, #7b9285);
-  --c-disabled-bg: light-dark(#e6ece8, #1d2a22);
-  --c-disabled-text: light-dark(#7d8c84, #6f8177);
+  --c-bg: light-dark(#f4f7f6, #0a100e);
+  --c-surface: light-dark(#ffffff, #121a17);
+  --c-surface-2: light-dark(#f0f5f3, #19231f);
+  --c-surface-3: light-dark(#e3ebe8, #24302b);
+  --c-text: light-dark(#0e1f1a, #eaf2ee);
+  --c-text-muted: light-dark(#51635c, #a3b5ad);
+  --c-border: light-dark(#e1e9e6, #24302b);
+  --c-border-strong: light-dark(#71867d, #748a81);
+  --c-disabled-bg: light-dark(#edf2f0, #1a2420);
+  --c-disabled-text: light-dark(#84938c, #6d7f77);
 
   /* Accent: links, focus, selected and checked states, progress */
-  --c-accent: light-dark(#1a6e40, #5cd08f);
-  --c-accent-hover: light-dark(#13552f, #86e0ad);
+  --c-accent: light-dark(#0f6f47, #5fd396);
+  --c-accent-hover: light-dark(#0a5636, #8ce3b4);
   --c-on-accent: light-dark(#ffffff, #04210f);
-  --c-accent-soft: light-dark(#d9f1e3, #17402a);
-  --c-on-accent-soft: light-dark(#114a2a, #b9f0cf);
-  --c-focus: light-dark(#1a6e40, #7be3a9);
+  --c-accent-soft: light-dark(#ddf4e7, #143a28);
+  --c-on-accent-soft: light-dark(#0b4a2f, #b6efcd);
+  --c-focus: light-dark(#0f6f47, #7be3a9);
 
   /* Status */
-  --c-success: light-dark(#1a6e40, #5cd08f);
-  --c-success-soft: light-dark(#d9f1e3, #17402a);
-  --c-on-success-soft: light-dark(#114a2a, #b9f0cf);
-  --c-warning: light-dark(#8a5500, #f0b94f);
-  --c-warning-soft: light-dark(#fdeecb, #412f0b);
+  --c-success: light-dark(#0f6f47, #5fd396);
+  --c-success-soft: light-dark(#ddf4e7, #143a28);
+  --c-on-success-soft: light-dark(#0b4a2f, #b6efcd);
+  --c-warning: light-dark(#8f5600, #f2bc57);
+  --c-warning-soft: light-dark(#fdf0d2, #3f2e0c);
   --c-on-warning-soft: light-dark(#633d00, #f8dda3);
-  --c-danger: light-dark(#b3261e, #ff9d92);
-  --c-danger-soft: light-dark(#fde5e2, #4a1b17);
+  --c-danger: light-dark(#b8281f, #ff9d92);
+  --c-danger-soft: light-dark(#fde8e5, #471b17);
   --c-on-danger-soft: light-dark(#86170f, #ffcfc9);
-  --c-info: light-dark(#1c5f91, #86c5f4);
-  --c-info-soft: light-dark(#dfeefa, #14354e);
-  --c-on-info-soft: light-dark(#123f61, #c9e5fa);
-  --c-danger-solid: light-dark(#b3261e, #f08a7f);
-  --c-danger-solid-hover: light-dark(#971c15, #f7a79e);
+  --c-info: light-dark(#1b5f93, #86c5f4);
+  --c-info-soft: light-dark(#e1effb, #13324a);
+  --c-on-info-soft: light-dark(#113d5f, #c9e5fa);
+  --c-danger-solid: light-dark(#b8281f, #f08a7f);
+  --c-danger-solid-hover: light-dark(#9a1e16, #f7a79e);
   --c-danger-solid-active: light-dark(#7d130d, #e2766a);
   --c-on-danger-solid: light-dark(#ffffff, #2b0502);
 
-  /* Navigation is dark in both modes */
-  --c-nav-bg: light-dark(#0f2a1d, #0a120e);
-  --c-nav-edge: light-dark(#0f2a1d, #2b3d33);
-  --c-nav-text: #d3e6db;
+  /* Navigation and artwork are deep evergreen in both modes */
+  --c-nav-bg: light-dark(#0b3a2c, #0d1f19);
+  --c-nav-text: #cfe6db;
   --c-nav-strong: #ffffff;
-  --c-nav-hover: light-dark(#1c4130, #1a2b22);
-  --c-nav-rule: light-dark(#2d5542, #2b3d33);
+  --c-nav-hover: light-dark(#17493a, #1a3028);
+  --c-nav-rule: light-dark(#23574670, #23352e);
   --c-nav-focus: #9cf0c1;
+  --c-nav-mark: #6ee0a3;
+  --g-nav: linear-gradient(170deg, light-dark(#105040, #132b21) 0%, light-dark(#0b3a2c, #0d1f19) 48%, light-dark(#07282a, #0a1716) 100%);
+  --g-art: linear-gradient(150deg, #125c43 0%, #0b3f31 42%, #07262a 100%);
+  --g-hero: linear-gradient(115deg, light-dark(#0f5f45, #16402f) 0%, light-dark(#0b4436, #112c25) 48%, light-dark(#0a323c, #10262c) 100%);
+  --c-glass: rgb(255 255 255 / 0.1);
+  --c-glass-strong: rgb(255 255 255 / 0.16);
+  --c-glass-edge: rgb(255 255 255 / 0.18);
+  --c-stream: #7fe3b0;
+  --c-stream-2: #58b7d6;
 
-  --c-tooltip-bg: light-dark(#11211a, #e7f0ea);
-  --c-tooltip-text: light-dark(#ffffff, #11211a);
-  --c-overlay: light-dark(rgb(8 26 17 / 0.55), rgb(0 0 0 / 0.68));
-  --c-skeleton: light-dark(#dde8e1, #26382d);
-  --c-skeleton-shine: light-dark(#eaf1ed, #304639);
-  --c-tick: light-dark(#a9bdb1, #40574b);
-  --c-tick-major: light-dark(#4f8468, #55a379);
+  /* The wash of colour behind every page */
+  --g-canvas: radial-gradient(60rem 28rem at 85% -8rem, light-dark(#d5f2e4, #11352a) 0%, light-dark(rgb(213 242 228 / 0), rgb(17 53 42 / 0)) 70%);
+  --c-veil: light-dark(rgb(244 247 246 / 0.82), rgb(10 16 14 / 0.82));
+  --g-progress: linear-gradient(90deg, var(--c-chart-1), var(--c-chart-2));
+  --g-brand: linear-gradient(180deg, var(--c-brand-hover), var(--c-brand));
+
+  /* Charts: told apart by lightness as well as by hue */
+  --c-chart-1: light-dark(#2a9d62, #4cc487);
+  --c-chart-2: light-dark(#1d7fa6, #5ab4d8);
+  --c-chart-3: light-dark(#d99a1f, #efba4e);
+  --c-chart-4: light-dark(#7a62c9, #a893ee);
+  --c-chart-5: light-dark(#cf5f4b, #f08b79);
+  --c-chart-6: light-dark(#5d726a, #93a89f);
+  --c-chart-rest: light-dark(#c9d8d1, #33443c);
+
+  --c-tooltip-bg: light-dark(#0e1f1a, #eaf2ee);
+  --c-tooltip-text: light-dark(#ffffff, #0e1f1a);
+  --c-overlay: light-dark(rgb(6 28 21 / 0.5), rgb(0 0 0 / 0.68));
+  --c-skeleton: light-dark(#e6eeeb, #24302b);
+  --c-skeleton-shine: light-dark(#f2f7f5, #304039);
+  --c-tick: light-dark(#d4dfda, #2c3a34);
 
   /* Avatars */
-  --c-avatar-1: light-dark(#cdeedb, #1c4b32);
-  --c-avatar-2: light-dark(#d8e6f7, #1e3f5c);
-  --c-avatar-3: light-dark(#f7e4c1, #4d3a14);
-  --c-avatar-4: light-dark(#eadff5, #43305a);
+  --c-avatar-1: light-dark(#c9efd9, #1c4b32);
+  --c-avatar-2: light-dark(#d3e6f8, #1e3f5c);
+  --c-avatar-3: light-dark(#fae5bd, #4d3a14);
+  --c-avatar-4: light-dark(#e8defb, #43305a);
   /* Behind the transparent parts of an uploaded picture; also read by account/shrinkPhoto.ts. */
   --c-photo-ground: #ffffff;
-  --c-avatar-text: light-dark(#11211a, #e7f0ea);
+  --c-avatar-text: light-dark(#0e1f1a, #eaf2ee);
 
   /* Spacing */
   --space-0: 0.125rem;
@@ -92,42 +114,46 @@
   --space-12: 3rem;
   --space-16: 4rem;
 
-  /* Type: one family, set wide for titles the way drawing title blocks are lettered */
-  --font: 'Archivo Variable', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* Type: a characterful face for titles and figures, a quiet one for everything else */
+  --font: 'Geist Variable', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', var(--font);
   --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
-  --wide: 115%;
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-md: 0.9375rem;
   --text-field: 0.9375rem;
   --text-lg: 1.0625rem;
   --text-xl: 1.25rem;
-  --text-2xl: 1.5rem;
-  --text-title: clamp(1.5rem, 1.25rem + 1.1vw, 2rem);
+  --text-2xl: 1.625rem;
+  --text-3xl: 2.125rem;
+  --text-hero: clamp(1.75rem, 1.3rem + 2vw, 2.75rem);
+  --text-title: clamp(1.625rem, 1.35rem + 1.2vw, 2.25rem);
   --leading-tight: 1.2;
   --leading: 1.5;
   --weight-normal: 400;
-  --weight-medium: 520;
-  --weight-strong: 640;
-  --weight-heavy: 720;
+  --weight-medium: 500;
+  --weight-strong: 600;
+  --weight-heavy: 700;
 
   /* Shape */
-  --radius-sm: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.625rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
   --radius-full: 999px;
-  --shadow-1: 0 1px 2px light-dark(rgb(15 42 29 / 0.08), rgb(0 0 0 / 0.4));
-  --shadow-2: 0 4px 16px light-dark(rgb(15 42 29 / 0.14), rgb(0 0 0 / 0.5)), 0 1px 3px light-dark(rgb(15 42 29 / 0.1), rgb(0 0 0 / 0.4));
-  --shadow-3: 0 16px 48px light-dark(rgb(15 42 29 / 0.24), rgb(0 0 0 / 0.65));
+  --shadow-1: 0 1px 2px light-dark(rgb(14 50 37 / 0.05), rgb(0 0 0 / 0.4)), 0 6px 20px -8px light-dark(rgb(14 50 37 / 0.1), rgb(0 0 0 / 0.4));
+  --shadow-2: 0 2px 6px light-dark(rgb(14 50 37 / 0.06), rgb(0 0 0 / 0.4)), 0 18px 40px -12px light-dark(rgb(14 50 37 / 0.2), rgb(0 0 0 / 0.6));
+  --shadow-3: 0 30px 80px -20px light-dark(rgb(8 40 28 / 0.38), rgb(0 0 0 / 0.75));
+  --shadow-brand: inset 0 1px 0 rgb(255 255 255 / 0.28), 0 6px 16px -6px light-dark(rgb(23 122 74 / 0.5), rgb(0 0 0 / 0.5));
   --shadow-outline: inset 0 0 0 1px currentColor;
   --shadow-invalid: inset 0 0 0 1px var(--c-danger);
 
   /* Sizes */
   --control-sm: 2rem;
   --control-md: 2.5rem;
-  --sidebar-width: 15rem;
-  --header-height: 3.5rem;
-  --content-max: 80rem;
+  --sidebar-width: 16rem;
+  --header-height: 4rem;
+  --content-max: 78rem;
   --gutter: var(--space-8);
 
   /* Layers */
@@ -177,6 +203,7 @@
   :root[data-theme] {
     color-scheme: light;
     --c-bg: #ffffff;
+    --g-canvas: none;
     --c-text: #000000;
     --shadow-1: none;
     --shadow-2: none;

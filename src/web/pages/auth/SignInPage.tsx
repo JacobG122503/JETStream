@@ -7,7 +7,7 @@ import { useAuth } from '../../auth/authContext'
 import { FormMessages } from '../../auth/FormMessages'
 import { homePath, safeReturnPath } from '../../auth/returnPath'
 import { useForm } from '../../auth/useForm'
-import { Button, Card, Checkbox, Notice, PasswordField, TextField } from '../../ui'
+import { Avatar, Button, Card, Checkbox, Icon, Notice, PasswordField, TextField } from '../../ui'
 import { AuthPage } from './AuthPage'
 
 const fields = ['email', 'password'] as const
@@ -72,7 +72,8 @@ export function SignInPage() {
         </Notice>
       )}
       {demoAccounts.length > 0 && (
-        <Notice title="This is a demo">
+        <section className="demo-box" aria-labelledby="demo-title">
+          <h2 id="demo-title">This is a demo</h2>
           <p>All people, companies and figures are made up. Choose whose view to see:</p>
           <div className="demo-accounts">
             {demoAccounts.map(({ key, label, name }) => (
@@ -83,13 +84,16 @@ export function SignInPage() {
                 onClick={() => void form.submit(() => signIn('session/demo', { account: key }))}
               >
                 <span className="demo-account">
-                  <span className="demo-account-label">{label}</span>
-                  <span>{name}</span>
+                  <Avatar name={name} decorative />
+                  <span className="demo-account-text">
+                    <span className="demo-account-label">{label}</span> <span className="demo-account-name">{name}</span>
+                  </span>
+                  <Icon name="chevronRight" />
                 </span>
               </Button>
             ))}
           </div>
-        </Notice>
+        </section>
       )}
       <Card>
         <form className="stack" noValidate onSubmit={submit}>

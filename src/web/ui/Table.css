@@ -3,6 +3,7 @@
   border: 1px solid var(--c-border);
   border-radius: var(--radius-lg);
   background: var(--c-surface);
+  box-shadow: var(--shadow-1);
 }
 
 .table-scroll {
@@ -31,7 +32,7 @@
 
 .table th,
 .table td {
-  padding: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-5);
   border-bottom: 1px solid var(--c-border);
   text-align: start;
   vertical-align: middle;
@@ -45,7 +46,7 @@
 }
 
 .table thead th {
-  border-bottom-color: var(--c-tick);
+  border-bottom-color: var(--c-border);
 }
 
 /* Words stay whole, so a column is at least as wide as its longest word. */
@@ -85,7 +86,7 @@
 }
 
 .table tfoot td {
-  border-top: 2px solid var(--c-border-strong);
+  border-top: 1px solid var(--c-border-strong);
   border-bottom: 0;
   font-weight: var(--weight-strong);
 }
@@ -287,4 +288,29 @@
   .table-narrow-stack .table-skeleton td {
     display: block;
   }
+}
+
+/* The first link of a row names it: heavier instead of underlined. */
+.table tbody a {
+  color: var(--c-text);
+  font-weight: var(--weight-strong);
+  text-decoration: none;
+}
+
+.table tbody a:hover {
+  color: var(--c-accent);
+  text-decoration: underline;
+}
+
+.table thead th,
+.table thead .sort-button {
+  color: var(--c-text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.table thead [aria-sort='ascending'] .sort-button,
+.table thead [aria-sort='descending'] .sort-button {
+  color: var(--c-text);
+  font-weight: var(--weight-strong);
 }

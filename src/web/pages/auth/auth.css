@@ -51,19 +51,53 @@
 .demo-accounts .btn {
   width: 100%;
   height: auto;
-  min-height: var(--control-md);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+}
+
+.demo-accounts .btn-content {
+  width: 100%;
+}
+
+.demo-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.demo-box h2 {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+}
+
+.demo-box > p {
+  color: var(--c-text-muted);
+  font-size: var(--text-sm);
 }
 
 .demo-account {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0 var(--space-2);
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  text-align: start;
   overflow-wrap: anywhere;
 }
 
+.demo-account-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .demo-account-label {
-  font-weight: var(--weight-heavy);
+  font-weight: var(--weight-strong);
+}
+
+.demo-account-name,
+.demo-account > .icon {
+  color: var(--c-text-muted);
 }
 
 .facts {

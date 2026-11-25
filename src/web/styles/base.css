@@ -5,7 +5,7 @@
 }
 
 html {
-  background: var(--c-bg);
+  background: var(--g-canvas) no-repeat var(--c-bg);
   color: var(--c-text);
   font-family: var(--font);
   font-size: 100%;
@@ -14,6 +14,7 @@ html {
   text-size-adjust: 100%;
   scroll-padding-top: calc(var(--header-height) + var(--space-4));
   accent-color: var(--c-accent);
+  font-feature-settings: 'cv01', 'ss01';
 }
 
 body {
@@ -128,20 +129,6 @@ main:focus-visible {
   width: 1.25em;
   height: 1.25em;
   vertical-align: -0.25em;
-}
-
-/* The quarter-hour scale under page titles: a tick per 15 minutes, a longer one per hour. */
-.ruler {
-  height: 10px;
-  border-top: 1px solid var(--c-tick);
-  background-image:
-    repeating-linear-gradient(90deg, var(--c-tick-major) 0 1px, transparent 1px 48px),
-    repeating-linear-gradient(90deg, var(--c-tick) 0 1px, transparent 1px 12px);
-  background-size:
-    100% 9px,
-    100% 4px;
-  background-repeat: no-repeat;
-  mask-image: linear-gradient(90deg, currentColor, transparent 92%);
 }
 
 @media (prefers-reduced-motion: reduce) {

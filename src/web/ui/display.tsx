@@ -171,7 +171,6 @@ export function PageHeader({ title, headingLevel = 1, description, actions }: Pa
         </div>
         {actions && <div className="page-actions">{actions}</div>}
       </div>
-      <div className="ruler" aria-hidden="true" />
     </div>
   )
 }
