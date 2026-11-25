@@ -1182,3 +1182,141 @@
 .settings-main .columns {
   grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
 }
+
+/* Approvals */
+.approvals {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+}
+
+.approval {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.approval + .approval {
+  border-top: 1px solid var(--c-border);
+}
+
+.approval-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.approval-who {
+  display: flex;
+  flex: 1 1 10rem;
+  flex-direction: column;
+}
+
+.approval-share {
+  width: 13rem;
+}
+
+.approval-hours {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 10rem;
+}
+
+.approval-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.approval-lines th[scope='rowgroup'] {
+  padding-top: var(--space-4);
+  color: var(--c-text);
+  font-weight: var(--weight-strong);
+  text-align: start;
+}
+
+.month {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.month-name {
+  padding: var(--space-2);
+  background: var(--c-surface-2);
+  color: var(--c-text-muted);
+  font-size: var(--text-sm);
+}
+
+.month-day {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  min-height: 4.5rem;
+  padding: var(--space-2);
+  border: 0;
+  border-top: 1px solid var(--c-border);
+  background: transparent;
+  cursor: pointer;
+}
+
+.month-day:hover {
+  background: var(--c-surface-2);
+}
+
+.month-day.is-now {
+  color: var(--c-accent);
+  font-weight: var(--weight-strong);
+}
+
+.month-day.is-empty {
+  cursor: default;
+}
+
+.favorites {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.receipts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.favorite {
+  display: inline-flex;
+  align-items: center;
+}
+
+.person-picker {
+  min-width: 11rem;
+  margin-inline-start: auto;
+}
+
+.row-icons {
+  display: inline-flex;
+  flex-wrap: nowrap;
+}
+
+@media (max-width: 639.98px) {
+  .approval-share {
+    width: auto;
+  }
+}

@@ -50,7 +50,7 @@ it.each([['/team', 'Team'], ['/team/3', 'Person']])('%s is not for everyone', as
   server.session = sessionInfo({ person })
   await open(path, heading)
   expect(screen.getByRole('heading', { level: 2, name: 'You do not have access to this page' })).toBeInTheDocument()
-  expect(server.calls.map(({ route }) => route).filter((route) => route !== 'session' && route !== 'time')).toEqual([])
+  expect(server.calls.map(({ route }) => route).filter((route) => !['session', 'time', 'notifications'].includes(route))).toEqual([])
 })
 
 describe('team', () => {

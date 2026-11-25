@@ -10,6 +10,7 @@ export const timeColumns = {
   id: timeEntries.id, version: timeEntries.version, personId: timeEntries.personId, person: people.name, projectId: timeEntries.projectId,
   project: projects.name, projectCode: projects.code, projectType: projects.type, clientId: clients.id, client: clients.name,
   currency: clients.currency, taskId: timeEntries.taskId, task: tasks.name, spentOn: timeEntries.spentOn, minutes: timeEntries.minutes,
+  startMinute: timeEntries.startMinute, endMinute: timeEntries.endMinute,
   timerStartedAt: timeEntries.timerStartedAt, notes: timeEntries.notes, billable: timeEntries.billable, status: timeEntries.status,
   billedOutside: timeEntries.billedOutside, rateMethod: projects.rateMethod, projectRate: projects.rate, taskRate: projectTasks.rate,
   defaultRate: tasks.defaultRate, invoiceLineId: invoiceTimeEntries.lineId,

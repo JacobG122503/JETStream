@@ -2,21 +2,27 @@ import { type FormEvent, useEffect, useId, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { ExpenseOptions, ExpenseRow } from '../../../shared/work'
 import { callApi, errorMessage } from '../../api'
-import { useWeekStart } from '../../auth/authContext'
+import { apiUrl } from '../../basePath'
+import { useCan, useWeekStart } from '../../auth/authContext'
 import { FormMessages } from '../../auth/FormMessages'
 import { useForm } from '../../auth/useForm'
 import { useLoad } from '../../auth/useLoad'
 import { Page } from '../../shell/Page'
-import { Badge, Button, Checkbox, Combobox, ConfirmDialog, DatePicker, Dialog, ErrorState, formatDate, Icon, IconButton, LoadingState, Select, StatTile, Table, type TableColumn, TextArea, TextField, todayOnDevice, type Tone, useToast } from '../../ui'
+import { Badge, Button, Checkbox, Combobox, ConfirmDialog, DatePicker, Dialog, ErrorState, formatDate, Icon, IconButton, LoadingState, Select, StatTile, Table, type TableColumn, Tabs, TextArea, TextField, todayOnDevice, type Tone, useToast } from '../../ui'
 import { formatAmounts, formatMoney, moneyInput, parseMoney } from '../../work/format'
+import { useActions } from '../../work/useActions'
+import { FileButton } from '../../work/FileButton'
+import { TeamExpenses } from './TeamExpenses'
 import '../../work/work.css'
 
 const statusLook: Record<ExpenseRow['status'], { label: string; tone: Tone }> = {
-  unsubmitted: { label: 'Not handed in', tone: 'neutral' },
-  submitted: { label: 'Handed in', tone: 'info' },
+  unsubmitted: { label: 'Not submitted', tone: 'neutral' },
+  submitted: { label: 'Submitted', tone: 'info' },
   approved: { label: 'Approved', tone: 'success' },
   rejected: { label: 'Sent back', tone: 'warning' },
 }
+
+const countOf = (count: number) => (count === 1 ? '1 expense' : `${count} expenses`)
 
 function sums(rows: ExpenseRow[]) {
   const found = new Map<string, number>()
@@ -25,6 +31,16 @@ function sums(rows: ExpenseRow[]) {
 }
 
 export function ExpensesPage() {
+  const can = useCan()
+  if (!can('time.view')) return <MyExpenses />
+  return (
+    <Page title="Expenses" description="What was spent for projects.">
+      <Tabs label="Expenses" items={[{ id: 'mine', label: 'My expenses', content: <MyExpenses inside /> }, { id: 'team', label: 'Everyone', content: <TeamExpenses /> }]} />
+    </Page>
+  )
+}
+
+function MyExpenses({ inside = false }: { inside?: boolean }) {
   const { status, data, error, reload, setData } = useLoad<{ expenses: ExpenseRow[] }>('expenses')
   const [editing, setEditing] = useState<ExpenseRow | 'new' | null>(null)
   const [deleting, setDeleting] = useState<ExpenseRow | null>(null)
@@ -69,10 +85,11 @@ export function ExpensesPage() {
     {
       id: 'status',
       header: 'Status',
-      cell: ({ status: is, locked, reimbursementStatus }) => (
+      cell: ({ status: is, locked, reimbursementStatus, receipts }) => (
         <span className="badges">
           {locked === 'invoiced' ? <Badge tone="success">Invoiced</Badge> : <Badge tone={statusLook[is].tone}>{statusLook[is].label}</Badge>}
           {reimbursementStatus === 'paid' && <Badge tone="success">Reimbursed</Badge>}
+          {receipts.length > 0 && <Badge>{receipts.length === 1 ? 'Receipt' : `${receipts.length} receipts`}</Badge>}
         </span>
       ),
       sortValue: ({ status: is }) => is,
@@ -80,20 +97,18 @@ export function ExpensesPage() {
     { id: 'amount', header: 'Amount', numeric: true, cell: ({ amount, currency }) => formatMoney(amount, currency), sortValue: ({ amount }) => amount },
   ]
 
-  return (
-    <Page
-      title="Expenses"
-      description="What you spent for projects."
-      actions={
-        <Button variant="primary" icon="plus" onClick={() => setEditing('new')}>
-          New expense
-        </Button>
-      }
-    >
+  const button = (
+    <Button variant="primary" icon="plus" onClick={() => setEditing('new')}>
+      New expense
+    </Button>
+  )
+  const content = (
+    <>
+      {inside && <div>{button}</div>}
       {data && (
         <div className="tiles">
-          <StatTile label="This month" value={formatAmounts(sums(thisMonth))} detail={`${thisMonth.length} expenses`} />
-          <StatTile label="Waiting to be paid back" value={formatAmounts(sums(waiting))} detail={`${waiting.length} expenses`} />
+          <StatTile label="This month" value={formatAmounts(sums(thisMonth))} detail={countOf(thisMonth.length)} />
+          <StatTile label="Waiting to be paid back" value={formatAmounts(sums(waiting))} detail={countOf(waiting.length)} />
         </div>
       )}
       <Table
@@ -113,7 +128,7 @@ export function ExpensesPage() {
               <Icon name="lock" />
             </span>
           ) : (
-            <span className="row-actions">
+            <span className="row-icons">
               <IconButton icon="edit" size="small" variant="quiet" label={`Edit ${row.category}, ${formatDate(row.spentOn)}`} onClick={() => setEditing(row)} />
               <IconButton icon="trash" size="small" variant="quiet" label={`Delete ${row.category}, ${formatDate(row.spentOn)}`} onClick={() => setDeleting(row)} />
             </span>
@@ -125,6 +140,7 @@ export function ExpensesPage() {
           expense={editing === 'new' ? null : editing}
           onClose={() => setEditing(null)}
           onReload={reload}
+          onChanged={setData}
           onSaved={(next) => {
             setData(next)
             toast.success(editing === 'new' ? 'Expense added' : 'Expense saved')
@@ -149,6 +165,13 @@ export function ExpensesPage() {
           }
         }}
       />
+    </>
+  )
+  return inside ? (
+    <div className="stack">{content}</div>
+  ) : (
+    <Page title="Expenses" description="What you spent for projects." actions={button}>
+      {content}
     </Page>
   )
 }
@@ -159,12 +182,19 @@ interface ExpenseDialogProps {
   expense: ExpenseRow | null
   onClose: () => void
   onReload: () => void
+  /** The list, where it changed before the expense is saved. */
+  onChanged: (next: { expenses: ExpenseRow[] }) => void
   onSaved: (next: { expenses: ExpenseRow[] }) => void
 }
 
-function ExpenseDialog({ expense, onClose, onReload, onSaved }: ExpenseDialogProps) {
+const receiptTypes = 'image/png,image/jpeg,application/pdf'
+const receiptBytes = 5 * 1024 * 1024
+
+function ExpenseDialog({ expense, onClose, onReload, onChanged, onSaved }: ExpenseDialogProps) {
   const weekStart = useWeekStart()
   const formId = useId()
+  const toast = useToast()
+  const { run } = useActions()
   const { status, data, error, reload } = useLoad<ExpenseOptions>('expenses/options')
   const form = useForm('expense', fields)
   const [projectId, setProjectId] = useState<string | null>(expense ? String(expense.projectId) : null)
@@ -177,6 +207,9 @@ function ExpenseDialog({ expense, onClose, onReload, onSaved }: ExpenseDialogPro
   const [notes, setNotes] = useState(expense?.notes ?? '')
   const [billable, setBillable] = useState(expense?.billable ?? true)
   const [reimbursable, setReimbursable] = useState(expense?.reimbursable ?? true)
+  const [added, setAdded] = useState<File[]>([])
+  const [receipts, setReceipts] = useState(expense?.receipts ?? [])
+  const [version, setVersion] = useState(expense?.version ?? 0)
   const project = data?.projects.find(({ id }) => String(id) === projectId)
   const category = data?.categories.find(({ id }) => String(id) === categoryId)
   const unit = category?.unitName ?? null
@@ -192,16 +225,26 @@ function ExpenseDialog({ expense, onClose, onReload, onSaved }: ExpenseDialogPro
           projectId: Number(projectId), categoryId: Number(categoryId), spentOn, amount: unit === null ? money : 0, quantity: unit === null ? null : units, notes,
           billable, reimbursable,
         }
-        onSaved(
-          expense
-            ? await callApi<{ expenses: ExpenseRow[] }>('PUT', `expenses/${expense.id}`, { ...body, version: expense.version })
-            : await callApi<{ expenses: ExpenseRow[] }>('POST', 'expenses', body),
-        )
+        const saved = expense
+          ? { id: expense.id, ...(await callApi<{ expenses: ExpenseRow[] }>('PUT', `expenses/${expense.id}`, { ...body, version })) }
+          : await callApi<{ id: number; expenses: ExpenseRow[] }>('POST', 'expenses', body)
+        let next: { expenses: ExpenseRow[] } = saved
+        try {
+          for (const file of added) {
+            const now = next.expenses.find(({ id }) => id === saved.id)?.version ?? 0
+            next = await callApi<{ expenses: ExpenseRow[] }>('PUT', `expenses/${saved.id}/receipts/${now}`, file)
+          }
+        } catch (reason) {
+          // The expense itself is saved.
+          toast.error(`The receipt was not added. ${errorMessage(reason)}`)
+        }
+        onSaved(next)
       },
       {
         projectId: projectId === null ? 'Choose a project.' : null,
         categoryId: categoryId === '' ? 'Choose a category.' : null,
         spentOn: spentOn === '' ? 'Enter a date.' : null,
+        notes: data?.notesRequired && notes.trim() === '' ? 'Enter notes.' : null,
         amount: (unit === null ? money : units) ? null : unit === null ? 'Enter an amount such as 18.50.' : `Enter how many, such as 24.`,
       },
     )
@@ -258,7 +301,45 @@ function ExpenseDialog({ expense, onClose, onReload, onSaved }: ExpenseDialogPro
             onChange={setAmount}
             {...form.field('amount')}
           />
-          <TextArea label="Notes" rows={2} value={notes} onChange={setNotes} {...form.field('notes')} />
+          <TextArea label="Notes" rows={2} required={data.notesRequired} value={notes} onChange={setNotes} {...form.field('notes')} />
+          <div className="receipts">
+            <FileButton
+              accept={receiptTypes}
+              icon="plus"
+              label="Attach receipt"
+              onChoose={(file) => {
+                if (file.size > receiptBytes) toast.error('A receipt can have 5 MB at most.')
+                else setAdded((before) => [...before, file])
+              }}
+            />
+            {receipts.map(({ id, name }) => (
+              <span key={id} className="badges">
+                <a href={apiUrl(`expenses/${expense?.id}/receipts/${id}`)} target="_blank" rel="noreferrer">
+                  {name}
+                </a>
+                <IconButton
+                  icon="close"
+                  size="small"
+                  variant="quiet"
+                  label={`Remove ${name}`}
+                  onClick={() =>
+                    void run('POST', `expenses/${expense?.id}/receipts/${id}/delete`, { version }, 'Receipt removed', (next: { expenses: ExpenseRow[] }) => {
+                      const now = next.expenses.find((row) => row.id === expense?.id)
+                      setReceipts(now?.receipts ?? [])
+                      setVersion(now?.version ?? version)
+                      onChanged(next)
+                    })
+                  }
+                />
+              </span>
+            ))}
+            {added.map((file, index) => (
+              <span key={`${index} ${file.name}`} className="badges">
+                <span>{file.name}</span>
+                <IconButton icon="close" size="small" variant="quiet" label={`Remove ${file.name}`} onClick={() => setAdded((before) => before.filter((one) => one !== file))} />
+              </span>
+            ))}
+          </div>
           <Checkbox label="Bill it to the client" disabled={project?.billable === false} checked={billable && project?.billable !== false} onChange={setBillable} />
           <Checkbox label="I paid it myself and want it back" checked={reimbursable} onChange={setReimbursable} />
         </form>

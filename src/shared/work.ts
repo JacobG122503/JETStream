@@ -23,6 +23,9 @@ export interface TimeEntry {
   spentOn: IsoDate
   /** Without the time of a running timer. */
   minutes: number
+  /** Minutes after midnight, where time is entered as start and end. */
+  startMinute: number | null
+  endMinute: number | null
   /** Set while the timer runs. */
   timerStartedAt: string | null
   notes: string
@@ -41,6 +44,9 @@ export interface TimeProject {
 }
 
 export interface TimeWeek {
+  /** Whose week it is. */
+  person: Named
+  own: boolean
   from: IsoDate
   to: IsoDate
   today: IsoDate
@@ -59,6 +65,8 @@ export interface TimeInput {
   taskId: number
   spentOn: IsoDate
   minutes: number
+  startMinute: number | null
+  endMinute: number | null
   notes: string
 }
 
@@ -217,9 +225,11 @@ export interface ExpenseRow {
   reimbursementStatus: string
   status: EntryStatus
   locked: 'invoiced' | 'approved' | 'period' | null
+  receipts: Receipt[]
 }
 
 export interface ExpenseOptions {
+  notesRequired: boolean
   projects: (Named & { code: string; client: string; currency: string; billable: boolean })[]
   categories: (Named & { unitName: string | null; unitPrice: number | null })[]
 }
@@ -474,4 +484,53 @@ export interface ActivityRow {
   action: string
   type: string
   summary: string
+}
+
+export interface TimeOptions {
+  projects: TimeProject[]
+  favorites: { id: number; projectId: number; taskId: number; notes: string }[]
+  /** Other people whose time may be entered. */
+  people: Named[]
+  notesRequired: boolean
+}
+
+export interface ApprovalWeek {
+  submissionId: number
+  person: Named & { photoId: number | null }
+  from: IsoDate
+  to: IsoDate
+  submittedAt: string
+  minutes: number
+  billableMinutes: number
+  capacityMinutes: number
+  expenses: { currency: string; amount: number }[]
+  entries: { id: number; spentOn: IsoDate; client: string; project: string; task: string; minutes: number; billable: boolean; notes: string; mine: boolean }[]
+  expenseRows: { id: number; spentOn: IsoDate; project: string; category: string; amount: number; currency: string; notes: string; mine: boolean }[]
+}
+
+export interface Approvals {
+  pending: ApprovalWeek[]
+  /** Weeks nobody handed in, newest first. */
+  missing: { person: Named & { photoId: number | null }; from: IsoDate; to: IsoDate; minutes: number; capacityMinutes: number }[]
+  /** Approved lately, which can be opened again. */
+  approved: { submissionId: number; person: Named; from: IsoDate; to: IsoDate; minutes: number; decidedBy: string | null }[]
+  canUnlock: boolean
+}
+
+export interface ExpenseCategory extends Named {
+  version: number
+  unitName: string | null
+  unitPrice: number | null
+  archived: boolean
+}
+
+export interface TeamExpense extends Omit<ExpenseRow, 'locked'> {
+  person: Named
+  receipts: Receipt[]
+}
+
+export interface Receipt {
+  id: number
+  name: string
+  mediaType: string
 }

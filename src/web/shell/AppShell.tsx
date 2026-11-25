@@ -17,13 +17,15 @@ export interface AppShellProps {
   headerContent?: ReactNode
   /** Above the navigation, such as quick actions. */
   navTop?: ReactNode
+  /** Beside the name on wide windows. */
+  navCorner?: ReactNode
   /** Below the navigation on wide windows, beside the appearance control. */
   navFoot?: ReactNode
   /** The page is put up anew when this changes, so that nothing stays of what it had loaded. */
   contentKey?: string
 }
 
-export function AppShell({ isNavItemVisible = () => true, headerContent, navTop, navFoot, contentKey }: AppShellProps) {
+export function AppShell({ isNavItemVisible = () => true, headerContent, navTop, navCorner, navFoot, contentKey }: AppShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const drawerId = useId()
   const wide = useMediaQuery(wideQuery)
@@ -33,7 +35,14 @@ export function AppShell({ isNavItemVisible = () => true, headerContent, navTop,
     <div className="shell">
       <SkipLink />
       <div className="shell-sidebar">
-        <Brand />
+        {wide && navCorner ? (
+          <div className="nav-top">
+            <Brand />
+            {navCorner}
+          </div>
+        ) : (
+          <Brand />
+        )}
         {navTop}
         <MainNav items={items} />
         {wide && (

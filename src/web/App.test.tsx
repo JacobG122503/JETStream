@@ -42,7 +42,7 @@ describe('App', () => {
   it.each(forAll.map((item) => [item.path, item.label]))('%s is the page "%s", and says when it cannot be loaded', async (path, label) => {
     await renderAt(path)
     expect(screen.getAllByRole('heading', { level: 1 }).map((heading) => heading.textContent)).toEqual([label])
-    expect(document.title).toBe(`${label} | JETStream`)
+    await waitFor(() => expect(document.title).toBe(`${label} | JETStream`))
     const main = within(screen.getByRole('main'))
     expect((await main.findAllByText('Something went wrong')).length).toBeGreaterThan(0)
     expect(main.getByRole('button', { name: /Retry|Try again/ })).toBeInTheDocument()
@@ -54,8 +54,8 @@ describe('App', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'You do not have access to this page' })).toBeInTheDocument()
     expect(within(screen.getByRole('main')).getByRole('link', { name: 'Go to Time' })).toBeInTheDocument()
     expect(within(screen.getByRole('navigation', { name: 'Main' })).queryByRole('link', { name: label })).not.toBeInTheDocument()
-    // The header asks for the running timer.
-    expect(fetchMock.mock.calls.map(([url]) => url).filter((url) => url !== '/api/time')).toEqual(['/api/session'])
+    // The header asks for the running timer and what is new.
+    expect(fetchMock.mock.calls.map(([url]) => url).filter((url) => url !== '/api/time' && url !== '/api/notifications')).toEqual(['/api/session'])
   })
 
   it.each(['/no-such-page', '/time/nope', '/no/such/page'])('shows "Page not found" inside the shell at %s', async (path) => {

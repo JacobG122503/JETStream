@@ -447,3 +447,48 @@
   flex: 1;
   min-width: 0;
 }
+
+.bell.has-news .icon {
+  color: var(--c-warning);
+}
+
+.bell.has-news::after {
+  position: absolute;
+  top: 0.5em;
+  right: 0.5em;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--radius-full);
+  background: var(--c-warning);
+  content: '';
+}
+
+.nav-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.account-button .account-role {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Room for the bell. */
+@media (max-width: 639.98px) {
+  .shell-header .account-button .menu-chevron {
+    display: none;
+  }
+
+  .shell-header .account-button.btn {
+    padding-inline: var(--space-1);
+  }
+}
+
+@media (max-width: 359.98px) {
+  .shell-header .brand-mark {
+    display: none;
+  }
+}

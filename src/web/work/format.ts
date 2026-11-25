@@ -113,3 +113,20 @@ export function parseMoney(text: string, currency: string): number | null {
 }
 
 export const percentOf = (part: number, whole: number): number => (whole === 0 ? 0 : Math.round((part / whole) * 100))
+
+/** Minutes after midnight, as people write the time of day. */
+export const showClock = (minute: number): string => {
+  const hour = Math.floor(minute / 60)
+  return `${hour % 12 || 12}:${String(minute % 60).padStart(2, '0')} ${hour % 24 < 12 ? 'am' : 'pm'}`
+}
+
+/** "8:30 am", "16:15" or "4pm" as minutes after midnight; null for anything else. */
+export function parseClock(text: string): number | null {
+  const match = /^(\d{1,2})(?::?([0-5]\d))?\s*([ap])?\.?m?\.?$/i.exec(text.trim())
+  if (!match) return null
+  const hour = Number(match[1])
+  const minute = Number(match[2] ?? 0)
+  const half = match[3]?.toLowerCase()
+  if (half) return hour >= 1 && hour <= 12 ? ((hour % 12) + (half === 'p' ? 12 : 0)) * 60 + minute : null
+  return hour <= 24 && hour * 60 + minute <= 1440 ? hour * 60 + minute : null
+}

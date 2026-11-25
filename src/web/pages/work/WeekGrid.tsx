@@ -30,7 +30,7 @@ export function WeekGrid({ week, onChange, onAdd, onReload }: WeekGridProps) {
   const save = (row: TimeEntry, day: string, entry: TimeEntry | undefined, minutes: number) => {
     queue.current = queue.current.then(async () => {
       try {
-        const body = { projectId: row.projectId, taskId: row.taskId, spentOn: day, minutes, notes: entry?.notes ?? '' }
+        const body = { projectId: row.projectId, taskId: row.taskId, spentOn: day, minutes, notes: entry?.notes ?? '', startMinute: null, endMinute: null, personId: week.own ? null : week.person.id }
         onChange(entry ? await callApi<TimeWeek>('PUT', `time/${entry.id}`, { ...body, version: entry.version }) : await callApi<TimeWeek>('POST', 'time', body))
       } catch (reason) {
         toast.error(errorMessage(reason))
@@ -78,7 +78,7 @@ export function WeekGrid({ week, onChange, onAdd, onReload }: WeekGridProps) {
                   {days.map((day) => {
                     const there = entries.filter(({ spentOn }) => spentOn === day)
                     const [entry] = there
-                    const editable = !closed && there.length <= 1 && (!entry || (entry.locked === null && entry.timerStartedAt === null))
+                    const editable = !closed && there.length <= 1 && (!entry || (entry.locked === null && entry.timerStartedAt === null && entry.startMinute === null))
                     return (
                       <td key={day}>
                         {editable ? (

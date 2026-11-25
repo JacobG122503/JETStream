@@ -9,7 +9,7 @@ import { isCurrentItem, navItems } from './navigation'
 import { Page } from './Page'
 import { RouteEffects } from './RouteEffects'
 
-const labels = ['Home', 'Timesheet', 'Expenses', 'Team', 'Clients', 'Projects', 'Tasks', 'Invoices', 'Reports', 'Settings']
+const labels = ['Home', 'Timesheet', 'Expenses', 'Team', 'Clients', 'Projects', 'Tasks', 'Invoices', 'Approvals', 'Reports', 'Settings']
 
 function Breaking() {
   const [broken, setBroken] = useState(false)
@@ -65,7 +65,7 @@ describe('navigation', () => {
     renderShell('/time')
     expect(links().map((link) => link.textContent)).toEqual(labels)
     expect(links().map((link) => link.getAttribute('href'))).toEqual(
-      ['/home', '/time', '/expenses', '/team', '/clients', '/projects', '/tasks', '/invoices', '/reports', '/settings'],
+      ['/home', '/time', '/expenses', '/team', '/clients', '/projects', '/tasks', '/invoices', '/approvals', '/reports', '/settings'],
     )
   })
 
@@ -237,7 +237,7 @@ describe('an error while a page renders', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Break' }))
     expect(screen.getByRole('heading', { level: 1, name: 'Something went wrong' })).toHaveFocus()
     expect(document.title).toBe('Something went wrong | JETStream')
-    expect(links()).toHaveLength(10)
+    expect(links()).toHaveLength(labels.length)
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(screen.getByRole('button', { name: 'Break' })).toBeInTheDocument()
     expect(document.title).toBe('Breaking | JETStream')

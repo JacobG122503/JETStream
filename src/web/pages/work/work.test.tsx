@@ -11,9 +11,10 @@ import { administrator, person, sessionInfo } from '../../test/session'
 const now = '2026-11-25T16:00:00Z'
 const entry = (more: Partial<TimeEntry> = {}): TimeEntry => ({
   id: 5, version: 2, projectId: 1, project: 'Pump station', projectCode: 'P', client: 'Fernhollow', taskId: 7, task: 'Design', spentOn: '2026-11-25', minutes: 90,
-  timerStartedAt: null, notes: 'North run', billable: true, status: 'unsubmitted', locked: null, ...more,
+  timerStartedAt: null, startMinute: null, endMinute: null, notes: 'North run', billable: true, status: 'unsubmitted', locked: null, ...more,
 })
 const week = (entries: TimeEntry[], running: TimeEntry | null = null): TimeWeek => ({
+  person: { id: 7, name: 'Casey' }, own: true,
   from: '2026-11-21', to: '2026-11-27', today: '2026-11-25', capacityMinutes: 2400, entries, submission: null, running, now,
 })
 
@@ -63,7 +64,7 @@ describe('time', () => {
     server.handlers['POST time'] = () => week([entry({ id: 9, notes: 'Added' })])
     await press('Add time', box)
     expect(await screen.findByText('Added')).toBeInTheDocument()
-    expect(server.sent('POST time')[0]?.body).toEqual({ projectId: 2, taskId: 8, spentOn: '2026-11-25', minutes: 90, notes: '', start: false })
+    expect(server.sent('POST time')[0]?.body).toEqual({ projectId: 2, taskId: 8, spentOn: '2026-11-25', minutes: 90, notes: '', start: false, startMinute: null, endMinute: null, personId: null })
   })
 
   it('starts a timer when the hours are left empty, and shows it in the header', async () => {
@@ -126,7 +127,7 @@ describe('time', () => {
     await userEvent.type(screen.getByRole('textbox', { name: 'Design, Pump station, Thursday, 26 Nov' }), '1{Enter}')
     await waitFor(() => expect(server.sent('POST time')).toHaveLength(1))
     expect(server.sent('PUT time/5')[0]?.body).toMatchObject({ minutes: 375, notes: 'North run', version: 2 })
-    expect(server.sent('POST time')[0]?.body).toEqual({ projectId: 1, taskId: 7, spentOn: '2026-11-26', minutes: 60, notes: '' })
+    expect(server.sent('POST time')[0]?.body).toEqual({ projectId: 1, taskId: 7, spentOn: '2026-11-26', minutes: 60, notes: '', startMinute: null, endMinute: null, personId: null })
     expect((await screen.findAllByText('7.25')).length).toBeGreaterThan(0)
   })
 

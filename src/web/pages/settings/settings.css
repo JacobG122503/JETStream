@@ -142,3 +142,14 @@
     border-bottom: 1px solid var(--c-border);
   }
 }
+
+/* Above the settings, the list is a few short lines. */
+@media (max-width: 799.98px) {
+  .settings-nav {
+    flex-flow: row wrap;
+    padding-right: 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--c-border);
+    padding-bottom: var(--space-3);
+  }
+}

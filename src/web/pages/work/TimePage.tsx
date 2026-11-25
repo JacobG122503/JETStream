@@ -2,29 +2,39 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { TimeEntry, TimeWeek } from '../../../shared/work'
 import { callApi, errorMessage } from '../../api'
+import { useAuth, useCan } from '../../auth/authContext'
 import { useLoad } from '../../auth/useLoad'
 import { Page } from '../../shell/Page'
-import { addDays, Badge, Button, ConfirmDialog, ErrorState, Icon, IconButton, LoadingState, Menu, Notice, useToast, weekdayNames, weekdayOf } from '../../ui'
+import { addDays, addMonths, Badge, Button, ConfirmDialog, ErrorState, Icon, IconButton, LoadingState, Menu, monthNames, Notice, partsOf, useToast, weekdayNames, weekdayOf } from '../../ui'
 import { classNames } from '../../ui/classNames'
 import { Clock } from '../../work/Clock'
-import { formatDay, formatHours, formatWeek } from '../../work/format'
+import { formatDay, formatHours, formatWeek, showClock } from '../../work/format'
 import { useTimer } from '../../work/timerContext'
+import { useShortcuts } from '../../work/useShortcuts'
+import { MonthView, PersonPicker } from './MonthView'
 import { EntryDialog, type Editing } from './EntryDialog'
 import { WeekGrid } from './WeekGrid'
 import '../../work/work.css'
 
-const lockWords = { invoiced: 'Invoiced', approved: 'Approved', period: 'Handed in' } as const
+const lockWords = { invoiced: 'Invoiced', approved: 'Approved', period: 'Locked' } as const
 
 export function TimePage() {
-  const [query, setQuery] = useSearchParams()
   const [date, setDate] = useState<string | null>(null)
-  const { status, data, error, reload, refresh, setData } = useLoad<TimeWeek>(date === null ? 'time' : `time?date=${date}`)
+  const [query, setQuery] = useSearchParams()
+  const personId = query.get('person') === null ? null : Number(query.get('person'))
+  const route = [date !== null && `date=${date}`, personId !== null && `person=${personId}`].filter(Boolean).join('&')
+  const { status, data, error, reload, refresh, setData } = useLoad<TimeWeek>(route === '' ? 'time' : `time?${route}`)
+  const can = useCan()
+  const { info } = useAuth()
+  const approval = info?.company.formats.modules.approval !== false
   const [chosenDay, setDay] = useState<string | null>(null)
   const [editing, setEditing] = useState<Editing | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const toast = useToast()
   const timer = useTimer()
-  const weekly = query.get('view') === 'week'
+  const view = query.get('view')
+  const weekly = view === 'week'
+  const monthly = view === 'month'
   useEffect(() => {
     if (timer.changes > 0) refresh()
   }, [timer.changes, refresh])
@@ -36,6 +46,15 @@ export function TimePage() {
     setEditing({ entry: null, date: data.today })
     setQuery({}, { replace: true })
   }, [wanted, data, setQuery])
+
+  const choose = (next: { view?: string | null; person?: string | null }) => {
+    const wantedQuery = new URLSearchParams(query)
+    for (const [name, value] of Object.entries(next)) {
+      if (value) wantedQuery.set(name, value)
+      else wantedQuery.delete(name)
+    }
+    setQuery(wantedQuery, { replace: true })
+  }
 
   const inWeek = (day: string | null) => data !== undefined && day !== null && day >= data.from && day <= data.to
   const day = data ? (inWeek(chosenDay) ? (chosenDay as string) : inWeek(data.today) ? data.today : data.from) : ''
@@ -49,6 +68,12 @@ export function TimePage() {
   const submission = data?.submission ?? null
   const closed = submission !== null && submission.status !== 'rejected'
   const add = () => setEditing({ entry: null, date: day })
+  const step = (direction: 1 | -1) => show(monthly ? addMonths(`${day.slice(0, 7)}-01`, direction) : addDays(day, direction * (weekly ? 7 : 1)))
+  const goToday = () => {
+    setDate(null)
+    setDay(data?.today ?? null)
+  }
+  useShortcuts({ n: add, t: goToday, ArrowLeft: () => step(-1), ArrowRight: () => step(1), d: () => choose({ view: null }), w: () => choose({ view: 'week' }), m: () => choose({ view: 'month' }) }, data !== undefined && editing === null && !submitting)
 
   const change = async (route: string, body: object, message: string) => {
     try {
@@ -64,11 +89,14 @@ export function TimePage() {
       title="Timesheet"
       actions={
         <div className="segments" role="group" aria-label="View">
-          <button type="button" aria-pressed={!weekly} onClick={() => setQuery({}, { replace: true })}>
+          <button type="button" aria-pressed={!weekly && !monthly} onClick={() => choose({ view: null })}>
             Day
           </button>
-          <button type="button" aria-pressed={weekly} onClick={() => setQuery({ view: 'week' }, { replace: true })}>
+          <button type="button" aria-pressed={weekly} onClick={() => choose({ view: 'week' })}>
             Week
+          </button>
+          <button type="button" aria-pressed={monthly} onClick={() => choose({ view: 'month' })}>
+            Month
           </button>
         </div>
       }
@@ -82,10 +110,14 @@ export function TimePage() {
               Track time
             </Button>
             <div className="date-nav">
-              <IconButton icon="chevronLeft" label={weekly ? 'Week before' : 'Day before'} onClick={() => show(addDays(day, weekly ? -7 : -1))} />
+              <IconButton icon="chevronLeft" label={monthly ? 'Month before' : weekly ? 'Week before' : 'Day before'} onClick={() => step(-1)} />
               <p aria-live="polite">
                 <Icon name="calendar" />
-                {weekly ? (
+                {monthly ? (
+                  <span>
+                    {monthNames[partsOf(day).month - 1]} {partsOf(day).year}
+                  </span>
+                ) : weekly ? (
                   <span>{formatWeek(data.from, data.to)}</span>
                 ) : (
                   <span>
@@ -94,29 +126,37 @@ export function TimePage() {
                   </span>
                 )}
               </p>
-              <IconButton icon="chevronRight" label={weekly ? 'Next week' : 'Next day'} onClick={() => show(addDays(day, weekly ? 7 : 1))} />
+              <IconButton icon="chevronRight" label={monthly ? 'Next month' : weekly ? 'Next week' : 'Next day'} onClick={() => step(1)} />
             </div>
             {(weekly ? !inWeek(data.today) : day !== data.today) && (
               <button
                 type="button"
                 className="text-button"
-                onClick={() => {
-                  setDate(null)
-                  setDay(data.today)
-                }}
+                onClick={goToday}
               >
                 Return to today
               </button>
             )}
+            {can('time.view') && <PersonPicker week={data} onChoose={(id) => choose({ person: id })} />}
           </div>
 
           {submission?.status === 'rejected' && (
             <Notice tone="warning" title="This week was sent back">
-              {submission.comment || 'Change it and hand it in again.'}
+              {submission.comment || 'Change it and submit it again.'}
             </Notice>
           )}
 
-          {weekly ? (
+          {monthly ? (
+            <MonthView
+              month={day.slice(0, 7)}
+              today={data.today}
+              personId={personId}
+              onDay={(one) => {
+                show(one)
+                choose({ view: null })
+              }}
+            />
+          ) : weekly ? (
             <WeekGrid key={data.from} week={data} onChange={setData} onAdd={add} onReload={reload} />
           ) : (
             <>
@@ -150,7 +190,7 @@ export function TimePage() {
                 <div>
                   <ul className="entries">
                     {entries.map((entry) => (
-                      <Entry key={entry.id} entry={entry} today={data.today} onEdit={() => setEditing({ entry, date: entry.spentOn })} />
+                      <Entry key={entry.id} entry={entry} today={data.today} own={data.own} onEdit={() => setEditing({ entry, date: entry.spentOn })} />
                     ))}
                   </ul>
                   <div className="entries-foot">
@@ -171,7 +211,7 @@ export function TimePage() {
           )}
 
           <div className="time-foot">
-            {closed || weekly ? (
+            {closed || weekly || monthly || !data.own ? (
               <span />
             ) : (
               <Menu
@@ -186,10 +226,10 @@ export function TimePage() {
             {submission?.status === 'submitted' && (
               <span className="time-state">
                 <Badge tone="info">Waiting for approval</Badge>
-                <Button onClick={() => void change('time/withdraw', { date: data.from }, 'Week taken back')}>Take back</Button>
+                {data.own && <Button onClick={() => void change('time/withdraw', { date: data.from }, 'Week taken back')}>Take back</Button>}
               </span>
             )}
-            {!closed && (
+            {!closed && data.own && approval && !monthly && (
               <Button aria-disabled={total === 0 || undefined} onClick={() => total > 0 && setSubmitting(true)}>
                 Submit week for approval
               </Button>
@@ -215,6 +255,7 @@ export function TimePage() {
             <EntryDialog
               editing={editing}
               today={data.today}
+              personId={data.own ? null : data.person.id}
               onClose={() => setEditing(null)}
               onSaved={(week, message) => {
                 setEditing(null)
@@ -240,7 +281,7 @@ export function TimePage() {
   )
 }
 
-function Entry({ entry, today, onEdit }: { entry: TimeEntry; today: string; onEdit: () => void }) {
+function Entry({ entry, today, own, onEdit }: { entry: TimeEntry; today: string; own: boolean; onEdit: () => void }) {
   const { running, start, again, stop } = useTimer()
   const isRunning = entry.timerStartedAt !== null || running?.id === entry.id
   const what = `${entry.task}, ${entry.project}`
@@ -255,7 +296,14 @@ function Entry({ entry, today, onEdit }: { entry: TimeEntry; today: string; onEd
           </span>{' '}
           ({entry.client})
         </p>
-        <p>{entry.task}</p>
+        <p>
+          {entry.task}
+          {entry.startMinute !== null && entry.endMinute !== null && (
+            <span className="muted">
+              , {showClock(entry.startMinute)} to {showClock(entry.endMinute)}
+            </span>
+          )}
+        </p>
         {entry.notes && <p className="muted">{entry.notes}</p>}
       </div>
       {entry.locked && (
@@ -266,15 +314,15 @@ function Entry({ entry, today, onEdit }: { entry: TimeEntry; today: string; onEd
       <p className="entry-time">{isRunning ? <Clock entry={running ?? entry} /> : formatHours(entry.minutes)}</p>
       {!entry.locked && (
         <div className="entry-actions">
-          {isRunning ? (
+          {isRunning && own ? (
             <Button icon="stop" variant="primary" aria-label={`Stop timer for ${what}`} onClick={() => void stop()}>
               Stop
             </Button>
           ) : (
             <>
-              <Button icon="time" aria-label={`Start timer for ${what}`} onClick={begin}>
+              {own && <Button icon="time" aria-label={`Start timer for ${what}`} onClick={begin}>
                 Start
-              </Button>
+              </Button>}
               {/* A running entry is changed once it is stopped. */}
               <Button size="small" aria-label={`Edit ${what}`} onClick={onEdit}>
                 Edit

@@ -11,6 +11,9 @@ export const sections = [
   ['projects', 'Projects'],
   ['tasks', 'Tasks'],
   ['invoices', 'Invoices'],
+  ['approvals', 'Approvals'],
+  ['notifications', 'Notifications'],
+  ['settings/notifications', 'Notifications'],
   ['reports', 'Reports'],
   ['settings', 'Settings'],
 ] as const

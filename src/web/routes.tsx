@@ -15,6 +15,9 @@ import { PersonPage } from './pages/team/PersonPage'
 import { RolePage } from './pages/settings/RolePage'
 import { RolesPage } from './pages/settings/RolesPage'
 import { SettingsPage } from './pages/settings/SettingsPage'
+import { CategoriesPage } from './pages/settings/CategoriesPage'
+import { NotificationSettingsPage, NotificationsPage } from './pages/settings/NotificationsPage'
+import { ApprovalsPage } from './pages/work/ApprovalsPage'
 import { ActivityPage } from './pages/settings/ActivityPage'
 import { CompanyPage } from './pages/settings/CompanyPage'
 import { ProjectEditPage } from './pages/work/ProjectEditPage'
@@ -50,7 +53,7 @@ export const routerFuture = {
 
 const pages: Record<string, ReactElement> = {
   home: <HomePage />, time: <TimePage />, expenses: <ExpensesPage />, projects: <ProjectsPage />, clients: <ClientsPage />, tasks: <TasksPage />, team: <TeamPage />,
-  reports: <ReportsPage />, invoices: <InvoicesPage />, settings: <SettingsPage />,
+  approvals: <ApprovalsPage />, reports: <ReportsPage />, invoices: <InvoicesPage />, settings: <SettingsPage />,
 }
 
 const sectionPage = ({ needs, ...item }: NavItem) => {
@@ -77,6 +80,9 @@ export const routes: RouteObject[] = [
           { path: '/projects/:id', element: <ProjectPage /> },
           { path: '/projects/:id/edit', element: <ProjectEditPage /> },
           { path: '/settings/company', element: <Needs any={['settings.manage']} title="Company settings"><CompanyPage /></Needs> },
+          { path: '/notifications', element: <NotificationsPage /> },
+          { path: '/settings/notifications', element: <NotificationSettingsPage /> },
+          { path: '/settings/categories', element: <Needs any={['tasks.manage']} title="Expense categories"><CategoriesPage /></Needs> },
           { path: '/settings/activity', element: <Needs any={['activity.view']} title="Activity log"><ActivityPage /></Needs> },
           { path: '/clients/:id', element: <Needs any={['clients.view']} title="Client"><ClientPage /></Needs> },
           { path: '/invoices/new', element: <Needs any={['invoices.manage']} title="New invoice"><NewInvoicePage /></Needs> },
