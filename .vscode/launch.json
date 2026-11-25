@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "JETStream",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/demo.mjs",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      // Only the server is debugged, not the build it starts with.
+      "autoAttachChildProcesses": false,
+      // Stop lets the server close its database first.
+      "killBehavior": "polite",
+      "serverReadyAction": {
+        "pattern": "is running at (https?://\\S+)",
+        "uriFormat": "%s",
+        "action": "openExternally"
+      }
+    }
+  ]
+}
