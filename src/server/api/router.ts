@@ -1,6 +1,7 @@
 import { type ErrorRequestHandler, Router } from 'express'
 import { type Access, createAccess, declaredRoutes } from '../auth/access'
 import type { AppContext } from '../context'
+import { BillingError, type BillingProblem, ClaimError, EntryLockedError } from '../billing'
 import { ApiError, clientError, describeError, NotFoundError, StaleError } from '../errors'
 import { guardHandlers } from './guardHandlers'
 import { health } from './health'
@@ -11,6 +12,7 @@ import { linkRoutes } from './routes/links'
 import { peopleRoutes } from './routes/people'
 import { requestRoutes } from './routes/requests'
 import { sessionRoutes } from './routes/session'
+import { workRoutes } from './routes/work'
 
 export interface ApiOptions {
   /** Adds routes; used by tests to reach the error handling. */
@@ -31,7 +33,7 @@ export function createApiRouter(ctx: AppContext, { extend }: ApiOptions = {}): R
     next()
   })
   api.get('/health', access.public, health(ctx.db))
-  for (const addRoutes of [sessionRoutes, linkRoutes, accountRoutes, peopleRoutes, accessRoutes, requestRoutes, inviteRoutes]) {
+  for (const addRoutes of [sessionRoutes, linkRoutes, accountRoutes, peopleRoutes, accessRoutes, requestRoutes, inviteRoutes, workRoutes]) {
     addRoutes(api, access, ctx)
   }
   extend?.(api, access)
@@ -62,12 +64,29 @@ function routePattern(route: unknown): string {
   return route instanceof Object && 'path' in route ? String(route.path) : ''
 }
 
+const billingMessages: Record<BillingProblem, string> = {
+  invoice_not_editable: 'This invoice can no longer be changed.',
+  invoice_has_payments: 'This invoice has payments.',
+  invoice_not_payable: 'Only an open invoice can be paid.',
+  payment_exceeds_due: 'This is more than is due.',
+  refund_exceeds_payment: 'More than was paid cannot be given back.',
+  amount_not_positive: 'Enter an amount above 0.',
+  nothing_to_bill: 'There is no time and there are no expenses to invoice.',
+}
+
 function toApiError(error: unknown, where: string): ApiError {
   if (error instanceof ApiError) return error
   if (error instanceof StaleError) {
     return new ApiError(409, 'stale', 'Someone else changed this in the meantime. Reload to see the change.')
   }
   if (error instanceof NotFoundError) return new ApiError(404, 'not_found', 'Not found')
+  if (error instanceof EntryLockedError) {
+    return new ApiError(409, 'locked', error.reason === 'invoiced' ? 'This was invoiced and cannot be changed.' : 'This was approved and cannot be changed.')
+  }
+  if (error instanceof BillingError) return new ApiError(409, error.problem, billingMessages[error.problem])
+  if (error instanceof ClaimError) {
+    return new ApiError(409, 'stale', 'Some of the time or expenses changed, or were invoiced, in the meantime. Reload to see what is left.')
+  }
   // Express could not decode a route parameter, as in /things/%ff.
   const undecodable = error instanceof URIError ? clientError(error) : undefined
   if (undecodable) return undecodable

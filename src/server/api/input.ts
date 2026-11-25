@@ -1,5 +1,7 @@
 /** Reading what a client sent: each value is checked, and everything that is wrong is told at once. */
 import { emailMaxLength, isEmail, nameLength, normalizeEmail, roleDescriptionLength, roleNameLength } from '../../shared/accounts'
+import { isCurrencyCode } from '../../shared/currency'
+import { isIsoDate } from '../../shared/dates'
 import { type Grants, isPermissionKey, type PermissionKey, problemWith } from '../../shared/permissions'
 import { ApiError } from '../errors'
 import { isTimeZone } from '../timeZones'
@@ -134,3 +136,45 @@ export const extras: Reader<PermissionKey[]> = (value) => {
   if (!Array.isArray(value) || !value.every(isPermissionKey) || new Set(value).size < value.length) return refuse('Choose extras from the list.')
   return value
 }
+
+// Work -----------------------------------------------------------------------------------------------
+
+export const optional =
+  <T>(read: Reader<T>): Reader<T | null> =>
+  (value) => (value === undefined || value === null || value === '' ? null : read(value))
+
+export const date: Reader<string> = (value) => (typeof value === 'string' && isIsoDate(value) ? value : refuse('Enter a date.'))
+
+/** Minutes of one day. */
+export const dayMinutes: Reader<number> = (value) =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 1440 ? value : refuse('Enter a time of up to 24 hours.')
+
+const mostMoney = 1_000_000_000_000
+/** Minor units. */
+export const money: Reader<number> = (value) =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= mostMoney ? value : refuse('Enter an amount.')
+
+export const positive: Reader<number> = (value) => {
+  const number = money(value)
+  return number > 0 ? number : refuse('Enter more than 0.')
+}
+
+/** Free text over any number of lines. */
+export const text =
+  (most: number): Reader<string> =>
+  (value) => {
+    if (value === undefined) return ''
+    if (typeof value !== 'string') return refuse('Enter a text.')
+    const trimmed = value.normalize('NFC').trim()
+    return [...trimmed].length > most ? refuse(`Enter at most ${most} characters.`) : trimmed
+  }
+
+export const thingName: Reader<string> = (value) => {
+  const name = oneLine(value)
+  if (name === '') return refuse('Enter a name.')
+  if ([...name].length > 120) return refuse('The name can have at most 120 characters.')
+  return controlCharacters.test(name) ? refuse('The name contains characters that are not allowed.') : name
+}
+
+export const currency: Reader<string> = (value) =>
+  typeof value === 'string' && isCurrencyCode(value) ? value : refuse('Choose a currency.')
