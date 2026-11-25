@@ -1,6 +1,7 @@
 /** What the admin:create command does, apart from asking. */
 import { eq } from 'drizzle-orm'
 import { productName } from '../../shared/product'
+import { lockAccess } from '../access/grants'
 import { endSessions } from '../auth/sessions'
 import { type Db, runTransaction } from '../db'
 import { people, personCredentials, roles } from '../db/schema'
@@ -31,10 +32,11 @@ export async function createAdministrator(
   await checkCanCreate(db)
   const passwordHash = await hashPassword(password)
   await runTransaction(db, async (tx) => {
-    // Locking the role makes two commands at once take turns.
-    const [role] = await tx.select().from(roles).where(eq(roles.key, 'administrator')).for('update')
-    if (!role) throw new Error('The built-in role administrator is missing')
+    // Two commands at once take turns, also with changes of access in the app.
+    await lockAccess(tx)
     await lockEmail(tx, email)
+    const [role] = await tx.select().from(roles).where(eq(roles.key, 'administrator')).for('no key update')
+    if (!role) throw new Error('The built-in role administrator is missing')
     await checkCanCreate(tx)
     await checkEmailIsFree(tx, email)
     const { timeZone } = await getSettings(tx)

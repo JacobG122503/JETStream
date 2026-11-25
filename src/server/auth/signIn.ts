@@ -6,6 +6,7 @@ import { and, eq, inArray, sql } from 'drizzle-orm'
 import type { Request, Response } from 'express'
 import type { DemoAccount, SessionInfo, SessionPerson } from '../../shared/api'
 import type { AppContext } from '../context'
+import { accessFingerprint } from '../access/actor'
 import { people, personCredentials } from '../db/schema'
 import { demoAccounts } from '../demo/accounts'
 import { type Tx, runTransaction } from '../db'
@@ -15,7 +16,7 @@ import { findPersonByEmail, getSettings, isSignUpOpen, lockPerson, passwordVersi
 import { hashPassword, needsRehash, spendVerification, verifyPassword } from '../security/passwords'
 import { inTurn, takeAttempt } from './limits'
 import {
-  createSession, type CurrentSession, endSession, isAdministrator, loadSession, type NewSession, sessionCookie, setSessionCookie,
+  createSession, type CurrentSession, endSession, loadSession, type NewSession, sessionCookie, setSessionCookie,
 } from './sessions'
 
 /** What someone showed. It holds only as long as the person has this password. */
@@ -85,14 +86,16 @@ export function openSession(ctx: AppContext, req: Request, res: Response, sessio
 }
 
 function sessionPerson(session: CurrentSession, companyTimeZone: string): SessionPerson {
-  const { person, role } = session
+  const { person, role, actor } = session
   return {
     id: person.id,
     name: person.name,
     email: person.email,
     status: person.status,
     role: { key: role.key, name: role.name },
-    administrator: isAdministrator(session),
+    administrator: actor.administrator,
+    permissions: actor.grants,
+    access: accessFingerprint(actor),
     timeZone: person.timeZone ?? companyTimeZone,
     photoId: person.photoFileId,
   }

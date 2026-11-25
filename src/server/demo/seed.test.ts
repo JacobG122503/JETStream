@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { documentTotals, expenseAmount, resolveBillableRate, timeAmount } from '../../shared/calc'
 import { addDays, type IsoDate } from '../../shared/dates'
 import { budgetTypes, projectTypes, rateMethods, reimbursementStatuses, timeOffStatuses } from '../../shared/domain'
+import { problemWith, roleGrants } from '../../shared/permissions'
 import { createInvoiceFromEntries } from '../billing'
 import type { Database } from '../db'
 import * as schema from '../db/schema'
@@ -65,6 +66,18 @@ describe.each(dates)('demo data for %s', (_name, today) => {
       expect(email).toMatch(/\.example$/)
       for (const phone of [officePhone, mobilePhone]) if (phone) expect(phone).toMatch(/555-01\d\d$/)
     }
+    // The lead's extras, and the one custom role, held by one person who is not a demo account.
+    expect(data.extras.map(({ personId, permission }) => [personId, permission]).sort()).toEqual(
+      ['billable.view', 'projects.create', 'time.approve'].map((permission) => [lead().id, permission]),
+    )
+    const custom = data.roles.filter(({ builtIn }) => !builtIn)
+    expect(custom).toMatchObject([{ name: 'Bookkeeper', key: null }])
+    expect([...(custom[0]?.permissions ?? [])].sort()).toEqual([
+      'billable.view:all', 'clients.view:all', 'expenses.reimburse:all', 'invoices.manage:all', 'payments.manage:all', 'time.view:all',
+    ])
+    expect(problemWith(roleGrants(custom[0] ?? { key: null, builtIn: false, permissions: [] }))).toBeNull()
+    const keepers = data.people.filter(({ roleId }) => roleId === custom[0]?.id)
+    expect(keepers.map(({ status, email }) => [status, email.endsWith('@jet.demo')])).toEqual([['active', false]])
     const demo = active().filter(({ email }) => email.endsWith('@jet.demo'))
     expect(data.credentials.map(({ personId }) => personId).sort()).toEqual(demo.map(({ id }) => id).sort())
     expect(new Set(data.credentials.map(({ passwordHash }) => passwordHash)).size).toBe(3)
@@ -488,6 +501,7 @@ async function load({ db }: Database) {
     roles: await db.select().from(schema.roles),
     people: await db.select().from(schema.people),
     credentials: await db.select().from(schema.personCredentials),
+    extras: await db.select().from(schema.personExtras),
     managers: await db.select().from(schema.personManagers),
     rates: await db.select().from(schema.personRates),
     clients: await db.select().from(schema.clients),

@@ -1,4 +1,5 @@
 import { eq, sql } from 'drizzle-orm'
+import { administratorsWithPassword } from '../access/grants'
 import type { Db, Tx } from '../db'
 import { companySettings, people, personCredentials, roles } from '../db/schema'
 import { ApiError } from '../errors'
@@ -52,22 +53,15 @@ export async function builtInRole(db: Db | Tx, key: 'administrator' | 'manager' 
   return role
 }
 
-/** A role that can be given with an approval or invite. Custom roles come with 005. */
+/** A role that can be given. Whether the actor may give it is another question. */
 export async function requireRole(db: Db | Tx, id: number) {
   const [role] = await db.select().from(roles).where(eq(roles.id, id))
-  if (!role?.builtIn) throw new ApiError(400, 'invalid_input', 'Choose a role.', { fields: { roleId: 'Choose a role.' } })
+  if (!role) throw new ApiError(400, 'invalid_input', 'Choose a role.', { fields: { roleId: 'Choose a role.' } })
   return role
 }
 
 export async function activeAdministratorWithPassword(db: Db | Tx): Promise<boolean> {
-  const rows = await db
-    .select({ id: people.id })
-    .from(people)
-    .innerJoin(roles, eq(roles.id, people.roleId))
-    .innerJoin(personCredentials, eq(personCredentials.personId, people.id))
-    .where(sql`${people.status} = 'active' and ${roles.key} = 'administrator'`)
-    .limit(1)
-  return rows.length > 0
+  return (await administratorsWithPassword(db).limit(1)).length > 0
 }
 
 /** Sign-up needs someone who can approve. */

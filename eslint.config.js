@@ -23,6 +23,21 @@ const browserSafe = {
   ],
 }
 
+const data = {
+  regex: '(^|/)db(/|$)|^(drizzle-orm|@electric-sql|pg)(/|$)|/access/(system|filters|facts)$|/people/lookup$',
+  message: 'Routes have no access to data. Call a service, which takes the acting person.',
+}
+const noData = {
+  'no-restricted-imports': ['error', { patterns: [data] }],
+  'no-restricted-syntax': [
+    'error',
+    {
+      selector: `ImportExpression > Literal[value=/${data.regex.replaceAll('/', '\\u002f')}/]`,
+      message: data.message,
+    },
+  ],
+}
+
 export default defineConfig([
   globalIgnores(['dist', 'coverage', 'playwright-report', 'test-results', '.playwright-browsers', '.data', 'drizzle']),
   {
@@ -54,6 +69,12 @@ export default defineConfig([
     files: ['src/web/**/*.{ts,tsx}'],
     ignores: ['**/*.test.{ts,tsx}'],
     rules: browserSafe,
+  },
+  {
+    // Routes check, read and hand over. Services know the data and decide about records.
+    files: ['src/server/api/**/*.ts'],
+    ignores: ['**/*.test.ts', 'src/server/api/health.ts'],
+    rules: noData,
   },
   {
     // Shared by server and browser: pure, so also no clock and no environment.

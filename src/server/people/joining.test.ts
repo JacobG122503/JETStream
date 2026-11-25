@@ -1,4 +1,5 @@
 // Asking to join, invites, reset links and what administrators do about them, through the API.
+// What others may do, and links whose maker loses access: linkAccess.test.ts.
 import { and, eq } from 'drizzle-orm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { HelpRequest, InviteRow, JoinRequests, NewLink, PersonRow, SessionInfo } from '../../shared/api'
@@ -228,8 +229,11 @@ describe('invites', () => {
   })
 
   it('answer all the same when they do not work, without using them up', async () => {
-    const { office, stranger, clock, admin } = await setUp()
-    const [revoked, expired, replaced, voided] = [await invite(office), await invite(office), await invite(office), await invite(office)]
+    const { office, stranger, clock, admin, app } = await setUp()
+    const second = await account('administrator')
+    const [revoked, replaced, voided] = [await invite(office), await invite(office), await invite(office)]
+    // Made by someone who keeps their access.
+    const expired = await invite(await signedIn(app, second.email))
     const [row] = await rowsOf(office, revoked.email)
     expect((await office.post(`/invites/${row?.id}/revoke`)).status).toBe(200)
     expect(summary(await office.post(`/invites/${row?.id}/revoke`))).toEqual([409, 'already_handled'])
@@ -248,7 +252,6 @@ describe('invites', () => {
       }
       await database.db.delete(signInAttempts)
     }
-    await database.db.update(people).set({ roleId: roleIds.administrator }).where(eq(people.id, admin.id))
     expect((await stranger().post('/invite/check', { token: tokenIn(expired.link) })).status).toBe(200)
     clock.forward(7 * 24 * 60 - 1)
     expect((await stranger().post('/invite/check', { token: tokenIn(expired.link) })).status).toBe(200)
@@ -257,7 +260,7 @@ describe('invites', () => {
     expect(summary(late)).toEqual(gone)
     answers.add(late.text)
     expect(answers.size).toBe(1)
-    const again = await signedIn(testApp({ db: database.db, now: clock.now }), admin.email)
+    const again = await signedIn(testApp({ db: database.db, now: clock.now }), second.email)
     expect(await rowsOf(again, expired.email)).toMatchObject([{ status: 'expired' }])
     // The link is erased, the invite stays in the list and can get a new link.
     await cleanUp({ db: database.db, now: clock.now })
@@ -268,7 +271,7 @@ describe('invites', () => {
     expect((await accept(stranger(), (renewed.body as NewLink).link)).status).toBe(200)
   })
 
-  it('end with the administrator who made them, and then make way', async () => {
+  it('end with whoever made them, and then make way', async () => {
     const { office, stranger, app, admin } = await setUp()
     const { email, link } = await invite(office)
     await database.db.update(people).set({ status: 'archived' }).where(eq(people.id, admin.id))

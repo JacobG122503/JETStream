@@ -1,13 +1,16 @@
 import { and, eq } from 'drizzle-orm'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { resolveBillableRate } from '../../shared/calc'
-import type { PersonDetails } from '../../shared/api'
+import type { PersonDetails as Details } from '../../shared/api'
 import type { Database } from '../db'
 import { activityLog, clients, people, personClients, projectMembers, projects, timeEntries } from '../db/schema'
 import { accounts, type Browser, signedIn, testApp } from '../testing/apiClient'
 import { type Make, makeRecords } from '../testing/records'
 import { createTestDatabase } from '../testing/testDatabase'
 import { isProjectMember } from './membership'
+
+/** As those who manage people get them. */
+type PersonDetails = Required<Details>
 
 let database: Database
 let make: Make

@@ -1,10 +1,10 @@
 import { type ErrorRequestHandler, Router } from 'express'
 import { type Access, createAccess, declaredRoutes } from '../auth/access'
 import type { AppContext } from '../context'
-import { NotFoundError, StaleError } from '../db'
-import { ApiError, clientError, describeError } from '../errors'
+import { ApiError, clientError, describeError, NotFoundError, StaleError } from '../errors'
 import { guardHandlers } from './guardHandlers'
 import { health } from './health'
+import { accessRoutes } from './routes/access'
 import { accountRoutes } from './routes/account'
 import { inviteRoutes } from './routes/invites'
 import { linkRoutes } from './routes/links'
@@ -20,8 +20,8 @@ export interface ApiOptions {
 /**
  * Everything under /api. Every response is JSON, except photos.
  *
- * Every route begins with its access level: `api.get('/things', access.signedIn, handler)`. A route
- * without one stops the server from starting. Routes with a JSON body then have `jsonBody`.
+ * Every route begins with its access level: `api.get('/things', access.permission('things.view'), handler)`.
+ * A route without one stops the server from starting. Routes with a JSON body then have `jsonBody`.
  */
 export function createApiRouter(ctx: AppContext, { extend }: ApiOptions = {}): Router {
   const api = Router({ caseSensitive: true })
@@ -31,7 +31,7 @@ export function createApiRouter(ctx: AppContext, { extend }: ApiOptions = {}): R
     next()
   })
   api.get('/health', access.public, health(ctx.db))
-  for (const addRoutes of [sessionRoutes, linkRoutes, accountRoutes, peopleRoutes, requestRoutes, inviteRoutes]) {
+  for (const addRoutes of [sessionRoutes, linkRoutes, accountRoutes, peopleRoutes, accessRoutes, requestRoutes, inviteRoutes]) {
     addRoutes(api, access, ctx)
   }
   extend?.(api, access)

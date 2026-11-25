@@ -24,6 +24,7 @@ Use `src/server/db` for all access. It gives the same interface for the embedded
 
 `src/server/billing` is the only code that links entries to invoices, changes stored totals or status, records payments or takes numbers.
 
+- Who may change an entry is judged by the same guard as whether it can be changed (`editGuard.ts`, [permissions](permissions.md)).
 - Run work in `runTransaction`. It undoes everything on an error and tries again, three times at most, after a serialization failure or deadlock only.
 - Lock rows in this order: number sequence, retainer, invoice, time entries by id, expenses by id.
 - `createInvoiceFromEntries` and `addEntriesToInvoice` bill all chosen entries or none. Each must be unclaimed, billable, not running, not billed outside, of the invoice's client and currency, with a rate, and at the version the caller saw. The invoice is a draft or open. Approval is not checked here.
@@ -53,7 +54,8 @@ Use `src/server/db` for all access. It gives the same interface for the embedded
 | Table | Purpose | Tasks |
 |---|---|---|
 | `people` | Everyone who uses JETStream: unique email ignoring case, status, employee or contractor, capacity, time zone, photo, role | 004, 008 |
-| `roles` | Built-in and custom roles with their permission list | 005 |
+| `roles` | Built-in roles, whose permissions are in the code, and custom ones with their description and permission list (`key:level`) | 005 |
+| `person_extras` | Permissions switched on for one person with the built-in Manager role | 005 |
 | `labels` | Descriptive labels, such as Engineer | 008 |
 | `person_labels` | Labels of a person | 008 |
 | `person_rates` | Dated billable and cost rates of a person | 008 |
@@ -63,7 +65,7 @@ Use `src/server/db` for all access. It gives the same interface for the embedded
 | `person_totp` | Two-factor secret, as ciphertext, and the last accepted step | 004, 026 |
 | `person_recovery_codes` | Hashes of one-time recovery codes | 004, 026 |
 | `sessions` | Signed-in browsers, by hash of their token | 004 |
-| `invites` | Invitations by link, by hash of their token, which is erased once the link can no longer work | 004 |
+| `invites` | Invitations by link, by hash of their token, which is erased once the link can no longer work; ended ones, whose maker lost the access to make them; the role's name once the role is deleted | 004, 005 |
 | `invite_clients` | Client companies an invited person will be assigned to | 004 |
 | `invite_projects` | Projects an invited person will be assigned to | 004 |
 | `password_resets` | Password-reset links, by hash of their token; removed when used or expired | 004 |
@@ -182,7 +184,7 @@ Where each item of the 003 specification is stored.
 | 004 | People and credentials | `people`, `files`, `person_credentials`, `person_totp`, `person_recovery_codes` |
 | 004 | Sessions, links, attempts | `sessions`, `invites`, `invite_clients`, `invite_projects`, `password_resets`, `help_requests`, `sign_in_attempts` |
 | 004 | Person-to-client and project assignment | `person_clients`, `project_members` |
-| 005 | Roles, one per person, managers | `roles`, `people.role_id`, `person_managers` |
+| 005 | Roles, one per person, extras, managers | `roles`, `people.role_id`, `person_extras`, `person_managers`, `project_members.is_manager` |
 | 006 | Clients and contacts | `clients`, `contacts` |
 | 007 | Tasks, projects, project tasks and members | `tasks`, `projects`, `project_tasks`, `project_members` |
 | 007 | Tags, pins, alerts | `tags`, `project_tags`, `project_pins`, `budget_alerts` |

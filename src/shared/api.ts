@@ -1,5 +1,6 @@
 /** What the server's API sends about accounts and people. */
 import type { personStatuses } from './domain'
+import type { Grants, PermissionKey } from './permissions'
 
 export type PersonStatus = (typeof personStatuses)[number]
 
@@ -16,6 +17,10 @@ export interface SessionPerson {
   status: PersonStatus
   role: RoleInfo
   administrator: boolean
+  /** What the person may do now; empty while they wait for approval. */
+  permissions: Grants
+  /** Changes whenever the person may do something else, or on something else. */
+  access: string
   /** IANA name; the company's where the person chose none. */
   timeZone: string
   photoId: number | null
@@ -82,21 +87,32 @@ export interface PersonRow {
   email: string
   role: string
   status: PersonStatus
-  signIn: SignInState
+  /** Only for those who manage people. */
+  signIn?: SignInState
   photoId: number | null
 }
 
 export interface PersonDetails extends PersonRow {
   timeZone: string
-  clients: AssignmentClient[]
+  /** The rest only for those who manage people. */
+  clients?: AssignmentClient[]
   /** Identifies the assignments as read; sent back when saving. */
-  state: string
+  state?: string
+  /** Why one may not act on the account, such as making a reset link; null when one may. */
+  accountRefusal?: string | null
+}
+
+export interface SavedAssignments extends PersonDetails {
+  /** Projects the person is on again, but does not manage again, although they did before. */
+  notManaged: string[]
 }
 
 export interface RoleOption {
   id: number
-  key: string
+  key: string | null
   name: string
+  /** Whether the one who asks may give it. */
+  allowed: boolean
 }
 
 /** What can be chosen when approving or inviting. */
@@ -155,6 +171,87 @@ export interface InviteInfo {
   name: string
   email: string
   role: string
+}
+
+/** What someone may do, and what they manage. */
+export interface AccessInfo {
+  role: RoleInfo
+  administrator: boolean
+  grants: Grants
+  managedProjects: string[]
+  managedPeople: string[]
+}
+
+export interface RoleSummary {
+  id: number
+  /** Identifies a built-in role; null for the others. */
+  key: string | null
+  builtIn: boolean
+  name: string
+  description: string
+  /** Everyone who holds it, archived people too. */
+  people: number
+}
+
+export interface RoleDetails extends RoleSummary {
+  grants: Grants
+  version: number
+  /** Invites that can still be used, or get a new link. */
+  invites: number
+  /** Why one may not change or delete it; null when one may. */
+  refusal: string | null
+}
+
+/** A role that could be given to someone. */
+export interface RoleChoice {
+  id: number
+  key: string | null
+  name: string
+  builtIn: boolean
+  grants: Grants
+  /** Why one may not give it; null when one may. */
+  refusal: string | null
+}
+
+export interface AccessProject {
+  id: number
+  name: string
+  client: string
+  archived: boolean
+  isManager: boolean
+}
+
+export interface AccessPerson {
+  id: number
+  name: string
+  active: boolean
+}
+
+/** Someone's access, for those who may change access. */
+export interface PersonAccessDetails {
+  /** Identifies the access as read; sent back when saving. */
+  state: string
+  /** `flags`: only which projects the person manages. */
+  editable: 'all' | 'flags' | 'none'
+  /** Why not everything can be changed. */
+  reason: string | null
+  roleId: number
+  extras: PermissionKey[]
+  /** Extras one may not give or take. */
+  refusedExtras: PermissionKey[]
+  managedPeople: AccessPerson[]
+  projects: AccessProject[]
+  roles: RoleChoice[]
+  /** Who can be chosen as a managed person. */
+  people: AccessPerson[]
+}
+
+export interface AccessInput {
+  roleId: number
+  extras: PermissionKey[]
+  managedPersonIds: number[]
+  managedProjectIds: number[]
+  state: string
 }
 
 export interface ApiErrorBody {

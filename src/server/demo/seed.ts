@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { getTableName, sql } from 'drizzle-orm'
 import type { PgTable } from 'drizzle-orm/pg-core'
 import type { IsoDate } from '../../shared/dates'
+import { type BuiltInRole, writeGrants } from '../../shared/permissions'
 import { todayIn } from '../clock'
 import { type Db, runTransaction, type Tx } from '../db'
 import { appMeta, clients, companySettings, people, personCredentials, roles } from '../db/schema'
@@ -12,7 +13,7 @@ import { migrationsDir } from '../paths'
 import { hashPassword } from '../security/passwords'
 import { demoAccounts, demoPassword } from './accounts'
 import { Choices, demoDates, DemoRows } from './builder'
-import { addCompany, type RoleIds } from './company'
+import { addCompany, bookkeeper, type RoleIds } from './company'
 import { addExtras } from './extras'
 import { addMoney } from './money'
 import { demoSeedDate, markerKey } from './marker'
@@ -114,7 +115,7 @@ async function fill(tx: Tx, hashes: string[], { today, beforeCommit }: SeedOptio
   const dates = demoDates(today ?? todayIn(timeZone), timeZone)
 
   const rows = new DemoRows(dates.now)
-  const company = addCompany(rows, dates, await roleIds(tx))
+  const company = addCompany(rows, dates, await addRoles(tx))
   for (const [index, { key }] of demoAccounts.entries()) {
     const personId = company.people[key].id
     rows.add(personCredentials, { personId, passwordHash: hashes[index] ?? '', changedAt: dates.now })
@@ -133,14 +134,18 @@ async function fill(tx: Tx, hashes: string[], { today, beforeCommit }: SeedOptio
   return dates.today
 }
 
-async function roleIds(tx: Tx): Promise<RoleIds> {
+/** The built-in roles, and one of the demo's own. */
+async function addRoles(tx: Tx): Promise<RoleIds> {
   const stored = await tx.select().from(roles)
-  const idOf = (key: keyof RoleIds) => {
+  const { name, description, grants } = bookkeeper
+  const [custom] = await tx.insert(roles).values({ name, description, permissions: writeGrants(grants) }).returning()
+  if (!custom) throw new Error('The role Bookkeeper could not be made.')
+  const idOf = (key: BuiltInRole) => {
     const role = stored.find((candidate) => candidate.key === key)
     if (!role) throw new Error(`The built-in role ${key} is missing.`)
     return role.id
   }
-  return { administrator: idOf('administrator'), manager: idOf('manager'), member: idOf('member') }
+  return { administrator: idOf('administrator'), manager: idOf('manager'), member: idOf('member'), bookkeeper: custom.id }
 }
 
 const rowsPerStatement = 400

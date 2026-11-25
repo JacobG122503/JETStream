@@ -2,6 +2,10 @@
 import { createHash } from 'node:crypto'
 import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 import type { AssignmentClient } from '../../shared/api'
+import { type Actor, actorId, type PersonAccess, readPersonAccess } from '../access/actor'
+import { requirePermission } from '../access/decisions'
+import { lockForAccessChange } from '../access/grants'
+import { returnMember } from '../access/managerFlags'
 import { type Db, runTransaction, type Tx } from '../db'
 import { clients, personClients, projectMembers, projects } from '../db/schema'
 import { ApiError } from '../errors'
@@ -110,13 +114,24 @@ export async function checkAssignments(db: Db | Tx, chosen: Assignments): Promis
   return { clientIds: [...good.clientIds], projectIds: [...good.projectIds] }
 }
 
-/** Adds assignments, leaving out what is archived. What was removed before comes back with its rate and manager flag. */
-export async function addAssignments(tx: Tx, personId: number, chosen: Assignments): Promise<void> {
-  const { good } = await usable(tx, chosen)
-  await add(tx, personId, good)
+/** Manager flags that came back with a membership, and those that did not. Project ids. */
+export interface ReturnedFlags {
+  restored: number[]
+  dropped: number[]
 }
 
-async function add(tx: Tx, personId: number, { clientIds, projectIds }: Current): Promise<void> {
+/**
+ * Adds assignments, leaving out what is archived. What was removed before comes back with its rate,
+ * and with its manager flag if the assigner could give it. The person is locked by the caller.
+ */
+export async function addAssignments(tx: Tx, assigner: Actor, target: PersonAccess, chosen: Assignments): Promise<ReturnedFlags> {
+  const { good } = await usable(tx, chosen)
+  return add(tx, assigner, target, good)
+}
+
+async function add(tx: Tx, assigner: Actor, target: PersonAccess, { clientIds, projectIds }: Current): Promise<ReturnedFlags> {
+  const personId = target.person.id
+  const flags: ReturnedFlags = { restored: [], dropped: [] }
   if (clientIds.size > 0) {
     await tx
       .insert(personClients)
@@ -124,33 +139,36 @@ async function add(tx: Tx, personId: number, { clientIds, projectIds }: Current)
       .onConflictDoNothing()
   }
   for (const projectId of [...projectIds].sort((a, b) => a - b)) {
-    await tx
-      .insert(projectMembers)
-      .values({ projectId, personId })
-      .onConflictDoUpdate({
-        target: [projectMembers.projectId, projectMembers.personId],
-        set: { removedAt: null, version: sql`${projectMembers.version} + 1`, updatedAt: sql`now()` },
-        setWhere: sql`${projectMembers.removedAt} is not null`,
-      })
+    const added = await tx.insert(projectMembers).values({ projectId, personId }).onConflictDoNothing().returning({ id: projectMembers.id })
+    if (added.length > 0) continue
+    const { restored, dropped } = await returnMember(tx, assigner, target, projectId)
+    if (restored) flags.restored.push(projectId)
+    if (dropped) flags.dropped.push(projectId)
   }
+  return flags
 }
 
 export interface AssignmentChange extends Assignments {
   personId: number
   /** As read by the caller. */
   state: string
-  actorId: number
   now: Date
 }
 
 /**
  * Makes the person's assignments to current clients and projects what was chosen. Those to archived
- * ones stay, except that removing a client removes all of its projects.
+ * ones stay, except that removing a client removes all of its projects. Returns the names of the
+ * projects whose manager flag did not come back.
  */
-export async function saveAssignments(db: Db, { personId, clientIds, projectIds, state, actorId, now }: AssignmentChange): Promise<void> {
-  await runTransaction(db, async (tx) => {
+export async function saveAssignments(
+  db: Db, actor: Actor, { personId, clientIds, projectIds, state, now }: AssignmentChange,
+): Promise<string[]> {
+  return runTransaction(db, async (tx) => {
+    const assigner = await lockForAccessChange(tx, actor, { people: [personId] })
+    requirePermission(assigner, 'people.manage', 'all')
     const person = await lockPerson(tx, personId)
-    if (!person) throw new ApiError(404, 'not_found', 'Not found')
+    const target = await readPersonAccess(tx, personId)
+    if (!person || !target) throw new ApiError(404, 'not_found', 'Not found')
     if (person.status !== 'active') throw new ApiError(409, 'not_active', 'Only active people can be assigned.')
     const current = await currentOf(tx, personId)
     const stale = new ApiError(409, 'stale', 'Someone else changed this in the meantime. Reload to see the change.')
@@ -184,7 +202,7 @@ export async function saveAssignments(db: Db, { personId, clientIds, projectIds,
     if (lostClients.length > 0) {
       await tx.delete(personClients).where(and(eq(personClients.personId, personId), inArray(personClients.clientId, lostClients)))
     }
-    await add(tx, personId, good)
+    const flags = await add(tx, assigner, target, good)
     const names = (list: { id: number; name: string }[], chosen: (id: number) => boolean) =>
       list.filter(({ id }) => chosen(id)).map(({ name }) => name)
     const changes = {
@@ -192,11 +210,15 @@ export async function saveAssignments(db: Db, { personId, clientIds, projectIds,
       clientsRemoved: names(all.clients, (id) => lostClients.includes(id)),
       projectsAdded: names(all.projects, (id) => good.projectIds.has(id) && !current.projectIds.has(id)),
       projectsRemoved: lostProjects.map(({ name }) => name),
+      managerAgain: names(all.projects, (id) => flags.restored.includes(id)),
+      notManagerAgain: names(all.projects, (id) => flags.dropped.includes(id)),
     }
     if (Object.values(changes).some((list) => list.length > 0)) {
       await logActivity(tx, {
-        actorId, action: 'assigned', personId, summary: `Changed the client and project assignments of ${person.name}`, changes,
+        actorId: actorId(actor), action: 'assigned', personId,
+        summary: `Changed the client and project assignments of ${person.name}`, changes,
       })
     }
+    return changes.notManagerAgain
   })
 }

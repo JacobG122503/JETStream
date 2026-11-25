@@ -1,26 +1,10 @@
 /** Changing records without losing someone else's change. */
 import { and, eq, type InferSelectModel, sql } from 'drizzle-orm'
 import type { PgColumn, PgTable, PgUpdateSetSource } from 'drizzle-orm/pg-core'
+import { NotFoundError, StaleError } from '../errors'
 import type { Db, Tx } from './database'
 
-/** The record does not exist (any more). */
-export class NotFoundError extends Error {
-  override name = 'NotFoundError'
-  constructor(readonly recordId: number) {
-    super(`There is no record ${recordId}.`)
-  }
-}
-
-/** Someone else changed the record since the caller read it. */
-export class StaleError extends Error {
-  override name = 'StaleError'
-  constructor(
-    readonly recordId: number,
-    readonly expectedVersion: number,
-  ) {
-    super(`Record ${recordId} has changed since version ${expectedVersion}.`)
-  }
-}
+export { NotFoundError, StaleError }
 
 export type VersionedTable = PgTable & { id: PgColumn; version: PgColumn }
 type Values<T extends PgTable> = PgUpdateSetSource<T> & { id?: never; version?: never }

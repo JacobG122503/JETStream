@@ -1,6 +1,8 @@
 /** What people do with their own account. */
 import { and, desc, eq } from 'drizzle-orm'
 import type { Account, SignedInDevice } from '../../shared/api'
+import type { Actor } from '../access/actor'
+import { ownId } from '../access/decisions'
 import { type CurrentSession, isOver } from '../auth/sessions'
 import { type Db, runTransaction, updateVersioned } from '../db'
 import { files, people, roles, sessions } from '../db/schema'
@@ -9,12 +11,12 @@ import { cleanImage, ImageError } from './image'
 import { getSettings, lockPerson } from './lookup'
 import { describeUserAgent } from './userAgent'
 
-export async function readAccount(db: Db, personId: number): Promise<Account> {
+export async function readAccount(db: Db, actor: Actor): Promise<Account> {
   const [row] = await db
     .select({ person: people, role: roles.name })
     .from(people)
     .innerJoin(roles, eq(roles.id, people.roleId))
-    .where(eq(people.id, personId))
+    .where(eq(people.id, ownId(actor)))
   if (!row) throw new ApiError(404, 'not_found', 'Not found')
   const { person, role } = row
   return {
@@ -28,13 +30,14 @@ export async function readAccount(db: Db, personId: number): Promise<Account> {
 }
 
 export async function saveProfile(
-  db: Db, personId: number, { version, ...values }: { name: string; timeZone: string; version: number },
+  db: Db, actor: Actor, { version, ...values }: { name: string; timeZone: string; version: number },
 ): Promise<void> {
-  await updateVersioned(db, people, personId, version, values)
+  await updateVersioned(db, people, ownId(actor), version, values)
 }
 
 /** Makes the file the person's photo, if it is a picture, and drops the old one. */
-export async function savePhoto(db: Db, personId: number, upload: Buffer): Promise<void> {
+export async function savePhoto(db: Db, actor: Actor, upload: Buffer): Promise<void> {
+  const personId = ownId(actor)
   let image: ReturnType<typeof cleanImage>
   try {
     image = cleanImage(upload)
@@ -55,7 +58,8 @@ export async function savePhoto(db: Db, personId: number, upload: Buffer): Promi
   })
 }
 
-export async function removePhoto(db: Db, personId: number): Promise<void> {
+export async function removePhoto(db: Db, actor: Actor): Promise<void> {
+  const personId = ownId(actor)
   await runTransaction(db, async (tx) => {
     const person = await lockPerson(tx, personId)
     if (!person?.photoFileId) return

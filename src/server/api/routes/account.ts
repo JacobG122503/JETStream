@@ -1,10 +1,11 @@
 import express from 'express'
 import { photoLimits } from '../../../shared/accounts'
-import { requireSession } from '../../auth/access'
+import { requireActor, requireSession } from '../../auth/access'
 import { clearSessionCookie, endSessions } from '../../auth/sessions'
 import { openSession, readSessionInfo } from '../../auth/signIn'
 import { ApiError } from '../../errors'
 import { endDevice, listDevices, readAccount, readPhoto, removePhoto, savePhoto, saveProfile } from '../../people/account'
+import { readOwnAccess } from '../../people/access'
 import { changePassword } from '../../people/resets'
 import { bodyReader, jsonBody } from '../body'
 import { password, pathId, personName, readInput, timeZone, version } from '../input'
@@ -16,27 +17,31 @@ const photoBody = bodyReader(express.raw({ type: () => true, limit: photoLimits.
 /** One's own account. */
 export const accountRoutes: AddRoutes = (api, access, ctx) => {
   api.get('/account', access.signedIn, async (_req, res) => {
-    res.json(await readAccount(ctx.db, requireSession(res).person.id))
+    res.json(await readAccount(ctx.db, requireActor(res)))
+  })
+
+  api.get('/account/access', access.signedIn, async (_req, res) => {
+    res.json(await readOwnAccess(ctx.db, requireActor(res)))
   })
 
   api.put('/account/profile', access.signedIn, jsonBody, async (req, res) => {
-    const { person } = requireSession(res)
-    await saveProfile(ctx.db, person.id, readInput(req.body, { name: personName, timeZone, version }))
-    res.json(await readAccount(ctx.db, person.id))
+    const actor = requireActor(res)
+    await saveProfile(ctx.db, actor, readInput(req.body, { name: personName, timeZone, version }))
+    res.json(await readAccount(ctx.db, actor))
   })
 
   api.put('/account/photo', access.signedIn, photoBody, async (req, res) => {
-    const { person } = requireSession(res)
+    const actor = requireActor(res)
     const upload: unknown = req.body
     if (!Buffer.isBuffer(upload) || upload.length === 0) throw new ApiError(400, 'bad_image', 'Choose a picture.')
-    await savePhoto(ctx.db, person.id, upload)
-    res.json(await readAccount(ctx.db, person.id))
+    await savePhoto(ctx.db, actor, upload)
+    res.json(await readAccount(ctx.db, actor))
   })
 
   api.delete('/account/photo', access.signedIn, async (_req, res) => {
-    const { person } = requireSession(res)
-    await removePhoto(ctx.db, person.id)
-    res.json(await readAccount(ctx.db, person.id))
+    const actor = requireActor(res)
+    await removePhoto(ctx.db, actor)
+    res.json(await readAccount(ctx.db, actor))
   })
 
   api.get('/photos/:id', access.signedIn, async (req, res) => {

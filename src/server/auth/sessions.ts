@@ -1,5 +1,6 @@
 import { and, eq, lt, ne, or } from 'drizzle-orm'
 import type { Request, Response } from 'express'
+import { loadActor, type PersonActor } from '../access/actor'
 import type { AppContext } from '../context'
 import type { Db, Tx } from '../db'
 import { people, roles, sessions } from '../db/schema'
@@ -31,10 +32,9 @@ export interface CurrentSession {
     'id' | 'name' | 'email' | 'status' | 'timeZone' | 'photoFileId' | 'version'
   >
   role: Pick<typeof roles.$inferSelect, 'id' | 'key' | 'name'>
+  /** What the person may do, as of this request. */
+  actor: PersonActor
 }
-
-/** The one place that knows who an administrator is; 005 replaces it with permissions. */
-export const isAdministrator = ({ role }: Pick<CurrentSession, 'role'>) => role.key === 'administrator'
 
 function readCookie(req: Request): string | undefined {
   for (const part of (req.headers.cookie ?? '').split(';')) {
@@ -44,7 +44,7 @@ function readCookie(req: Request): string | undefined {
   return undefined
 }
 
-/** The live session of a request, with the person's status and role as they are now. */
+/** The live session of a request, with the person's status, role and permissions as they are now. */
 export async function loadSession(ctx: AppContext, req: Request): Promise<CurrentSession | undefined> {
   const token = readCookie(req)
   if (token === undefined) return undefined
@@ -80,7 +80,8 @@ export async function loadSession(ctx: AppContext, req: Request): Promise<Curren
       .where(and(eq(sessions.id, session.id), eq(sessions.lastUsedAt, session.lastUsedAt)))
   }
   const { id, persistent, createdAt, expiresAt } = session
-  return { id, token, csrfToken: csrfTokenFor(token), persistent, createdAt, expiresAt, person, role }
+  const actor = await loadActor(ctx.db, person.id)
+  return { id, token, csrfToken: csrfTokenFor(token), persistent, createdAt, expiresAt, person, role, actor }
 }
 
 type SessionTimes = Pick<typeof sessions.$inferSelect, 'persistent' | 'lastUsedAt' | 'expiresAt'>

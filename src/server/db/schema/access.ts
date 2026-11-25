@@ -7,7 +7,7 @@ import {
   bigint, boolean, index, integer, pgTable, primaryKey, text, uniqueIndex,
 } from 'drizzle-orm/pg-core'
 import { clients } from './clients'
-import { createdAt, id, indexes, instant, updatedAt, version } from './columns'
+import { createdAt, id, indexes, instant, rule, updatedAt, version } from './columns'
 import { people, roles } from './people'
 import { projects } from './projects'
 
@@ -80,9 +80,10 @@ export const invites = pgTable(
     tokenHash: text('token_hash').unique(),
     name: text('name').notNull(),
     email: text('email').notNull(),
-    roleId: integer('role_id')
-      .notNull()
-      .references(() => roles.id),
+    /** Null only for an invite that cannot be used any more and whose role was deleted. */
+    roleId: integer('role_id').references(() => roles.id),
+    /** The name of the role that was deleted. */
+    roleName: text('role_name'),
     /** Set when an existing person without a password is invited, and when an invite is accepted. */
     personId: integer('person_id').references(() => people.id),
     createdBy: integer('created_by')
@@ -91,11 +92,14 @@ export const invites = pgTable(
     expiresAt: instant('expires_at').notNull(),
     acceptedAt: instant('accepted_at'),
     revokedAt: instant('revoked_at'),
+    /** The link ended because its maker lost the access to make it. A new link clears this. */
+    endedAt: instant('ended_at'),
     version: version(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
+    rule(t.roleId, 'role_known', sql`${t.roleId} is not null or ${t.roleName} is not null`),
     uniqueIndex('invites_open_email_key')
       .on(sql`lower(${t.email})`)
       .where(sql`${t.acceptedAt} is null and ${t.revokedAt} is null`),

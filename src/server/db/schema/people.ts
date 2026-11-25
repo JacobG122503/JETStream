@@ -16,7 +16,11 @@ export const roles = pgTable(
     key: text('key').unique(),
     name: text('name').notNull(),
     builtIn: boolean('built_in').notNull().default(false),
-    /** Names from the permission catalogue (005). */
+    description: text('description').notNull().default(''),
+    /**
+     * `key:level` from the catalogue in src/shared/permissions.ts. Only of roles made by people;
+     * what the built-in ones give is in the code.
+     */
     permissions: jsonb('permissions').$type<string[]>().notNull().default([]),
     version: version(),
     createdAt: createdAt(),
@@ -136,6 +140,20 @@ export const personManagers = pgTable(
     rule(t.personId, 'not_self', sql`${t.personId} <> ${t.managerId}`),
     ...indexes(t.managerId),
   ],
+)
+
+/** Permissions switched on for one person with the built-in Manager role. */
+export const personExtras = pgTable(
+  'person_extras',
+  {
+    personId: integer('person_id')
+      .notNull()
+      .references(() => people.id, { onDelete: 'cascade' }),
+    /** A key of the catalogue. One that is not an extra gives nothing. */
+    permission: text('permission').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.personId, t.permission] })],
 )
 
 /** Client companies a person is assigned to. */

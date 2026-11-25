@@ -2,11 +2,15 @@ import { and, desc, eq, isNull, ne, or, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import type { Request } from 'express'
 import type { InviteInfo, InviteRow, InviteStatus, NewLink } from '../../shared/api'
+import { type Actor, actorId, isSystem, loadActor, type PersonAccess, type PersonActor, readPersonAccess } from '../access/actor'
+import { requirePermission } from '../access/decisions'
+import { lockAccess, lockForAccessChange } from '../access/grants'
+import { endLostLinks, mayInvite, requireInvite as requireMayInvite } from '../access/links'
 import { hashToken, isToken, newToken } from '../auth/tokens'
 import { createSession, type NewSession } from '../auth/sessions'
 import type { AppContext } from '../context'
 import { type Db, runTransaction, type Tx } from '../db'
-import { helpRequests, inviteClients, inviteProjects, invites, people, personCredentials, roles } from '../db/schema'
+import { helpRequests, inviteClients, inviteProjects, invites, people, personCredentials, personExtras, roles } from '../db/schema'
 import { inviteText } from '../email/messages'
 import { sendEmail } from '../email/sender'
 import { ApiError } from '../errors'
@@ -20,57 +24,83 @@ import { checkNewPassword } from './newPassword'
 const inviteMs = 7 * 24 * 3_600_000
 
 const creators = alias(people, 'creators')
-const creatorRoles = alias(roles, 'creator_roles')
 
 /** Invites with what decides whether their link works. */
 const selectInvites = (db: Db | Tx) =>
   db
-    .select({
-      invite: invites,
-      role: roles.name,
-      creator: { id: creators.id, name: creators.name, status: creators.status, roleKey: creatorRoles.key },
-    })
+    .select({ invite: invites, role: roles, creator: { id: creators.id, name: creators.name } })
     .from(invites)
-    .innerJoin(roles, eq(roles.id, invites.roleId))
+    .leftJoin(roles, eq(roles.id, invites.roleId))
     .innerJoin(creators, eq(creators.id, invites.createdBy))
-    .innerJoin(creatorRoles, eq(creatorRoles.id, creators.roleId))
 
 type Row = Awaited<ReturnType<typeof selectInvites>>[number]
 
-function statusOf({ invite, creator }: Row, now: Date): InviteStatus {
-  if (invite.acceptedAt) return 'accepted'
-  // Replaced after it had expired.
-  if (invite.revokedAt) return invite.expiresAt <= invite.revokedAt ? 'expired' : 'revoked'
-  if (invite.expiresAt <= now) return 'expired'
-  return creator.status === 'active' && creator.roleKey === 'administrator' ? 'open' : 'void'
+const roleName = ({ invite, role }: Row): string => role?.name ?? invite.roleName ?? ''
+
+/** Tells the status of invites as of now. Asks the database once for each maker and address. */
+function judge(db: Db | Tx, now: Date) {
+  const makers = new Map<number, Promise<PersonActor>>()
+  const targets = new Map<string, Promise<PersonAccess | undefined>>()
+  const remember = <K, V>(map: Map<K, Promise<V>>, key: K, read: () => Promise<V>) => {
+    const value = map.get(key) ?? read()
+    map.set(key, value)
+    return value
+  }
+  return async ({ invite, role }: Row): Promise<InviteStatus> => {
+    if (invite.acceptedAt) return 'accepted'
+    // Replaced after it had expired.
+    if (invite.revokedAt) return invite.expiresAt <= invite.revokedAt ? 'expired' : 'revoked'
+    if (invite.expiresAt <= now) return 'expired'
+    if (invite.endedAt || !role) return 'void'
+    const maker = await remember(makers, invite.createdBy, () => loadActor(db, invite.createdBy))
+    const email = invite.email.toLowerCase()
+    const target = await remember(targets, email, async () => {
+      const found = await findPersonByEmail(db, email)
+      return found && readPersonAccess(db, found.person.id)
+    })
+    return mayInvite(maker, role, target) ? 'open' : 'void'
+  }
+}
+
+async function openAmong(db: Db | Tx, rows: Row[], now: Date): Promise<Row[]> {
+  const statusOf = judge(db, now)
+  const open: Row[] = []
+  for (const row of rows) if ((await statusOf(row)) === 'open') open.push(row)
+  return open
 }
 
 /** Whether someone can still use an invite for this email. */
 export async function hasOpenInvite(db: Db | Tx, email: string, now: Date, exceptId = 0): Promise<boolean> {
   const rows = await selectInvites(db).where(and(eq(sql`lower(${invites.email})`, email), ne(invites.id, exceptId)))
-  return rows.some((row) => statusOf(row, now) === 'open')
+  return (await openAmong(db, rows, now)).length > 0
 }
 
 /** Emails of people without a password who have an open invite. */
 export async function openInviteEmails(db: Db, now: Date): Promise<Set<string>> {
   const rows = await selectInvites(db).where(and(isNull(invites.acceptedAt), isNull(invites.revokedAt)))
-  return new Set(rows.filter((row) => statusOf(row, now) === 'open').map(({ invite }) => invite.email.toLowerCase()))
+  return new Set((await openAmong(db, rows, now)).map(({ invite }) => invite.email.toLowerCase()))
 }
 
-export async function listInvites(db: Db, now: Date): Promise<InviteRow[]> {
+export async function listInvites(db: Db, actor: Actor, now: Date): Promise<InviteRow[]> {
+  requirePermission(actor, 'people.manage', 'all')
   const rows = await selectInvites(db).orderBy(desc(invites.createdAt), desc(invites.id))
-  return rows.map((row) => ({
-    id: row.invite.id,
-    name: row.invite.name,
-    email: row.invite.email,
-    role: row.role,
-    status: statusOf(row, now),
-    invitedBy: row.creator.name,
-    createdAt: row.invite.createdAt.toISOString(),
-    expiresAt: row.invite.expiresAt.toISOString(),
-    acceptedAt: row.invite.acceptedAt?.toISOString() ?? null,
-    revokedAt: row.invite.revokedAt?.toISOString() ?? null,
-  }))
+  const statusOf = judge(db, now)
+  const list: InviteRow[] = []
+  for (const row of rows) {
+    list.push({
+      id: row.invite.id,
+      name: row.invite.name,
+      email: row.invite.email,
+      role: roleName(row),
+      status: await statusOf(row),
+      invitedBy: row.creator.name,
+      createdAt: row.invite.createdAt.toISOString(),
+      expiresAt: row.invite.expiresAt.toISOString(),
+      acceptedAt: row.invite.acceptedAt?.toISOString() ?? null,
+      revokedAt: row.invite.revokedAt?.toISOString() ?? null,
+    })
+  }
+  return list
 }
 
 /** Why this email cannot be invited now. Returns the person an invite would give a password to. */
@@ -94,20 +124,34 @@ export interface InviteInput extends Assignments {
   roleId: number
 }
 
-interface Administrator {
-  id: number
-  name: string
+/** Whoever makes a link is a person: the invite names them, and they answer for it. */
+function requireMaker(actor: Actor): PersonActor {
+  if (isSystem(actor)) throw new Error('Invites are made by people')
+  return actor
 }
 
-export async function createInvite(ctx: AppContext, input: InviteInput, by: Administrator): Promise<NewLink> {
+/** Locks maker, invited person and role, and returns the maker as of now with the invited person. */
+async function lockToInvite(tx: Tx, actor: Actor, email: string, roleId: number | null) {
+  const found = await findPersonByEmail(tx, email)
+  const also = { people: found ? [found.person.id] : [], roles: roleId === null ? [] : [roleId] }
+  const maker = requireMaker(await lockForAccessChange(tx, actor, also))
+  requirePermission(maker, 'people.manage', 'all')
+  return { maker, target: found && (await readPersonAccess(tx, found.person.id)) }
+}
+
+export async function createInvite(ctx: AppContext, actor: Actor, input: InviteInput): Promise<NewLink> {
   const { name, email, roleId } = input
   const now = ctx.now()
   const token = newToken()
   const expiresAt = new Date(now.getTime() + inviteMs)
+  const by = requireMaker(actor)
   const inviteId = await runTransaction(ctx.db, async (tx) => {
+    await lockAccess(tx)
     await lockEmail(tx, email)
+    const { maker, target } = await lockToInvite(tx, by, email, roleId)
     const person = await checkCanInvite(tx, email, now)
     const role = await requireRole(tx, roleId)
+    requireMayInvite(maker, role, target)
     const { clientIds, projectIds } = await checkAssignments(tx, input)
     // Expired and void invites for the address make way.
     await tx
@@ -134,21 +178,30 @@ export async function createInvite(ctx: AppContext, input: InviteInput, by: Admi
   return handOver(ctx, { id: inviteId, name, email }, token, expiresAt, by)
 }
 
-/** Replaces the link of an invite that nobody used; the old link stops working. */
-export async function renewInvite(ctx: AppContext, id: number, by: Administrator): Promise<NewLink> {
+/** Replaces the link of an invite that nobody used; the old link stops working, if it did not before. */
+export async function renewInvite(ctx: AppContext, actor: Actor, id: number): Promise<NewLink> {
   const now = ctx.now()
   const token = newToken()
   const expiresAt = new Date(now.getTime() + inviteMs)
+  const by = requireMaker(actor)
   const invite = await runTransaction(ctx.db, async (tx) => {
+    await lockAccess(tx)
+    requirePermission(by, 'people.manage', 'all')
     const [found] = await tx.select().from(invites).where(eq(invites.id, id))
     if (!found) throw new ApiError(404, 'not_found', 'Not found')
-    await lockEmail(tx, found.email.toLowerCase())
+    const email = found.email.toLowerCase()
+    await lockEmail(tx, email)
     const locked = await lockInvite(tx, eq(invites.id, id))
+    const { maker, target } = await lockToInvite(tx, by, email, locked?.roleId ?? null)
     if (!locked || locked.acceptedAt || locked.revokedAt) throw alreadyHandled()
-    const person = await checkCanInvite(tx, locked.email.toLowerCase(), now, id)
+    if (locked.roleId === null) {
+      throw new ApiError(409, 'role_deleted', `The role ${locked.roleName} of this invite was deleted. Invite the person again.`)
+    }
+    const person = await checkCanInvite(tx, email, now, id)
+    requireMayInvite(maker, await requireRole(tx, locked.roleId), target)
     await tx
       .update(invites)
-      .set({ tokenHash: hashToken(token), expiresAt, createdBy: by.id, personId: person?.id ?? null })
+      .set({ tokenHash: hashToken(token), expiresAt, endedAt: null, createdBy: by.id, personId: person?.id ?? null })
       .where(eq(invites.id, id))
     if (person) await closeHelpRequests(tx, person.id, now)
     await logActivity(tx, {
@@ -161,7 +214,7 @@ export async function renewInvite(ctx: AppContext, id: number, by: Administrator
 }
 
 async function handOver(
-  ctx: AppContext, invite: { id: number; name: string; email: string }, token: string, expiresAt: Date, by: Administrator,
+  ctx: AppContext, invite: { id: number; name: string; email: string }, token: string, expiresAt: Date, by: PersonActor,
 ): Promise<NewLink> {
   const link = linkTo(ctx, 'invite', token)
   const { name: company } = await getSettings(ctx.db)
@@ -171,15 +224,17 @@ async function handOver(
   return { link, expiresAt: expiresAt.toISOString(), emailed: ctx.email.delivers }
 }
 
-export async function revokeInvite(ctx: AppContext, id: number, by: Administrator): Promise<void> {
+export async function revokeInvite(ctx: AppContext, actor: Actor, id: number): Promise<void> {
   const now = ctx.now()
   await runTransaction(ctx.db, async (tx) => {
+    await lockAccess(tx)
     const invite = await lockInvite(tx, eq(invites.id, id))
+    requirePermission(await lockForAccessChange(tx, actor), 'people.manage', 'all')
     if (!invite) throw new ApiError(404, 'not_found', 'Not found')
     if (invite.acceptedAt || invite.revokedAt) throw alreadyHandled()
     await tx.update(invites).set({ revokedAt: now, tokenHash: null }).where(eq(invites.id, id))
     await logActivity(tx, {
-      actorId: by.id, action: 'invite_revoked', personId: invite.personId,
+      actorId: actorId(actor), action: 'invite_revoked', personId: invite.personId,
       summary: `Revoked the invite of ${invite.name} (${invite.email})`, changes: { inviteId: id, email: invite.email },
     })
   })
@@ -196,18 +251,18 @@ async function lockInvite(tx: Tx, condition: ReturnType<typeof eq>) {
 async function requireInvite(db: Db | Tx, token: unknown, now: Date) {
   if (!isToken(token)) throw linkInvalid()
   const [row] = await selectInvites(db).where(eq(invites.tokenHash, hashToken(token)))
-  if (!row || statusOf(row, now) !== 'open') throw linkInvalid()
+  if (!row?.role || (await judge(db, now)(row)) !== 'open') throw linkInvalid()
   const found = await findPersonByEmail(db, row.invite.email.toLowerCase())
   // The person may have been archived, or got a password, in the meantime.
   if (found && (found.person.status !== 'active' || found.passwordHash)) throw linkInvalid()
-  return { ...row, person: found?.person }
+  return { invite: row.invite, role: row.role, person: found?.person }
 }
 
 /** What the page of an invite link shows. Does not use the link up. */
 export async function readInvite(ctx: AppContext, token: unknown): Promise<InviteInfo> {
   const { invite, role, person } = await requireInvite(ctx.db, token, ctx.now())
   const { name: company, timeZone: companyTimeZone } = await getSettings(ctx.db)
-  return { company, companyTimeZone, name: person?.name ?? invite.name, email: invite.email, role }
+  return { company, companyTimeZone, name: person?.name ?? invite.name, email: invite.email, role: role.name }
 }
 
 export interface AcceptInput {
@@ -226,17 +281,25 @@ export async function acceptInvite(ctx: AppContext, req: Request, input: AcceptI
   const { name, timeZone } = input
   return runTransaction(ctx.db, async (tx) => {
     const now = ctx.now()
+    await lockAccess(tx)
     await lockEmail(tx, invite.email.toLowerCase())
     await lockInvite(tx, eq(invites.id, invite.id))
-    const { person: invited } = await requireInvite(tx, input.token, now)
+    const { person: invited, invite: locked, role: given } = await requireInvite(tx, input.token, now)
+    const maker = await lockForAccessChange(tx, await loadActor(tx, locked.createdBy), {
+      people: invited ? [invited.id] : [], roles: [given.id],
+    })
     // May be archived, or given a password on the server, at the same time; so once more when locked.
     if (invited) await lockPerson(tx, invited.id)
     const current = await requireInvite(tx, input.token, now)
-    const { roleId, email } = current.invite
+    const { email } = current.invite
+    const roleId = current.role.id
+    const before = current.person && (await readPersonAccess(tx, current.person.id))
     let personId: number
     if (current.person) {
       personId = current.person.id
       await tx.update(people).set({ name, timeZone, roleId }).where(eq(people.id, personId))
+      await tx.delete(personExtras).where(eq(personExtras.personId, personId))
+      if (before) await endLostLinks(tx, now, new Map([[personId, before]]))
     } else {
       const [person] = await tx
         .insert(people)
@@ -247,15 +310,20 @@ export async function acceptInvite(ctx: AppContext, req: Request, input: AcceptI
     await tx.insert(personCredentials).values({ personId, passwordHash, changedAt: now })
     const chosenClients = await tx.select().from(inviteClients).where(eq(inviteClients.inviteId, invite.id))
     const chosenProjects = await tx.select().from(inviteProjects).where(eq(inviteProjects.inviteId, invite.id))
-    await addAssignments(tx, personId, {
+    const target = await readPersonAccess(tx, personId)
+    if (!target) throw linkInvalid()
+    await addAssignments(tx, maker, target, {
       clientIds: chosenClients.map(({ clientId }) => clientId),
       projectIds: chosenProjects.map(({ projectId }) => projectId),
     })
     await tx.update(invites).set({ acceptedAt: now, personId, tokenHash: null }).where(eq(invites.id, invite.id))
     await closeHelpRequests(tx, personId, now)
     await logActivity(tx, {
-      actorId: personId, action: 'invite_accepted', personId, summary: `${name} accepted the invite (${email}, ${current.role})`,
-      changes: { inviteId: invite.id },
+      actorId: personId, action: 'invite_accepted', personId, summary: `${name} accepted the invite (${email}, ${current.role.name})`,
+      changes: {
+        inviteId: invite.id, role: [before?.role.name ?? null, current.role.name], extras: [before?.extras ?? [], []],
+        givenBy: current.invite.createdBy,
+      },
     })
     return createSession(tx, ctx, req, personId, false)
   })

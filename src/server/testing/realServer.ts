@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm'
+import pg from 'pg'
 import { parseDatabaseUrl } from '../config'
 import { type Database, openDatabase } from '../db/database'
 import { applyMigrations } from '../db/migrations'
@@ -17,11 +18,25 @@ export function parseTestDatabaseUrl(env: Env): string | undefined {
   return url
 }
 
-/** A fresh, migrated database on that server. The caller closes it. One test file may use it. */
+const turnKey = 5_007_003
+
+/** Waiting for another test file that uses the server. */
+export const testServerTimeoutMs = 180_000
+
+/** A fresh, migrated database on that server. The caller closes it. Test files that use it take turns. */
 export async function openTestServer(url: string): Promise<Database> {
+  const turn = new pg.Client({ connectionString: url })
+  await turn.connect()
+  await turn.query('select pg_advisory_lock($1)', [turnKey])
   const database = await openDatabase({ kind: 'postgres', url })
   await database.db.execute(sql`drop schema if exists public, drizzle cascade`)
   await database.db.execute(sql`create schema public`)
   await applyMigrations(database)
-  return database
+  return {
+    ...database,
+    close: async () => {
+      await database.close()
+      await turn.end()
+    },
+  }
 }

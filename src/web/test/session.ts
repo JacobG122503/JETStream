@@ -1,13 +1,14 @@
 import type { SessionInfo, SessionPerson } from '../../shared/api'
+import { everything } from '../../shared/permissions'
 
 export const person: SessionPerson = {
   id: 7, name: 'Casey Example', email: 'casey@jet.example', status: 'active', role: { key: 'member', name: 'Member' },
-  administrator: false, timeZone: 'America/Chicago', photoId: null,
+  administrator: false, permissions: {}, access: 'member', timeZone: 'America/Chicago', photoId: null,
 }
 
 export const administrator: SessionPerson = {
   ...person, id: 1, name: 'Avery Example', email: 'avery@jet.example', role: { key: 'administrator', name: 'Administrator' },
-  administrator: true,
+  administrator: true, permissions: everything(), access: 'administrator',
 }
 
 /** What the server says about the session: signed out, unless told otherwise. */

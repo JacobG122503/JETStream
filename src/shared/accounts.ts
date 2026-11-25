@@ -18,3 +18,7 @@ export function isEmail(text: string): boolean {
     /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]{1,64}@[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/i.test(text)
   )
 }
+
+/** In characters, after trimming. */
+export const roleNameLength = 60
+export const roleDescriptionLength = 200

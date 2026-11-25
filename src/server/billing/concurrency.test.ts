@@ -3,15 +3,18 @@
 // PostgreSQL server over separate connections.
 import { eq } from 'drizzle-orm'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { systemActor } from '../access/system'
 import { type Database, runTransaction, updateVersioned } from '../db'
 import { invoices, invoiceTimeEntries, payments, timeEntries } from '../db/schema'
 import { type Make, makeRecords } from '../testing/records'
-import { openTestServer, parseTestDatabaseUrl } from '../testing/realServer'
+import { openTestServer, parseTestDatabaseUrl, testServerTimeoutMs } from '../testing/realServer'
 import { createTestDatabase } from '../testing/testDatabase'
 import {
   allocateNumber, BillingError, ClaimError, createInvoiceFromEntries, deleteInvoice, EntryLockedError, lockTimeEntryForEdit,
   type NewInvoice, recordPayment, recordRefund,
 } from '.'
+
+const system = systemActor('tests')
 
 const serverUrl = parseTestDatabaseUrl(process.env)
 
@@ -41,7 +44,7 @@ describe.each([
     if (skip) return
     database = await open()
     make = makeRecords(database.db)
-  })
+  }, testServerTimeoutMs)
   afterAll(() => database?.close())
 
   const on = it.skipIf(skip)
@@ -114,7 +117,7 @@ describe.each([
     if (!entry) throw new Error('No entry')
     const edit = () =>
       runTransaction(database.db, async (tx) => {
-        await lockTimeEntryForEdit(tx, entry.id, 1)
+        await lockTimeEntryForEdit(tx, system, entry.id, 1)
         await updateVersioned(tx, timeEntries, entry.id, 1, { minutes: 30 })
       })
     // Started in either order.

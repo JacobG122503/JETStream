@@ -1,8 +1,9 @@
 import { eq, type InferInsertModel } from 'drizzle-orm'
+import { type BuiltInRole, type Grants, type PermissionKey, writeGrants } from '../../shared/permissions'
 import type { Db } from '../db'
 import {
-  clients, expenseCategories, expenses, invoices, people, projectMembers, projects, projectTasks, roles, tasks,
-  timeEntries,
+  clients, expenseCategories, expenses, invoices, people, personExtras, personManagers, projectMembers, projects, projectTasks,
+  roles, tasks, timeEntries,
 } from '../db/schema'
 
 let counter = 0
@@ -78,6 +79,19 @@ export function makeRecords(db: Db) {
           })
           .returning(),
       )
+    },
+    /** A role made by people. */
+    async role(grants: Grants = {}, values: Values<typeof roles> = {}) {
+      return only(await db.insert(roles).values({ name: unique('Role'), permissions: writeGrants(grants), ...values }).returning())
+    },
+    async builtInRole(key: BuiltInRole) {
+      return only(await db.select().from(roles).where(eq(roles.key, key)))
+    },
+    async extras(personId: number, ...keys: PermissionKey[]) {
+      await db.insert(personExtras).values(keys.map((permission) => ({ personId, permission })))
+    },
+    async manages(managerId: number, personId: number) {
+      await db.insert(personManagers).values({ managerId, personId })
     },
     /** A person, client, project and task that fit together. */
     async workplace() {

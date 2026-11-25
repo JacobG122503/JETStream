@@ -1,4 +1,5 @@
-import { requireSession } from '../../auth/access'
+import type { SavedAssignments } from '../../../shared/api'
+import { requireActor } from '../../auth/access'
 import { saveAssignments } from '../../people/assignments'
 import { listPeople, readOptions, readPerson } from '../../people/people'
 import { createResetLink, listHelpRequests } from '../../people/resets'
@@ -6,32 +7,34 @@ import { jsonBody } from '../body'
 import { ids, pathId, readInput, shortText } from '../input'
 import type { AddRoutes } from './types'
 
-/** People and their assignments, for administrators. */
+/** People and their assignments. */
 export const peopleRoutes: AddRoutes = (api, access, ctx) => {
-  api.get('/people', access.administrator, async (_req, res) => {
-    res.json({ people: await listPeople(ctx.db, ctx.now()) })
+  api.get('/people', access.permission('people.view'), async (_req, res) => {
+    res.json({ people: await listPeople(ctx.db, requireActor(res), ctx.now()) })
   })
 
-  api.get('/people/options', access.administrator, async (_req, res) => {
-    res.json(await readOptions(ctx.db))
+  api.get('/people/options', access.permission('people.manage'), async (_req, res) => {
+    res.json(await readOptions(ctx.db, requireActor(res)))
   })
 
-  api.get('/people/:id', access.administrator, async (req, res) => {
-    res.json(await readPerson(ctx.db, pathId(req.params.id), ctx.now()))
+  api.get('/people/:id', access.permission('people.view'), async (req, res) => {
+    res.json(await readPerson(ctx.db, requireActor(res), pathId(req.params.id), ctx.now()))
   })
 
-  api.put('/people/:id/assignments', access.administrator, jsonBody, async (req, res) => {
+  api.put('/people/:id/assignments', access.permission('people.manage'), jsonBody, async (req, res) => {
     const personId = pathId(req.params.id)
+    const actor = requireActor(res)
     const input = readInput(req.body, { clientIds: ids, projectIds: ids, state: shortText })
-    await saveAssignments(ctx.db, { ...input, personId, actorId: requireSession(res).person.id, now: ctx.now() })
-    res.json(await readPerson(ctx.db, personId, ctx.now()))
+    const notManaged = await saveAssignments(ctx.db, actor, { ...input, personId, now: ctx.now() })
+    const saved: SavedAssignments = { ...(await readPerson(ctx.db, actor, personId, ctx.now())), notManaged }
+    res.json(saved)
   })
 
-  api.post('/people/:id/reset-link', access.administrator, async (req, res) => {
-    res.status(201).json(await createResetLink(ctx, pathId(req.params.id), requireSession(res).person))
+  api.post('/people/:id/reset-link', access.permission('people.manage'), async (req, res) => {
+    res.status(201).json(await createResetLink(ctx, requireActor(res), pathId(req.params.id)))
   })
 
-  api.get('/help-requests', access.administrator, async (_req, res) => {
-    res.json({ requests: await listHelpRequests(ctx.db) })
+  api.get('/help-requests', access.permission('people.manage'), async (_req, res) => {
+    res.json({ requests: await listHelpRequests(ctx.db, requireActor(res)) })
   })
 }

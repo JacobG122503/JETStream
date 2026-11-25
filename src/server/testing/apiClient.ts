@@ -2,9 +2,9 @@ import type { Express } from 'express'
 import request from 'supertest'
 import type { SessionInfo } from '../../shared/api'
 import { createApp, type AppOptions } from '../app'
-import { eq } from 'drizzle-orm'
+import type { BuiltInRole, Grants } from '../../shared/permissions'
 import type { Db } from '../db'
-import { people, personCredentials, roles } from '../db/schema'
+import { type people, personCredentials } from '../db/schema'
 import type { EmailMessage, EmailSender } from '../email/sender'
 import { messageText } from '../email/sender'
 import { hashPassword } from '../security/passwords'
@@ -74,12 +74,15 @@ export function testClock(start = '2026-03-02T15:00:00Z') {
 export const goodPassword = 'correct horse battery'
 let goodHash: Promise<string> | undefined
 
-/** People who can sign in with `goodPassword`. Hashed once, because hashing is slow on purpose. */
+/**
+ * People who can sign in with `goodPassword`, with a built-in role or one made of permissions. Hashed
+ * once, because hashing is slow on purpose.
+ */
 export function accounts(db: Db) {
   const make = makeRecords(db)
-  return async (role: 'administrator' | 'manager' | 'member' = 'member', values: Partial<typeof people.$inferInsert> = {}) => {
+  return async (role: BuiltInRole | Grants = 'member', values: Partial<typeof people.$inferInsert> = {}) => {
     goodHash ??= hashPassword(goodPassword)
-    const [{ id: roleId } = { id: 0 }] = await db.select().from(roles).where(eq(roles.key, role))
+    const { id: roleId } = typeof role === 'string' ? await make.builtInRole(role) : await make.role(role)
     const person = await make.person({ roleId, ...values })
     await db.insert(personCredentials).values({ personId: person.id, passwordHash: await goodHash })
     return person

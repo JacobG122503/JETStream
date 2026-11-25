@@ -4,15 +4,18 @@ import type { DatedRate } from '../../shared/calc'
 import { addDays, type IsoDate } from '../../shared/dates'
 import type { BudgetType, ProjectType, RateMethod } from '../../shared/domain'
 import {
-  clients, contacts, exchangeRates, expenseCategories, labels, people, personClients, personLabels, personManagers,
+  clients, contacts, exchangeRates, expenseCategories, labels, people, personClients, personExtras, personLabels, personManagers,
   personRates, projectMembers, projectPins, projects, projectTags, projectTasks, tags, tasks,
 } from '../db/schema'
+import type { Grants, PermissionKey } from '../../shared/permissions'
 import type { DemoDates, DemoRows } from './builder'
 
 export interface RoleIds {
   administrator: number
   manager: number
   member: number
+  /** The one custom role of the demo. */
+  bookkeeper: number
 }
 
 export type PersonKey =
@@ -38,6 +41,18 @@ export interface DemoPerson {
   dayMinutes: number
   /** How likely each project is. */
   work: { project: ProjectKey; weight: number }[]
+}
+
+/** Switched on for the project lead. */
+export const leadExtras: PermissionKey[] = ['time.approve', 'projects.create', 'billable.view']
+
+export const bookkeeper: { name: string; description: string; grants: Grants } = {
+  name: 'Bookkeeper',
+  description: 'Invoices, payments and reimbursements, without control of people or settings.',
+  grants: {
+    'clients.view': 'all', 'time.view': 'all', 'billable.view': 'all', 'invoices.manage': 'all', 'payments.manage': 'all',
+    'expenses.reimburse': 'all',
+  },
 }
 
 interface PersonPlan {
@@ -76,7 +91,7 @@ const peoplePlan: Record<PersonKey, PersonPlan> = {
     rate: 115, cost: 56, work: { turbine: 4, pumps: 3, coldStore: 3, quarry: 2, training: 1 },
   },
   elena: {
-    name: 'Elena Marchetti', email: 'elena.marchetti@jet.example', role: 'member', label: 'Engineer', manager: 'priya',
+    name: 'Elena Marchetti', email: 'elena.marchetti@jet.example', role: 'bookkeeper', label: 'Engineer', manager: 'priya',
     rate: 118, cost: 57, work: { controls: 4, assembly: 4, safety: 3, training: 1 },
   },
   tomas: {
@@ -289,6 +304,8 @@ export function addCompany(rows: DemoRows, dates: DemoDates, roles: RoleIds): Co
       dayMinutes: plan.dayMinutes ?? hours(8), work,
     }
   }
+
+  for (const permission of leadExtras) rows.add(personExtras, { personId: person.lead.id, permission })
 
   const labelIds = new Map<string, number>()
   const rates = {} as Record<PersonKey, DatedRate[]>

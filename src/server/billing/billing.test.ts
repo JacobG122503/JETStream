@@ -2,6 +2,7 @@ import { eq, sql } from 'drizzle-orm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { documentTotals, timeAmount } from '../../shared/calc'
 import type { RoundingMode } from '../../shared/domain'
+import { systemActor } from '../access/system'
 import { type Database, NotFoundError, runTransaction, StaleError, updateVersioned } from '../db'
 import {
   companySettings, invoiceExpenses, invoiceLines, invoices, invoiceTimeEntries, numberSequences, payments, personRates,
@@ -13,6 +14,8 @@ import {
   addEntriesToInvoice, allocateNumber, BillingError, changeInvoiceLines, type Claim, ClaimError, createInvoiceFromEntries,
   deleteInvoice, EntryLockedError, lockExpenseForEdit, lockTimeEntryForEdit, type NewInvoice, recordPayment, recordRefund,
 } from '.'
+
+const system = systemActor('tests')
 
 let database: Database
 let make: Make
@@ -355,7 +358,7 @@ describe('claiming', () => {
 })
 
 describe('the edit guard', () => {
-  const guard = (id: number, version: number) => runTransaction(database.db, (tx) => lockTimeEntryForEdit(tx, id, version))
+  const guard = (id: number, version: number) => runTransaction(database.db, (tx) => lockTimeEntryForEdit(tx, system, id, version))
   const refusal = (action: Promise<unknown>) =>
     action.then(
       () => 'allowed',
@@ -375,7 +378,7 @@ describe('the edit guard', () => {
 
   it('works alike for expenses', async () => {
     const guardExpense = (id: number, version: number) =>
-      runTransaction(database.db, (tx) => lockExpenseForEdit(tx, id, version))
+      runTransaction(database.db, (tx) => lockExpenseForEdit(tx, system, id, version))
     const category = await make.category()
     const expense = await make.expense({ ...at.place, categoryId: category.id })
     expect(await refusal(guardExpense(expense.id, 1))).toBe('allowed')

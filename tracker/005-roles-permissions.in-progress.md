@@ -166,7 +166,17 @@ Everyone at JET Engineering sees and can do exactly what their job needs: the bi
 L. Build order: catalogue and decisions, coverage filters, route and service enforcement, escalation guards, migration and seed, Roles screen, Access section, navigation. Not split: screens without the guards, or guards without a way to set access, are of no use to 006 and later.
 
 ## Implementation notes
-_Software engineer fills this in._
+In progress (2026-11-24). Baseline before starting: `npm test` 1340 passed, 16 skipped.
+
+**Design (so that an interruption loses little)**
+- `src/shared/permissions.ts`: catalogue, levels, pure list functions (needs, adding and removing with what depends on it, built-in roles, stored form `key:level` in `roles.permissions`). `docs/permissions.md` is compared with it by a test.
+- `src/server/access/`: `actor.ts` (who acts, loaded from the database at each request; system actor), `decisions.ts` (pure `covers`/`can`), `filters.ts` (the same rules as SQL), `fields.ts` (billable and cost fields), `grants.ts` (grant rule, outranking rule, manager flag, last administrator, lock order), `roles.ts`, `personAccess.ts`, `links.ts` (who may make a link; ending links of people who lost access).
+- `auth/access.ts` (route levels) uses the actor of the session. Services in `people/` take the actor.
+- Lock order of everything that changes access: advisory lock `access`, email lock, invites, people by id, roles by id.
+- Database: `person_extras`, `roles.description`, `invites.ended_at`, `invites.role_id` nullable with `role_name`.
+- Web: permissions in the session, `X-Access` header tells the app that its access changed, page content is mounted anew then.
+
+**Status**: see below; filled in as parts get done.
 
 ## QA report
 _QA tester fills this in._
@@ -181,3 +191,4 @@ _PM fills this in after QA passes._
 - 2026-11-24 PM: AC14, scenario 9 and an engineer note extended (from 004 acceptance: void links stay void)
 - 2026-11-24 PM: AC22 and an engineer note extended (from 027 acceptance: room in the phone header)
 - 2026-11-24 ORCH: groomed -> in-progress
+- 2026-11-25 ORCH: implementation interrupted by usage limit; run paused by the user

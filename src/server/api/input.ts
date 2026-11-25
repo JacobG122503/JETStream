@@ -1,5 +1,6 @@
 /** Reading what a client sent: each value is checked, and everything that is wrong is told at once. */
-import { emailMaxLength, isEmail, nameLength, normalizeEmail } from '../../shared/accounts'
+import { emailMaxLength, isEmail, nameLength, normalizeEmail, roleDescriptionLength, roleNameLength } from '../../shared/accounts'
+import { type Grants, isPermissionKey, type PermissionKey, problemWith } from '../../shared/permissions'
 import { ApiError } from '../errors'
 import { isTimeZone } from '../timeZones'
 
@@ -98,4 +99,38 @@ export function pathId(value: unknown): number {
   const number = typeof value === 'string' && /^[1-9]\d{0,9}$/.test(value) ? Number(value) : NaN
   if (!isId(number)) throw new ApiError(404, 'not_found', 'Not found')
   return number
+}
+
+export const optionalId: Reader<number | null> = (value) => (value === undefined || value === null ? null : id(value))
+
+const oneLine = (value: unknown) => (typeof value === 'string' ? value.normalize('NFC').trim() : '')
+
+export const roleName: Reader<string> = (value) => {
+  const text = oneLine(value)
+  if (text === '') return refuse('Enter a name.')
+  if ([...text].length > roleNameLength) return refuse(`The name can have at most ${roleNameLength} characters.`)
+  if (controlCharacters.test(text)) return refuse('The name contains characters that are not allowed.')
+  return text
+}
+
+export const roleDescription: Reader<string> = (value) => {
+  if (value === undefined) return ''
+  if (typeof value !== 'string') return refuse('Enter a description.')
+  const text = oneLine(value)
+  if ([...text].length > roleDescriptionLength) return refuse(`The description can have at most ${roleDescriptionLength} characters.`)
+  if (controlCharacters.test(text)) return refuse('The description contains characters that are not allowed.')
+  return text
+}
+
+/** Permissions with their level, complete with what they need. */
+export const grants: Reader<Grants> = (value) => {
+  const problem = problemWith(value)
+  return problem === null ? (value as Grants) : refuse(problem)
+}
+
+/** Permissions switched on for a manager. Left out means none. */
+export const extras: Reader<PermissionKey[]> = (value) => {
+  if (value === undefined) return []
+  if (!Array.isArray(value) || !value.every(isPermissionKey) || new Set(value).size < value.length) return refuse('Choose extras from the list.')
+  return value
 }
