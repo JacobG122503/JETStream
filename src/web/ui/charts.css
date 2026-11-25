@@ -65,7 +65,7 @@
 }
 
 .chart-column:hover {
-  background: linear-gradient(var(--c-surface-2), transparent);
+  background: var(--c-surface-2);
 }
 
 .chart-stack {
