@@ -1,4 +1,4 @@
-import type { TimeOptions, TimeWeek } from '../../../shared/work'
+import type { TimeWeek } from '../../../shared/work'
 import { useWeekStart } from '../../auth/authContext'
 import { useLoad } from '../../auth/useLoad'
 import { addDays, addMonths, ErrorState, LoadingState, partsOf, Select, weekdayNames, weekdayOf } from '../../ui'
@@ -53,8 +53,7 @@ export function MonthView({ month, today, personId, onDay }: MonthViewProps) {
 
 /** Whose timesheet it is. */
 export function PersonPicker({ week, onChoose }: { week: TimeWeek; onChoose: (id: string | null) => void }) {
-  const { data } = useLoad<TimeOptions>('time/options')
-  const people = data?.people ?? []
+  const { people } = week
   if (people.length === 0) return null
   const options = people.some(({ id }) => id === week.person.id) ? people : [week.person, ...people]
   return (

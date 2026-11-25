@@ -38,6 +38,7 @@ export function recordRefund(db: Db, refund: NewRefund): Promise<{ refund: Refun
     if (!payment) throw new NotFoundError(refund.paymentId)
     // Payments never move to another invoice, so locking the invoice protects this payment too.
     const invoice = await lockInvoice(tx, payment.invoiceId)
+    if (invoice.status === 'closed') throw new BillingError('invoice_closed', `Invoice ${invoice.number} is closed.`)
     const [refunded] = await tx
       .select({ amount: sumExact(refunds.amount) })
       .from(refunds)
@@ -55,4 +56,16 @@ function assertPositive(amount: number) {
   if (!Number.isSafeInteger(amount) || amount <= 0) {
     throw new BillingError('amount_not_positive', 'The amount must be a whole number of minor units above 0.')
   }
+}
+
+/** Takes back a payment that was recorded by mistake, with its refunds. Also opens a paid invoice again. */
+export async function removePaymentIn(tx: Tx, paymentId: number): Promise<{ payment: Payment; invoice: Invoice }> {
+  const [seen] = await tx.select().from(payments).where(eq(payments.id, paymentId))
+  if (!seen) throw new NotFoundError(paymentId)
+  const invoice = await lockInvoice(tx, seen.invoiceId)
+  if (invoice.status === 'closed') throw new BillingError('invoice_closed', `Invoice ${invoice.number} is closed.`)
+  await tx.delete(refunds).where(eq(refunds.paymentId, paymentId))
+  const [payment] = await tx.delete(payments).where(eq(payments.id, paymentId)).returning()
+  if (!payment) throw new NotFoundError(paymentId)
+  return { payment, invoice: await recalculateInvoice(tx, invoice) }
 }

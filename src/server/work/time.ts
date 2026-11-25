@@ -95,9 +95,12 @@ export async function readWeek(ctx: AppContext, actor: Actor, date: IsoDate | nu
   const rows = await selectTime(db)
     .where(and(eq(timeEntries.personId, who.id), between(timeEntries.spentOn, from, to), who.seen))
     .orderBy(asc(timeEntries.spentOn), asc(timeEntries.startMinute), asc(timeEntries.id))
+  const others = holds(actor, 'time.view')
+    ? await db.select({ id: people.id, name: people.name }).from(people).where(and(eq(people.status, 'active'), filterFor(db, actor, 'people.view', 'person'))).orderBy(asc(people.name))
+    : []
   const [person] = await db.select({ name: people.name, capacity: people.weeklyCapacityMinutes }).from(people).where(eq(people.id, who.id))
   return {
-    person: { id: who.id, name: person?.name ?? '' }, own: who.own,
+    person: { id: who.id, name: person?.name ?? '' }, own: who.own, people: others,
     from, to, today, capacityMinutes: person?.capacity ?? 0,
     entries: rows.map(toEntry(await closedOn(db, who.id, from, to, today))),
     submission: await readSubmission(db, who.id, from),
@@ -140,13 +143,9 @@ export async function readTimeOptions(db: Db, actor: Actor, personId: number | n
     found.set(id, project)
   }
   const favorites = await db.select().from(timeFavorites).where(eq(timeFavorites.personId, ownId(actor))).orderBy(asc(timeFavorites.position), asc(timeFavorites.id))
-  const others = holds(actor, 'time.view')
-    ? await db.select({ id: people.id, name: people.name }).from(people).where(and(eq(people.status, 'active'), filterFor(db, actor, 'people.view', 'person'))).orderBy(asc(people.name))
-    : []
   return {
     projects: [...found.values()],
     favorites: favorites.map(({ id, projectId, taskId, notes }) => ({ id, projectId, taskId, notes })),
-    people: others,
     notesRequired: (await getSettings(db)).timeNotesRequired,
   }
 }

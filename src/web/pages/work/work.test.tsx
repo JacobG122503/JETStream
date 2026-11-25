@@ -14,7 +14,7 @@ const entry = (more: Partial<TimeEntry> = {}): TimeEntry => ({
   timerStartedAt: null, startMinute: null, endMinute: null, notes: 'North run', billable: true, status: 'unsubmitted', locked: null, ...more,
 })
 const week = (entries: TimeEntry[], running: TimeEntry | null = null): TimeWeek => ({
-  person: { id: 7, name: 'Casey' }, own: true,
+  person: { id: 7, name: 'Casey' }, own: true, people: [],
   from: '2026-11-21', to: '2026-11-27', today: '2026-11-25', capacityMinutes: 2400, entries, submission: null, running, now,
 })
 

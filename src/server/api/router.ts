@@ -72,6 +72,9 @@ const billingMessages: Record<BillingProblem, string> = {
   payment_exceeds_due: 'This is more than is due.',
   refund_exceeds_payment: 'More than was paid cannot be given back.',
   amount_not_positive: 'Enter an amount above 0.',
+  client_archived: 'This client is archived.',
+  invoice_closed: 'This invoice is closed. Reopen it first.',
+  total_too_low: 'The total cannot be below 0, or below what was already paid.',
   nothing_to_bill: 'There is no time and there are no expenses to invoice.',
 }
 

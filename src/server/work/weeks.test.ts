@@ -77,7 +77,7 @@ describe('entering time', () => {
     const other = (await database.db.select().from(people).where(eq(people.email, 'admin@jet.demo')))[0]?.id ?? 0
     expect(codeOf(await employee.post('/time', { ...body, personId: other }))[0]).toBeGreaterThanOrEqual(403)
     expect(codeOf(await employee.get(`/time?person=${other}`))).toEqual([403, 'forbidden'])
-    expect((await get<TimeOptions>(employee, '/time/options')).people).toEqual([])
+    expect((await get<TimeWeek>(employee, '/time')).people).toEqual([])
   })
 
   it('needs notes where the company wants them', async () => {

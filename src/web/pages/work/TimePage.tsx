@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { TimeEntry, TimeWeek } from '../../../shared/work'
 import { callApi, errorMessage } from '../../api'
-import { useAuth, useCan } from '../../auth/authContext'
+import { useAuth } from '../../auth/authContext'
 import { useLoad } from '../../auth/useLoad'
 import { Page } from '../../shell/Page'
 import { addDays, addMonths, Badge, Button, ConfirmDialog, ErrorState, Icon, IconButton, LoadingState, Menu, monthNames, Notice, partsOf, useToast, weekdayNames, weekdayOf } from '../../ui'
@@ -24,7 +24,6 @@ export function TimePage() {
   const personId = query.get('person') === null ? null : Number(query.get('person'))
   const route = [date !== null && `date=${date}`, personId !== null && `person=${personId}`].filter(Boolean).join('&')
   const { status, data, error, reload, refresh, setData } = useLoad<TimeWeek>(route === '' ? 'time' : `time?${route}`)
-  const can = useCan()
   const { info } = useAuth()
   const approval = info?.company.formats.modules.approval !== false
   const [chosenDay, setDay] = useState<string | null>(null)
@@ -137,7 +136,7 @@ export function TimePage() {
                 Return to today
               </button>
             )}
-            {can('time.view') && <PersonPicker week={data} onChoose={(id) => choose({ person: id })} />}
+            <PersonPicker week={data} onChoose={(id) => choose({ person: id })} />
           </div>
 
           {submission?.status === 'rejected' && (

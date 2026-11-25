@@ -47,6 +47,8 @@ export interface TimeWeek {
   /** Whose week it is. */
   person: Named
   own: boolean
+  /** Whose weeks may be looked at; empty for those who see only their own. */
+  people: Named[]
   from: IsoDate
   to: IsoDate
   today: IsoDate
@@ -489,8 +491,6 @@ export interface ActivityRow {
 export interface TimeOptions {
   projects: TimeProject[]
   favorites: { id: number; projectId: number; taskId: number; notes: string }[]
-  /** Other people whose time may be entered. */
-  people: Named[]
   notesRequired: boolean
 }
 

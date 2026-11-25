@@ -70,3 +70,12 @@ export function clampDate(date: IsoDate, min?: IsoDate, max?: IsoDate): IsoDate 
   if (max && date > max) return max
   return date
 }
+
+/** Whole days from one date to another; below 0 when the other is earlier. */
+export function daysBetween(from: IsoDate, to: IsoDate): number {
+  const at = (date: IsoDate) => {
+    const { year, month, day } = partsOf(date)
+    return Date.UTC(year, month - 1, day)
+  }
+  return Math.round((at(to) - at(from)) / dayMs)
+}

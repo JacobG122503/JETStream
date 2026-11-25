@@ -8,6 +8,11 @@ export type BillingProblem =
   | 'refund_exceeds_payment'
   | 'amount_not_positive'
   | 'nothing_to_bill'
+  | 'client_archived'
+  /** The invoice is closed: reopen it first. */
+  | 'invoice_closed'
+  /** The lines add up to less than was paid, or below 0. */
+  | 'total_too_low'
 
 /** A billing rule forbids the action. Nothing was changed. */
 export class BillingError extends Error {

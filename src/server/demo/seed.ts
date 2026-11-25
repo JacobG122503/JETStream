@@ -1,7 +1,7 @@
 /** Fills an empty database with the demo company, and empties one that holds it. */
 import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { getTableName, sql } from 'drizzle-orm'
+import { eq, getTableName, isNotNull, sql } from 'drizzle-orm'
 import type { PgTable } from 'drizzle-orm/pg-core'
 import type { IsoDate } from '../../shared/dates'
 import { type BuiltInRole, writeGrants } from '../../shared/permissions'
@@ -129,7 +129,11 @@ async function fill(tx: Tx, hashes: string[], { today, beforeCommit }: SeedOptio
     weekStartsOn: 6,
     address: '100 Example Parkway\nSpringfield, IL 62700', reminderDays: [3, 14, 30], invoiceNotes: 'Thank you for your business.',
   })
+  // Invoices are only made for clients in use. One was archived after its last.
+  const archived = await tx.select({ id: clients.id, archivedAt: clients.archivedAt }).from(clients).where(isNotNull(clients.archivedAt))
+  await tx.update(clients).set({ archivedAt: null, version: sql`version` }).where(isNotNull(clients.archivedAt))
   await addMoney(tx, dates, company, work)
+  for (const { id, archivedAt } of archived) await tx.update(clients).set({ archivedAt, version: sql`version` }).where(eq(clients.id, id))
   await tx.insert(appMeta).values({ key: markerKey, value: dates.today })
   await settleTimes(tx, dates.now)
   await beforeCommit?.(tx)

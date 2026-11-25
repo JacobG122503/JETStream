@@ -52,6 +52,10 @@ export type NewInvoice = Pick<
 /** Makes a draft invoice of the entries. If any of them cannot be billed, nothing happens. */
 export function createInvoiceFromEntries(db: Db, invoice: NewInvoice, claim: Claim): Promise<Invoice> {
   return runTransaction(db, async (tx) => {
+    // First, as everywhere, so that it cannot be archived meanwhile.
+    const [client] = await tx.select().from(clients).where(eq(clients.id, invoice.clientId)).for('share')
+    if (!client) throw new NotFoundError(invoice.clientId)
+    if (client.archivedAt !== null) throw new BillingError('client_archived', 'The client is archived.')
     const number = await allocateNumber(tx, 'invoice')
     const [created] = await tx.insert(invoices).values({ ...invoice, number }).returning()
     if (!created) throw new Error('The invoice was not stored.')

@@ -43,11 +43,14 @@ export async function recalculateInvoice(tx: Tx, invoice: Invoice, settledOn?: s
     }
   }
 
+  if (total < 0) throw new BillingError('total_too_low', `Invoice ${invoice.number} would be below 0.`)
   const { received, refunded, lastPaidOn } = await paidSoFar(tx, invoice.id)
   const due = amountDue(total, received, [refunded])
   const paid = total - due
+  if (due < 0) throw new BillingError('total_too_low', `Invoice ${invoice.number} would be less than was paid.`)
   let { status } = invoice
-  if (status === 'open' && paid > 0 && due <= 0) status = 'paid'
+  // One without anything to pay is settled once it is sent.
+  if (status === 'open' && due <= 0) status = 'paid'
   else if (status === 'paid' && due > 0) status = 'open'
   const [updated] = await tx
     .update(invoices)
@@ -60,7 +63,7 @@ export async function recalculateInvoice(tx: Tx, invoice: Invoice, settledOn?: s
       paidAmount: paid,
       dueAmount: due,
       status,
-      paidOn: status !== 'paid' ? null : (invoice.paidOn ?? settledOn ?? lastPaidOn),
+      paidOn: status !== 'paid' ? null : (invoice.paidOn ?? settledOn ?? lastPaidOn ?? invoice.issuedOn),
     })
     .where(eq(invoices.id, invoice.id))
     .returning()
