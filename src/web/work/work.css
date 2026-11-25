@@ -1136,3 +1136,49 @@
     display: none;
   }
 }
+
+.contact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.edit-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.edit-table th,
+.edit-table td {
+  padding: var(--space-2) var(--space-3) var(--space-2) 0;
+  border-bottom: 1px solid var(--c-border);
+  font-weight: var(--weight-normal);
+  text-align: start;
+}
+
+.edit-table thead th {
+  color: var(--c-text-muted);
+  font-size: var(--text-sm);
+}
+
+.edit-table .field {
+  min-width: 6rem;
+  max-width: 10rem;
+}
+
+.logo-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.company-logo {
+  max-width: 12rem;
+  max-height: 4rem;
+}
+
+.settings-main .columns {
+  grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+}

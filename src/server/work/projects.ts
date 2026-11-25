@@ -10,10 +10,11 @@ import { filterFor } from '../access/filters'
 import { invalidInput } from '../api/input'
 import type { AppContext } from '../context'
 import { type Db, runTransaction, type Tx } from '../db'
-import { clients, expenses, people, projectMembers, projects, projectTasks, tasks, timeEntries } from '../db/schema'
+import { clients, expenses, people, projectMembers, projectPins, projects, projectTags, projectTasks, tags, tasks, timeEntries } from '../db/schema'
 import { NotFoundError } from '../errors'
 import { getSettings } from '../people/lookup'
 import { isCurrentMembership } from '../people/membership'
+import { holdClient, logChange } from './common'
 import { groupRows, isUnbilled, loadValued, sumBy, type Valued } from './figures'
 import { todayOf } from './time'
 
@@ -60,13 +61,15 @@ interface Loaded {
   project: Project
   client: typeof clients.$inferSelect
   time: Valued[]
-  members: { personId: number; name: string; photoId: number | null; isManager: boolean; budgetMinutes: number | null }[]
-  taskRows: { id: number; name: string; billable: boolean; budgetMinutes: number | null; budgetAmount: number | null; removed: boolean }[]
+  members: { personId: number; name: string; photoId: number | null; isManager: boolean; rate: number | null; budgetMinutes: number | null }[]
+  taskRows: { id: number; name: string; billable: boolean; rate: number | null; budgetMinutes: number | null; budgetAmount: number | null; removed: boolean }[]
+  tags: string[]
+  pinned: boolean
   /** Billable expenses. */
   spent: number
 }
 
-async function loadProjects(db: Db, condition: SQL | undefined): Promise<Loaded[]> {
+async function loadProjects(db: Db, actor: Actor, condition: SQL | undefined): Promise<Loaded[]> {
   const rows = await db
     .select({ project: projects, client: clients })
     .from(projects)
@@ -80,7 +83,7 @@ async function loadProjects(db: Db, condition: SQL | undefined): Promise<Loaded[
     await db
       .select({
         projectId: projectMembers.projectId, personId: people.id, name: people.name, photoId: people.photoFileId,
-        isManager: projectMembers.isManager, budgetMinutes: projectMembers.budgetMinutes,
+        isManager: projectMembers.isManager, rate: projectMembers.rate, budgetMinutes: projectMembers.budgetMinutes,
       })
       .from(projectMembers)
       .innerJoin(people, eq(people.id, projectMembers.personId))
@@ -91,7 +94,7 @@ async function loadProjects(db: Db, condition: SQL | undefined): Promise<Loaded[
   const taskRows = groupRows(
     await db
       .select({
-        projectId: projectTasks.projectId, id: tasks.id, name: tasks.name, billable: projectTasks.billable,
+        projectId: projectTasks.projectId, id: tasks.id, name: tasks.name, billable: projectTasks.billable, rate: projectTasks.rate,
         budgetMinutes: projectTasks.budgetMinutes, budgetAmount: projectTasks.budgetAmount, removedAt: projectTasks.removedAt,
       })
       .from(projectTasks)
@@ -104,7 +107,18 @@ async function loadProjects(db: Db, condition: SQL | undefined): Promise<Loaded[
     await db.select({ projectId: expenses.projectId, amount: expenses.amount }).from(expenses).where(and(inArray(expenses.projectId, ids), eq(expenses.billable, true))),
     ({ projectId }) => projectId,
   )
+  const tagRows = groupRows(
+    await db
+      .select({ projectId: projectTags.projectId, name: tags.name })
+      .from(projectTags)
+      .innerJoin(tags, eq(tags.id, projectTags.tagId))
+      .where(inArray(projectTags.projectId, ids))
+      .orderBy(asc(tags.name)),
+    ({ projectId }) => projectId,
+  )
+  const pins = new Set((await db.select({ id: projectPins.projectId }).from(projectPins).where(eq(projectPins.personId, ownId(actor)))).map(({ id }) => id))
   return rows.map(({ project, client }) => ({
+    tags: (tagRows.get(project.id) ?? []).map(({ name }) => name), pinned: pins.has(project.id),
     project, client, time: time.get(project.id) ?? [], members: members.get(project.id) ?? [],
     taskRows: (taskRows.get(project.id) ?? []).map(({ removedAt, ...row }) => ({ ...row, removed: removedAt !== null })),
     spent: sumBy(spent.get(project.id) ?? [], ({ amount }) => amount),
@@ -129,15 +143,16 @@ function toRow(actor: Actor, loaded: Loaded, today: IsoDate): ProjectRow {
     type: project.type, startsOn: project.startsOn, endsOn: project.endsOn, archived: project.archivedAt !== null || client.archivedAt !== null,
     minutes: sumBy(total, ({ worked }) => worked),
     billableMinutes: sumBy(total.filter(({ billable }) => billable), ({ worked }) => worked),
+    tags: loaded.tags, pinned: loaded.pinned,
     budget: budgetOf(project, time, spent, parts, seen, today),
     members: members.map(({ personId, name, photoId, isManager }) => ({ id: personId, name, photoId, isManager })),
   }
 }
 
 export async function listProjects(ctx: AppContext, actor: Actor, condition?: SQL): Promise<ProjectRow[]> {
-  const loaded = await loadProjects(ctx.db, and(visibleProjects(ctx.db, actor), condition))
+  const loaded = await loadProjects(ctx.db, actor, and(visibleProjects(ctx.db, actor), condition))
   const today = await todayOf(ctx.db, ownId(actor), ctx.now())
-  return loaded.map((project) => toRow(actor, project, today))
+  return loaded.map((project) => toRow(actor, project, today)).sort((a, b) => Number(b.pinned) - Number(a.pinned))
 }
 
 /** Hours per week, up to this week. */
@@ -153,7 +168,7 @@ export function weeksOf(time: readonly { spentOn: IsoDate; worked: number; billa
 
 export async function readProject(ctx: AppContext, actor: Actor, id: number): Promise<ProjectDetails> {
   const { db } = ctx
-  const [loaded] = await loadProjects(db, and(eq(projects.id, id), visibleProjects(db, actor)))
+  const [loaded] = await loadProjects(db, actor, and(eq(projects.id, id), visibleProjects(db, actor)))
   if (!loaded) throw new NotFoundError(id)
   const { project, time, members, taskRows } = loaded
   const facts = { type: 'project', projectId: id } as const
@@ -168,23 +183,31 @@ export async function readProject(ctx: AppContext, actor: Actor, id: number): Pr
 
   const details: ProjectDetails = {
     ...toRow(actor, loaded, today),
-    notes: project.notes, rateMethod: project.rateMethod, budgetType: project.budgetType,
+    version: project.version, notes: project.notes, rateMethod: project.rateMethod, budgetType: project.budgetType,
+    canEdit: can(actor, 'projects.edit', facts), canEditMoney: can(actor, 'projects.edit', facts) && can(actor, 'billable.edit', facts),
+    canManageFlags: holds(actor, 'roles.manage', 'all') && can(actor, 'projects.edit', facts),
+    budgetMinutes: whole || project.budgetVisibleToAll ? project.budgetMinutes : null, budgetMonthly: project.budgetMonthly,
+    budgetIncludesExpenses: project.budgetIncludesExpenses, budgetVisibleToAll: project.budgetVisibleToAll,
+    budgetAlertPercent: project.budgetAlertPercent, budgetAmount: whole ? project.budgetAmount : null,
     weeks: weeksOf(shown, today, weekStartsOn as Weekday, 12),
     tasks: taskRows
       .filter(({ id: taskId, removed }) => !removed || shown.some((row) => row.taskId === taskId))
-      .map(({ id: taskId, name, billable, budgetMinutes }) => {
+      .map(({ id: taskId, name, billable, budgetMinutes, rate, budgetAmount, removed }) => {
         const rows = shown.filter((row) => row.taskId === taskId)
-        return { id: taskId, name, billable, minutes: worked(rows), budgetMinutes: whole ? budgetMinutes : null, billableAmount: value(rows) }
+        return {
+          id: taskId, name, billable, removed, minutes: worked(rows), budgetMinutes: whole ? budgetMinutes : null, billableAmount: value(rows), rate,
+          budgetAmount: whole ? budgetAmount : null,
+        }
       })
 
       .sort((a, b) => b.minutes - a.minutes),
     people: [
-      ...members.map(({ personId, name, photoId, isManager, budgetMinutes }) => {
+      ...members.map(({ personId, name, photoId, isManager, rate, budgetMinutes }) => {
         const rows = shown.filter((row) => row.personId === personId)
-        return { id: personId, name, photoId, isManager, minutes: worked(rows), budgetMinutes: whole ? budgetMinutes : null, billableAmount: value(rows) }
+        return { id: personId, name, photoId, isManager, rate, removed: false, minutes: worked(rows), budgetMinutes: whole ? budgetMinutes : null, billableAmount: value(rows) }
       }),
       ...past.map(([personId, rows]) => ({
-        id: personId, name: rows[0]?.person ?? '', photoId: null, isManager: false, minutes: worked(rows), budgetMinutes: null, billableAmount: value(rows),
+        id: personId, name: rows[0]?.person ?? '', photoId: null, isManager: false, rate: null, removed: true, minutes: worked(rows), budgetMinutes: null, billableAmount: value(rows),
       })),
     ].sort((a, b) => b.minutes - a.minutes),
     billableAmount: value(shown),
@@ -196,7 +219,7 @@ export async function readProject(ctx: AppContext, actor: Actor, id: number): Pr
 }
 
 export async function readProjectOptions(db: Db, actor: Actor): Promise<ProjectOptions> {
-  requirePermission(actor, 'projects.create')
+  if (!holds(actor, 'projects.edit')) requirePermission(actor, 'projects.create')
   const active = await db.select({ id: people.id, name: people.name }).from(people).where(eq(people.status, 'active')).orderBy(asc(people.name))
   return {
     clients: await db.select({ id: clients.id, name: clients.name, currency: clients.currency }).from(clients).where(isNull(clients.archivedAt)).orderBy(asc(clients.name)),
@@ -229,8 +252,7 @@ export async function createProject(ctx: AppContext, actor: Actor, input: NewPro
   if (type === 'fixed_fee' && fixedFee === null) throw invalidInput({ fixedFee: 'Enter the fee.' })
   if (taskIds.length === 0) throw invalidInput({ taskIds: 'Choose at least one task.' })
   return runTransaction(ctx.db, async (tx: Tx) => {
-    const [client] = await tx.select().from(clients).where(and(eq(clients.id, clientId), isNull(clients.archivedAt)))
-    if (!client) throw invalidInput({ clientId: 'Choose a client.' })
+    await holdClient(tx, clientId, 'use')
     const chosenTasks = await tx.select().from(tasks).where(and(inArray(tasks.id, taskIds), isNull(tasks.archivedAt)))
     if (chosenTasks.length < taskIds.length) throw invalidInput({ taskIds: 'Choose tasks from the list.' })
     const team = [...new Set([creator, ...personIds])]
@@ -249,6 +271,7 @@ export async function createProject(ctx: AppContext, actor: Actor, input: NewPro
       chosenTasks.map((task) => ({ projectId: project.id, taskId: task.id, billable: type !== 'non_billable' && task.billableByDefault })),
     )
     await tx.insert(projectMembers).values(team.map((personId) => ({ projectId: project.id, personId, isManager: personId === creator })))
+    await logChange(tx, actor, { action: 'created', type: 'project', id: project.id, summary: `Created project ${name}` })
     return project.id
   })
 }

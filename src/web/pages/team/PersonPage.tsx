@@ -15,6 +15,7 @@ import { InviteDialog } from './InvitesPanel'
 import { signInLabels } from './labels'
 import { LinkDialog, type ShownLink } from './LinkDialog'
 import { PersonAccess } from './PersonAccess'
+import { PersonWorkCards } from './PersonWorkCards'
 import { ResetLink, type ResetTarget } from './ResetLink'
 import { StatusBadge } from './StatusBadge'
 import '../auth/auth.css'
@@ -101,6 +102,7 @@ function Person({ person, onChange, onReload, onRefresh }: PersonProps & { onRef
         </div>
         {active && person.accountRefusal && <Notice tone="info">{person.accountRefusal}</Notice>}
       </Card>
+      <PersonWorkCards id={person.id} onChange={onRefresh} />
       {person.clients && (
         <Assignments key={person.state} person={person} clients={person.clients} onChange={onChange} onReload={onReload} />
       )}

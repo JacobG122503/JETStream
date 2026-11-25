@@ -10,7 +10,7 @@ import { useLoad } from '../../auth/useLoad'
 import { BrandMark } from '../../shell/BrandMark'
 import { Page } from '../../shell/Page'
 import { Button, Card, ConfirmDialog, DatePicker, Dialog, ErrorState, formatDate, LinkButton, LoadingState, Notice, Select, TextField, todayOnDevice, useToast } from '../../ui'
-import { formatHours, formatMoney, parseMoney } from '../../work/format'
+import { formatHours, formatMoney, moneyInput, parseMoney } from '../../work/format'
 import { InvoiceStatusBadge } from './InvoiceStatusBadge'
 import '../../work/work.css'
 
@@ -253,7 +253,7 @@ function PaymentDialog({ invoice, onClose, onPaid }: { invoice: InvoiceDetails; 
   const weekStart = useWeekStart()
   const formId = useId()
   const form = useForm('payment', fields)
-  const [amount, setAmount] = useState(formatMoney(invoice.dueAmount, invoice.currency).replace(/[^\d.]/g, ''))
+  const [amount, setAmount] = useState(moneyInput(invoice.dueAmount, invoice.currency))
   const [paidOn, setPaidOn] = useState(todayOnDevice())
   const [method, setMethod] = useState('check')
   const [reference, setReference] = useState('')

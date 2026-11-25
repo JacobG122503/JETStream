@@ -1,29 +1,68 @@
 import { currencyExponent } from '../../shared/currency'
-import { monthNames, partsOf, weekdayNames, weekdayOf } from '../ui/dates'
+import type { Formats } from '../../shared/work'
+import { monthNames, partsOf, setDateFormat, weekdayNames, weekdayOf } from '../ui/dates'
 
-const money = new Map<string, Intl.NumberFormat>()
+let formats: Formats = {
+  currency: 'USD', weekStartsOn: 1, dateFormat: 'mdy', numberFormat: '1,234.56', currencyPlacement: 'symbol_before', hourFormat: 'decimal', timeMode: 'duration',
+  modules: { expenses: true, invoices: true, estimates: true, timeOff: true, scheduling: true, approval: true },
+}
+
+/** Takes over how the company wants figures shown. */
+export function setFormats(next: Formats) {
+  formats = next
+  setDateFormat(next.dateFormat)
+}
+
+export const getFormats = (): Formats => formats
+
+/** A number in the company's way of writing. */
+function formatNumber(value: number, digits: number): string {
+  const text = new Intl.NumberFormat('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value)
+  if (formats.numberFormat === '1,234.56') return text
+  const group = formats.numberFormat === '1.234,56' ? '.' : ' '
+  return text.replace(/[,.]/g, (mark) => (mark === ',' ? group : ','))
+}
+
+const symbols = new Map<string, string>()
+function symbolOf(currency: string): string {
+  let symbol = symbols.get(currency)
+  if (symbol === undefined) {
+    symbol = new Intl.NumberFormat('en-US', { style: 'currency', currency }).formatToParts(0).find(({ type }) => type === 'currency')?.value ?? currency
+    symbols.set(currency, symbol)
+  }
+  return symbol
+}
 
 /** Minor units of a currency, as people read them. */
 export function formatMoney(amount: number, currency: string, { whole = false } = {}): string {
   const exponent = currencyExponent(currency)
-  const key = `${currency}/${whole}`
-  let format = money.get(key)
-  if (!format) {
-    const digits = whole ? 0 : exponent
-    format = new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: digits, maximumFractionDigits: digits })
-    money.set(key, format)
+  const number = formatNumber(Math.abs(amount) / 10 ** exponent, whole ? 0 : exponent)
+  const sign = amount < 0 ? '-' : ''
+  switch (formats.currencyPlacement) {
+    case 'symbol_before':
+      return `${sign}${symbolOf(currency)}${number}`
+    case 'symbol_after':
+      return `${sign}${number} ${symbolOf(currency)}`
+    case 'code_before':
+      return `${sign}${currency} ${number}`
+    case 'code_after':
+      return `${sign}${number} ${currency}`
   }
-  return format.format(amount / 10 ** exponent)
+}
+
+/** Minor units as they are typed into a field. */
+export const moneyInput = (amount: number, currency: string): string => {
+  const exponent = currencyExponent(currency)
+  return (amount / 10 ** exponent).toFixed(exponent)
 }
 
 /** Several currencies in one line. */
 export const formatAmounts = (amounts: readonly { currency: string; amount: number }[], options?: { whole?: boolean }): string =>
-  amounts.length === 0 ? formatMoney(0, 'USD', options) : amounts.map(({ currency, amount }) => formatMoney(amount, currency, options)).join(' + ')
+  amounts.length === 0 ? formatMoney(0, formats.currency, options) : amounts.map(({ currency, amount }) => formatMoney(amount, currency, options)).join(' + ')
 
-const hours = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-
-/** Decimal hours: 375 minutes are 6.25. */
-export const formatHours = (minutes: number): string => hours.format(minutes / 60)
+/** 375 minutes are 6.25, or 6:15 where the company wants that. */
+export const formatHours = (minutes: number): string =>
+  formats.hourFormat === 'decimal' ? formatNumber(minutes / 60, 2) : `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}`
 
 /** Hours as they are typed into a field. */
 export const hoursInput = (minutes: number): string => (minutes / 60).toFixed(2)

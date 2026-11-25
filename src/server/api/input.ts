@@ -178,3 +178,46 @@ export const thingName: Reader<string> = (value) => {
 
 export const currency: Reader<string> = (value) =>
   typeof value === 'string' && isCurrencyCode(value) ? value : refuse('Choose a currency.')
+
+export const optionalText =
+  (most: number): Reader<string | null> =>
+  (value) =>
+    text(most)(value ?? undefined) || null
+
+/** Thousandths of a percent, from 0 to 100%. */
+export const percent: Reader<number> = (value) =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 100_000 ? value : refuse('Enter a percentage from 0 to 100.')
+
+export const whole =
+  (least: number, most: number): Reader<number> =>
+  (value) =>
+    typeof value === 'number' && Number.isInteger(value) && value >= least && value <= most ? value : refuse(`Enter a whole number from ${least} to ${most}.`)
+
+/** An amount that may also be below 0. */
+export const signedMoney: Reader<number> = (value) =>
+  typeof value === 'number' && Number.isInteger(value) && Math.abs(value) <= mostMoney ? value : refuse('Enter an amount.')
+
+/** A list of objects, each read with the readers. */
+export const listOf =
+  <R extends Record<string, Reader<unknown>>>(readers: R, most = 500): Reader<{ [K in keyof R]: ReturnType<R[K]> }[]> =>
+  (value) => {
+    if (value === undefined) return []
+    if (!Array.isArray(value) || value.length > most) return refuse('The list could not be read.')
+    return value.map((item: unknown) => {
+      try {
+        return readInput(item, readers)
+      } catch (error) {
+        return refuse(error instanceof ApiError ? error.message : 'The list could not be read.')
+      }
+    })
+  }
+
+export const integers =
+  (least: number, most: number): Reader<number[]> =>
+  (value) => {
+    if (value === undefined) return []
+    if (!Array.isArray(value) || value.length > 50) return refuse('Enter numbers.')
+    return [...new Set(value.map(whole(least, most)))].sort((a, b) => a - b)
+  }
+
+export const optionalEmail: Reader<string | null> = optional(newEmail)

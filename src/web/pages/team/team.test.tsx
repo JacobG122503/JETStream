@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { createMemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { AssignmentClient, InviteRow, JoinRequest, PersonAccessDetails, PersonDetails } from '../../../shared/api'
+import type { PersonWork } from '../../../shared/work'
 import { everything, managerGrants } from '../../../shared/permissions'
 import { App } from '../../App'
 import { routerFuture, routes } from '../../routes'
@@ -228,6 +229,11 @@ describe('the access of a person', () => {
   })
 })
 
+const work: PersonWork = {
+  version: 1, name: 'Priya', email: 'priya@jet.example', phone: null, kind: 'employee', weeklyCapacityMinutes: 2400, startedOn: null, notes: null, labels: [], status: 'active',
+  canManage: true, refusal: null, knownLabels: [], currency: 'USD', rates: [], mayEditRates: { billable: true, cost: true },
+}
+
 describe('a person', () => {
   const details = (more: Partial<PersonDetails> = {}): PersonDetails => ({
     ...row(3, 'Priya'), timeZone: 'America/Chicago', state: 'one',
@@ -240,6 +246,7 @@ describe('a person', () => {
   })
   beforeEach(() => {
     server.handlers['GET people/3/access'] = () => access()
+    server.handlers['GET people/3/work'] = () => work
     server.handlers['GET people/3'] = () => details()
   })
 

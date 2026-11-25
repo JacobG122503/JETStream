@@ -1,13 +1,13 @@
 import { type ReactNode, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { PermissionKey } from '../../../shared/permissions'
-import { productName } from '../../../shared/product'
 import type { ReportRow, TimeReport } from '../../../shared/work'
 import { useCan, usePerson, useWeekStart } from '../../auth/authContext'
 import { useLoad } from '../../auth/useLoad'
 import { Page } from '../../shell/Page'
 import { addDays, addMonths, Button, Checkbox, type DateRange, DateRangePicker, ErrorState, Icon, IconButton, LoadingState, partsOf, Ring, Select, startOfWeek, Tabs, toIso, type Weekday } from '../../ui'
-import { formatHours, formatMoney, formatWeek, percentOf } from '../../work/format'
+import { formatHours, formatMoney, formatWeek, moneyInput, percentOf } from '../../work/format'
+import { downloadCsv } from '../../work/csv'
 import { Amounts } from '../../work/parts'
 import '../../work/work.css'
 
@@ -249,24 +249,11 @@ function Group({ title, rows, report, path }: GroupProps) {
   )
 }
 
-/** A spreadsheet would run a text that begins like a formula. */
-const cellText = (value: string | number) => {
-  const text = typeof value === 'string' && /^[=+\-@\t\r]/.test(value) ? `'${value}` : String(value)
-  return `"${text.replaceAll('"', '""')}"`
-}
-
 function download(title: string, rows: ReportRow[], { from, to }: TimeReport) {
-  const lines = [
+  downloadCsv(`${title.toLowerCase()} ${from} to ${to}`, [
     ['Name', 'Client', 'Hours', 'Billable hours', 'Amount', 'Currency'],
     ...rows.map(({ name, sub, minutes, billableMinutes, amount, currency }) => [
-      name, sub ?? '', (minutes / 60).toFixed(2), (billableMinutes / 60).toFixed(2), amount === null ? '' : formatMoney(amount, currency ?? 'USD').replace(/[^\d.]/g, ''), amount === null ? '' : (currency ?? ''),
+      name, sub ?? '', (minutes / 60).toFixed(2), (billableMinutes / 60).toFixed(2), amount === null ? '' : moneyInput(amount, currency ?? 'USD'), amount === null ? '' : (currency ?? ''),
     ]),
-  ]
-  const file = new Blob([lines.map((cells) => cells.map(cellText).join(',')).join('\r\n')], { type: 'text/csv' })
-  const url = URL.createObjectURL(file)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `${productName} ${title.toLowerCase()} ${from} to ${to}.csv`
-  link.click()
-  URL.revokeObjectURL(url)
+  ])
 }

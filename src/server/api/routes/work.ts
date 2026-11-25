@@ -1,16 +1,12 @@
-import { projectTypes } from '../../../shared/domain'
 import { requireActor } from '../../auth/access'
-import { createClient, listClients, readClient } from '../../work/clients'
 import { createExpense, deleteExpense, listExpenses, readExpenseOptions, updateExpense } from '../../work/expenses'
 import { readHome } from '../../work/home'
 import { addPayment, createInvoice, listInvoices, listUnbilled, markSent, readInvoice, removeDraft } from '../../work/invoices'
-import { createProject, listProjects, readProject, readProjectOptions } from '../../work/projects'
 import { readTimeReport } from '../../work/reports'
-import { createTask, listTasks } from '../../work/tasks'
 import { readTeamWeek } from '../../work/team'
 import { copyPreviousDay, createEntry, deleteEntry, readTimeOptions, readWeek, startTimer, stopTimer, submitWeek, updateEntry, withdrawWeek } from '../../work/time'
 import { jsonBody } from '../body'
-import { currency, date, dayMinutes, flag, id, ids, money, oneOf, optional, optionalFlag, pathId, positive, readInput, text, thingName, version } from '../input'
+import { date, dayMinutes, flag, id, ids, money, oneOf, optional, optionalFlag, pathId, positive, readInput, text, version } from '../input'
 import type { AddRoutes } from './types'
 
 const entry = { projectId: id, taskId: id, spentOn: date, minutes: dayMinutes, notes: text(2000) }
@@ -65,15 +61,6 @@ export const workRoutes: AddRoutes = (api, access, ctx) => {
     res.json(await readTeamWeek(ctx, requireActor(res), readInput(req.query, { date: optional(date) }).date))
   })
 
-  api.get('/tasks', access.permission('tasks.manage'), async (_req, res) => {
-    res.json({ tasks: await listTasks(ctx.db, requireActor(res)) })
-  })
-
-  api.post('/tasks', access.permission('tasks.manage'), jsonBody, async (req, res) => {
-    await createTask(ctx, requireActor(res), readInput(req.body, { name: thingName, billable: flag, common: flag }))
-    res.status(201).json({ tasks: await listTasks(ctx.db, requireActor(res)) })
-  })
-
   api.put('/time/:id', access.signedIn, jsonBody, async (req, res) => {
     const input = readInput(req.body, { ...entry, version })
     await updateEntry(ctx, requireActor(res), pathId(req.params.id), input)
@@ -88,39 +75,6 @@ export const workRoutes: AddRoutes = (api, access, ctx) => {
   api.post('/time/:id/delete', access.signedIn, jsonBody, async (req, res) => {
     await deleteEntry(ctx, requireActor(res), pathId(req.params.id), readInput(req.body, { version }).version)
     res.json({})
-  })
-
-  api.get('/projects', access.signedIn, async (_req, res) => {
-    res.json({ projects: await listProjects(ctx, requireActor(res)) })
-  })
-
-  api.get('/projects/options', access.permission('projects.create'), async (_req, res) => {
-    res.json(await readProjectOptions(ctx.db, requireActor(res)))
-  })
-
-  api.post('/projects', access.permission('projects.create'), jsonBody, async (req, res) => {
-    const input = readInput(req.body, {
-      clientId: id, name: thingName, code: text(30), type: oneOf(...projectTypes), rate: optional(money), fixedFee: optional(money),
-      budgetMinutes: optional(positive), taskIds: ids, personIds: ids,
-    })
-    res.status(201).json({ id: await createProject(ctx, requireActor(res), input) })
-  })
-
-  api.get('/projects/:id', access.signedIn, async (req, res) => {
-    res.json(await readProject(ctx, requireActor(res), pathId(req.params.id)))
-  })
-
-  api.get('/clients', access.permission('clients.view'), async (_req, res) => {
-    res.json(await listClients(ctx.db, requireActor(res)))
-  })
-
-  api.post('/clients', access.permission('clients.manage'), jsonBody, async (req, res) => {
-    const input = readInput(req.body, { name: thingName, currency, address: text(500) })
-    res.status(201).json({ id: await createClient(ctx, requireActor(res), input) })
-  })
-
-  api.get('/clients/:id', access.permission('clients.view'), async (req, res) => {
-    res.json(await readClient(ctx, requireActor(res), pathId(req.params.id)))
   })
 
   api.get('/expenses', access.signedIn, async (_req, res) => {

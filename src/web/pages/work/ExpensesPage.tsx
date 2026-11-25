@@ -8,7 +8,7 @@ import { useForm } from '../../auth/useForm'
 import { useLoad } from '../../auth/useLoad'
 import { Page } from '../../shell/Page'
 import { Badge, Button, Checkbox, Combobox, ConfirmDialog, DatePicker, Dialog, ErrorState, formatDate, Icon, IconButton, LoadingState, Select, StatTile, Table, type TableColumn, TextArea, TextField, todayOnDevice, type Tone, useToast } from '../../ui'
-import { formatAmounts, formatMoney, parseMoney } from '../../work/format'
+import { formatAmounts, formatMoney, moneyInput, parseMoney } from '../../work/format'
 import '../../work/work.css'
 
 const statusLook: Record<ExpenseRow['status'], { label: string; tone: Tone }> = {
@@ -172,7 +172,7 @@ function ExpenseDialog({ expense, onClose, onReload, onSaved }: ExpenseDialogPro
   const [spentOn, setSpentOn] = useState(expense?.spentOn ?? todayOnDevice())
   const [amount, setAmount] = useState(() => {
     if (!expense) return ''
-    return expense.quantity !== null ? String(expense.quantity / 1000) : formatMoney(expense.amount, expense.currency).replace(/[^\d.]/g, '')
+    return expense.quantity !== null ? String(expense.quantity / 1000) : moneyInput(expense.amount, expense.currency)
   })
   const [notes, setNotes] = useState(expense?.notes ?? '')
   const [billable, setBillable] = useState(expense?.billable ?? true)

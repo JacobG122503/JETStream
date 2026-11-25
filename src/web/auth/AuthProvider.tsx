@@ -2,6 +2,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 import type { SessionInfo } from '../../shared/api'
 import { ApiError, callApi, connectApi } from '../api'
 import { useToast } from '../ui'
+import { setFormats } from '../work/format'
 import { type Auth, AuthContext } from './authContext'
 
 interface State {
@@ -20,6 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const running = useRef<Promise<void> | null>(null)
 
   const set = useCallback((next: State) => {
+    if (next.info) setFormats(next.info.company.formats)
     latest.current = next
     setState(next)
   }, [])

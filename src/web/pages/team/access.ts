@@ -8,10 +8,11 @@ export interface Access extends Choice {
 }
 
 /** What is chosen for someone new: Member, without assignments, unless changed. */
-export function useAccess(): { load: Load<PeopleOptions>; access: Access; setAccess: (access: Access) => void } {
+/** `role` is the name of the role someone has already. */
+export function useAccess(role?: string): { load: Load<PeopleOptions>; access: Access; setAccess: (access: Access) => void } {
   const load = useLoad<PeopleOptions>('people/options')
   const [chosen, setChosen] = useState<Access>({ roleId: '', ...noChoice })
-  const member = load.data?.roles.find(({ key }) => key === 'member')
+  const member = load.data?.roles.find(({ key, name }) => (role === undefined ? key === 'member' : name === role))
   return { load, access: { ...chosen, roleId: chosen.roleId || String(member?.id ?? '') }, setAccess: setChosen }
 }
 

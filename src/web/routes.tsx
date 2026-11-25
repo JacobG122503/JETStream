@@ -15,6 +15,9 @@ import { PersonPage } from './pages/team/PersonPage'
 import { RolePage } from './pages/settings/RolePage'
 import { RolesPage } from './pages/settings/RolesPage'
 import { SettingsPage } from './pages/settings/SettingsPage'
+import { ActivityPage } from './pages/settings/ActivityPage'
+import { CompanyPage } from './pages/settings/CompanyPage'
+import { ProjectEditPage } from './pages/work/ProjectEditPage'
 import { ClientPage } from './pages/work/ClientPage'
 import { ClientsPage } from './pages/work/ClientsPage'
 import { ExpensesPage } from './pages/work/ExpensesPage'
@@ -72,6 +75,9 @@ export const routes: RouteObject[] = [
           ...navItems.map((item) => ({ path: item.path, element: sectionPage(item) })),
           { path: '/team/:id', element: <Needs any={['people.view']} title="Person"><PersonPage /></Needs> },
           { path: '/projects/:id', element: <ProjectPage /> },
+          { path: '/projects/:id/edit', element: <ProjectEditPage /> },
+          { path: '/settings/company', element: <Needs any={['settings.manage']} title="Company settings"><CompanyPage /></Needs> },
+          { path: '/settings/activity', element: <Needs any={['activity.view']} title="Activity log"><ActivityPage /></Needs> },
           { path: '/clients/:id', element: <Needs any={['clients.view']} title="Client"><ClientPage /></Needs> },
           { path: '/invoices/new', element: <Needs any={['invoices.manage']} title="New invoice"><NewInvoicePage /></Needs> },
           { path: '/invoices/:id', element: <Needs any={['invoices.manage']} title="Invoice"><InvoicePage /></Needs> },

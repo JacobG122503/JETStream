@@ -22,6 +22,8 @@ const statuses: Record<InviteStatus, { label: string; tone: Tone }> = {
 export interface Invitee {
   name: string
   email: string
+  /** The role they have already. */
+  role?: string
 }
 
 export function InvitesPanel() {
@@ -153,7 +155,7 @@ interface InviteDialogProps {
 
 export function InviteDialog({ invitee, onClose, onInvited }: InviteDialogProps) {
   const formId = useId()
-  const { load, access, setAccess } = useAccess()
+  const { load, access, setAccess } = useAccess(invitee?.role)
   const [name, setName] = useState(invitee?.name ?? '')
   const [email, setEmail] = useState(invitee?.email ?? '')
   const form = useForm('invite', fields)

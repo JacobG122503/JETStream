@@ -59,6 +59,8 @@ export default defineConfig([
         tsconfigRootDir: fileURLToPath(new URL('.', import.meta.url)),
       },
     },
+    // Taking some properties off an object.
+    rules: { '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true }] },
   },
   {
     files: ['src/web/**/*.{ts,tsx}'],

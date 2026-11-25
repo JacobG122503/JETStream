@@ -1,5 +1,6 @@
 /** What the server's API sends about accounts and people. */
 import type { Weekday } from './dates'
+import type { Formats } from './work'
 import type { personStatuses } from './domain'
 import type { Grants, PermissionKey } from './permissions'
 
@@ -34,7 +35,7 @@ export interface DemoAccount {
 }
 
 export interface SessionInfo {
-  company: { name: string; timeZone: string; weekStartsOn: Weekday }
+  company: { name: string; timeZone: string; weekStartsOn: Weekday; formats: Formats }
   person: SessionPerson | null
   /** To be sent with every request that changes something. Only while signed in. */
   csrfToken: string | null

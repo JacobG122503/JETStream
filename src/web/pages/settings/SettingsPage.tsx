@@ -1,27 +1,15 @@
 import { useId, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { useAuth, useCan } from '../../auth/authContext'
-import { Page } from '../../shell/Page'
+import { useAuth } from '../../auth/authContext'
 import { setStartsAtHome, startsAtHome } from '../../theme/startPage'
 import { type ThemeChoice, useThemeChoice } from '../../theme/theme'
 import { Checkbox } from '../../ui'
-import './settings.css'
+import { SettingsLayout } from './SettingsLayout'
 
 export function SettingsPage() {
-  const can = useCan()
   return (
-    <Page title="Settings">
-      <div className="settings">
-        <nav aria-label="Settings" className="settings-nav">
-          <Link to="/settings" aria-current="page">
-            My preferences
-          </Link>
-          <Link to="/account">My account</Link>
-          {can('roles.manage') && <Link to="/settings/roles">Roles</Link>}
-        </nav>
-        <Preferences />
-      </div>
-    </Page>
+    <SettingsLayout title="Settings" current="/settings">
+      <Preferences />
+    </SettingsLayout>
   )
 }
 
@@ -37,7 +25,7 @@ function Preferences() {
   const [theme, setTheme] = useThemeChoice()
   const group = useId()
   return (
-    <section className="settings-main" aria-labelledby="preferences">
+    <section aria-labelledby="preferences">
       <h2 id="preferences">My preferences</h2>
       <p className="muted">These apply to you on this device only, and not to anyone else at {info?.company.name}.</p>
       <div className="settings-row">

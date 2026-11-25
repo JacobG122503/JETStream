@@ -105,9 +105,15 @@ function sessionPerson(session: CurrentSession, companyTimeZone: string): Sessio
 /** What the web app needs to know first, signed in or not. */
 export async function readSessionInfo(ctx: AppContext, req: Request): Promise<SessionInfo> {
   const session = await loadSession(ctx, req)
-  const { name, timeZone, weekStartsOn } = await getSettings(ctx.db)
+  const settings = await getSettings(ctx.db)
+  const { name, timeZone, currency, dateFormat, numberFormat, currencyPlacement, hourFormat, timeMode } = settings
+  const weekStartsOn = settings.weekStartsOn as Weekday
+  const modules = {
+    expenses: settings.expensesEnabled, invoices: settings.invoicesEnabled, estimates: settings.estimatesEnabled, timeOff: settings.timeOffEnabled,
+    scheduling: settings.schedulingEnabled, approval: settings.approvalEnabled,
+  }
   return {
-    company: { name, timeZone, weekStartsOn: weekStartsOn as Weekday },
+    company: { name, timeZone, weekStartsOn, formats: { currency, weekStartsOn, dateFormat, numberFormat, currencyPlacement, hourFormat, timeMode, modules } },
     person: session ? sessionPerson(session, timeZone) : null,
     csrfToken: session?.csrfToken ?? null,
     signUpOpen: session ? false : await isSignUpOpen(ctx.db),

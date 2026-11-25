@@ -37,7 +37,7 @@ describe('access levels', () => {
   it('are declared by every route, and only the known ones are public', () => {
     const routes = routesIn('demo')
     expect(routes.filter(({ level }) => level === 'public').map(({ method, path }) => `${method} ${path}`).sort()).toEqual([
-      'get /health', 'get /session', 'post /forgot-password', 'post /invite/accept', 'post /invite/check',
+      'get /health', 'get /logo', 'get /session', 'post /forgot-password', 'post /invite/accept', 'post /invite/check',
       'post /reset-password/check', 'post /reset-password/use', 'post /session/demo', 'post /session/sign-in',
       'post /session/sign-out', 'post /sign-up',
     ])

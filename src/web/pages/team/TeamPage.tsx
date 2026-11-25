@@ -1,19 +1,55 @@
-import { useSearchParams } from 'react-router-dom'
+import { useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { HelpRequest, JoinRequests } from '../../../shared/api'
+import { callApi } from '../../api'
 import { useCan } from '../../auth/authContext'
 import { useLoad } from '../../auth/useLoad'
 import { Page } from '../../shell/Page'
-import { Tabs } from '../../ui'
+import { Button, Tabs, useToast } from '../../ui'
+import { FormDialog } from '../../work/FormDialog'
 import { HelpPanel } from './HelpPanel'
 import { InvitesPanel } from './InvitesPanel'
 import { MembersPanel } from './MembersPanel'
 import { PeoplePanel } from './PeoplePanel'
+import { personFields } from './PersonWorkCards'
 import { RequestsPanel } from './RequestsPanel'
 import '../auth/auth.css'
 import './team.css'
 
 export function TeamPage() {
-  return <Page title="Team">{useCan()('people.manage') ? <TeamTabs /> : <MembersPanel />}</Page>
+  const manages = useCan()('people.manage')
+  const [adding, setAdding] = useState(false)
+  const navigate = useNavigate()
+  const toast = useToast()
+  return (
+    <Page
+      title="Team"
+      actions={
+        manages && (
+          <Button variant="primary" icon="plus" onClick={() => setAdding(true)}>
+            Add person
+          </Button>
+        )
+      }
+    >
+      {manages ? <TeamTabs /> : <MembersPanel />}
+      {adding && (
+        <FormDialog
+          title="Add person"
+          submitLabel="Add person"
+          intro={<p className="muted">They start as a Member without a password. Invite them, and give another role, on their page.</p>}
+          initial={{ kind: 'employee', weeklyCapacityMinutes: 2400 }}
+          fields={personFields}
+          onClose={() => setAdding(false)}
+          onSubmit={async (values) => {
+            const { id } = await callApi<{ id: number }>('POST', 'people', values)
+            toast.success('Person added')
+            navigate(`/team/${id}`)
+          }}
+        />
+      )}
+    </Page>
+  )
 }
 
 const counted = (label: string, count: number | undefined) => (count ? `${label} (${count})` : label)

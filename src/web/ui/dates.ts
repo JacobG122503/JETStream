@@ -26,10 +26,19 @@ export function parseDate(text: string): IsoDate | null {
   return parts && isRealDate(parts) ? toIso(parts) : null
 }
 
+let dateFormat: 'mdy' | 'dmy' | 'ymd' = 'mdy'
+
+/** The order that the company writes dates in. */
+export function setDateFormat(format: 'mdy' | 'dmy' | 'ymd') {
+  dateFormat = format
+}
+
 /** "Nov 23, 2026", whatever the browser's language. */
 export function formatDate(date: IsoDate): string {
   const { year, month, day } = partsOf(date)
-  return `${monthNames[month - 1]?.slice(0, 3)} ${day}, ${year}`
+  const name = monthNames[month - 1]?.slice(0, 3)
+  if (dateFormat === 'ymd') return date
+  return dateFormat === 'dmy' ? `${day} ${name} ${year}` : `${name} ${day}, ${year}`
 }
 
 /** "Monday, November 23, 2026" */

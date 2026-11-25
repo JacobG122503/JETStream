@@ -12,6 +12,7 @@ import { linkRoutes } from './routes/links'
 import { peopleRoutes } from './routes/people'
 import { requestRoutes } from './routes/requests'
 import { sessionRoutes } from './routes/session'
+import { manageRoutes } from './routes/manage'
 import { workRoutes } from './routes/work'
 
 export interface ApiOptions {
@@ -33,7 +34,7 @@ export function createApiRouter(ctx: AppContext, { extend }: ApiOptions = {}): R
     next()
   })
   api.get('/health', access.public, health(ctx.db))
-  for (const addRoutes of [sessionRoutes, linkRoutes, accountRoutes, peopleRoutes, accessRoutes, requestRoutes, inviteRoutes, workRoutes]) {
+  for (const addRoutes of [sessionRoutes, linkRoutes, accountRoutes, peopleRoutes, accessRoutes, requestRoutes, inviteRoutes, manageRoutes, workRoutes]) {
     addRoutes(api, access, ctx)
   }
   extend?.(api, access)

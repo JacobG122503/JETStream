@@ -1,6 +1,10 @@
 /** What the server's API sends about time, projects, clients, expenses, invoices and reports. */
 import type { IsoDate } from './dates'
-import type { BudgetType, EntryStatus, InvoiceStatus, PaymentMethod, ProjectType, RateMethod } from './domain'
+import type {
+  BudgetType, currencyPlacements, dateFormats, EntryStatus, hourFormats, InvoiceStatus, numberFormats, PaymentMethod, paymentTerms, ProjectType,
+  RateMethod, RoundingIncrement, RoundingMode, timeFormats, timeModes,
+} from './domain'
+import type { Weekday } from './dates'
 
 export interface Named {
   id: number
@@ -80,6 +84,8 @@ export interface ProjectRow {
   minutes: number
   billableMinutes: number
   budget: Budget | null
+  pinned: boolean
+  tags: string[]
   members: (Named & { photoId: number | null; isManager: boolean })[]
 }
 
@@ -88,6 +94,9 @@ export interface ProjectTaskRow extends Named {
   minutes: number
   budgetMinutes: number | null
   billableAmount?: number
+  rate?: number | null
+  budgetAmount?: number | null
+  removed: boolean
 }
 
 export interface ProjectPersonRow extends Named {
@@ -96,6 +105,8 @@ export interface ProjectPersonRow extends Named {
   minutes: number
   budgetMinutes: number | null
   billableAmount?: number
+  rate?: number | null
+  removed: boolean
 }
 
 export interface WeekPoint {
@@ -105,7 +116,20 @@ export interface WeekPoint {
 }
 
 export interface ProjectDetails extends ProjectRow {
+  version: number
   notes: string
+  tags: string[]
+  pinned: boolean
+  canEdit: boolean
+  /** Whether rates, fees and fee budgets may be changed. */
+  canEditMoney: boolean
+  canManageFlags: boolean
+  budgetMinutes: number | null
+  budgetMonthly: boolean
+  budgetIncludesExpenses: boolean
+  budgetVisibleToAll: boolean
+  budgetAlertPercent: number | null
+  budgetAmount?: number | null
   rateMethod: RateMethod
   budgetType: BudgetType
   weeks: WeekPoint[]
@@ -131,13 +155,45 @@ export interface ClientRow extends Named {
   archived: boolean
   activeProjects: number
   contacts: number
+  /** To search by. */
+  contactNames: string[]
   minutes: number
 }
 
-export interface ClientDetails extends ClientRow {
+export interface Contact extends Named {
+  version: number
+  title: string
+  email: string | null
+  officePhone: string | null
+  mobilePhone: string | null
+}
+
+export type PaymentTerms = (typeof paymentTerms)[number]
+
+export interface ClientInput {
+  name: string
+  currency: string
   address: string
   notes: string
-  contactList: { id: number; name: string; title: string; email: string | null; officePhone: string | null; mobilePhone: string | null }[]
+  tax1Name: string | null
+  tax1Percent: number | null
+  tax2Name: string | null
+  tax2Percent: number | null
+  discountPercent: number | null
+  paymentTerms: PaymentTerms
+  paymentTermDays: number | null
+}
+
+export interface ClientDetails extends ClientRow {
+  version: number
+  address: string
+  notes: string
+  contactList: Contact[]
+  canManage: boolean
+  /** Why the currency cannot be changed; null when it can. */
+  currencyLocked: string | null
+  /** Only for those who manage clients or handle invoices. */
+  billing?: Omit<ClientInput, 'name' | 'currency' | 'address' | 'notes'>
   projects: ProjectRow[]
   /** Only for those who handle invoices. */
   invoices?: InvoiceRow[]
@@ -313,9 +369,109 @@ export interface TeamWeek {
 }
 
 export interface TaskRow extends Named {
+  version: number
   billable: boolean
+  /** Only for those who see billable rates. */
+  defaultRate?: number | null
   /** Added to new projects. */
   common: boolean
   archived: boolean
   projects: number
+}
+
+export interface CompanySettingsInput {
+  name: string
+  address: string
+  currency: string
+  timeZone: string
+  weekStartsOn: number
+  fiscalYearStartMonth: number
+  dateFormat: (typeof dateFormats)[number]
+  timeFormat: (typeof timeFormats)[number]
+  numberFormat: (typeof numberFormats)[number]
+  currencyPlacement: (typeof currencyPlacements)[number]
+  hourFormat: (typeof hourFormats)[number]
+  timeMode: (typeof timeModes)[number]
+  roundingMode: RoundingMode
+  roundingMinutes: RoundingIncrement
+  timeNotesRequired: boolean
+  expenseNotesRequired: boolean
+  approvalEnabled: boolean
+  lockAfterDays: number | null
+  lockedThrough: IsoDate | null
+  expensesEnabled: boolean
+  invoicesEnabled: boolean
+  estimatesEnabled: boolean
+  timeOffEnabled: boolean
+  schedulingEnabled: boolean
+  tax1Name: string | null
+  tax1Percent: number | null
+  tax2Name: string | null
+  tax2Percent: number | null
+  paymentTerms: PaymentTerms
+  paymentTermDays: number | null
+  invoiceNotes: string
+  estimateNotes: string
+  estimateValidDays: number
+  reminderDays: number[]
+}
+
+export interface CompanySettings extends CompanySettingsInput {
+  version: number
+  logoFileId: number | null
+}
+
+/** What the web app needs to show figures as the company wants them. */
+export interface Formats {
+  currency: string
+  weekStartsOn: Weekday
+  dateFormat: (typeof dateFormats)[number]
+  numberFormat: (typeof numberFormats)[number]
+  currencyPlacement: (typeof currencyPlacements)[number]
+  hourFormat: (typeof hourFormats)[number]
+  timeMode: (typeof timeModes)[number]
+  modules: { expenses: boolean; invoices: boolean; estimates: boolean; timeOff: boolean; scheduling: boolean; approval: boolean }
+}
+
+export interface PersonInput {
+  name: string
+  email: string
+  phone: string | null
+  kind: 'employee' | 'contractor'
+  weeklyCapacityMinutes: number
+  startedOn: IsoDate | null
+  notes: string | null
+  labels: string[]
+}
+
+export interface PersonRate {
+  id: number
+  version: number
+  kind: 'billable' | 'cost'
+  startsOn: IsoDate
+  rate: number
+}
+
+/** A person's working details, for those who manage people or see rates. */
+export interface PersonWork extends PersonInput {
+  version: number
+  status: string
+  canManage: boolean
+  /** Why one may not archive or change the person; null when one may. */
+  refusal: string | null
+  knownLabels: string[]
+  currency: string
+  /** Only of the kinds one may see. */
+  rates: PersonRate[]
+  mayEditRates: { billable: boolean; cost: boolean }
+}
+
+export interface ActivityRow {
+  id: number
+  at: string
+  /** Null for the system itself. */
+  actor: string | null
+  action: string
+  type: string
+  summary: string
 }

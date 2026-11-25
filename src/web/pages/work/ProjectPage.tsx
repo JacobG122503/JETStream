@@ -1,12 +1,16 @@
-import { Link, useParams } from 'react-router-dom'
-import type { ProjectDetails, ProjectPersonRow, ProjectTaskRow } from '../../../shared/work'
+import { useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import type { ProjectDetails, ProjectOptions, ProjectPersonRow, ProjectTaskRow } from '../../../shared/work'
+import { callApi } from '../../api'
 import { useCan } from '../../auth/authContext'
 import { useLoad } from '../../auth/useLoad'
 import { photoUrl } from '../../shell/photo'
 import { Page } from '../../shell/Page'
-import { Avatar, Badge, BarChart, Card, ErrorState, formatDate, Legend, LinkButton, LoadingState, Meter, monthNames, partsOf, Ring, StatTile, Table, type TableColumn } from '../../ui'
+import { Avatar, Badge, BarChart, Button, Card, ErrorState, formatDate, Legend, LinkButton, LoadingState, Menu, Meter, monthNames, partsOf, Ring, StatTile, Table, type TableColumn } from '../../ui'
 import { formatDecimalHours, formatHours, formatMoney, percentOf } from '../../work/format'
+import { FormDialog } from '../../work/FormDialog'
 import { hourSeries } from '../../work/parts'
+import { useActions } from '../../work/useActions'
 import '../../work/work.css'
 
 const types = { time_materials: 'By the hour', fixed_fee: 'Fixed fee', non_billable: 'Not billable' } as const
@@ -18,7 +22,10 @@ export function ProjectPage() {
 
 function ProjectLoader({ id }: { id: string }) {
   const can = useCan()
-  const { status, data, error, reload } = useLoad<ProjectDetails>(`projects/${encodeURIComponent(id)}`)
+  const { status, data, error, reload, refresh } = useLoad<ProjectDetails>(`projects/${encodeURIComponent(id)}`)
+  const { ask, run, dialog } = useActions()
+  const [copying, setCopying] = useState(false)
+  const navigate = useNavigate()
   return (
     <Page
       title={data?.name ?? 'Project'}
@@ -35,19 +42,92 @@ function ProjectLoader({ id }: { id: string }) {
               </span>
             )}
             {data.archived && <Badge>Archived</Badge>}
+            {data.tags.map((tag) => (
+              <Badge key={tag}>{tag}</Badge>
+            ))}
           </span>
         )
       }
       actions={
-        <LinkButton to="/projects" icon="chevronLeft">
-          Projects
-        </LinkButton>
+        <>
+          <LinkButton to="/projects" icon="chevronLeft">
+            Projects
+          </LinkButton>
+          {data && (
+            <Button aria-pressed={data.pinned} onClick={() => void run('POST', `projects/${data.id}/pin`, { pin: !data.pinned }, data.pinned ? 'Unpinned' : 'Pinned to the top of your list', refresh)}>
+              {data.pinned ? 'Unpin' : 'Pin'}
+            </Button>
+          )}
+          {data?.canEdit && (
+            <>
+              <Menu
+                label="More"
+                items={[
+                  ...(can('projects.create') ? [{ id: 'copy', label: 'Duplicate', icon: 'copy' as const, onSelect: () => setCopying(true) }] : []),
+                  {
+                    id: 'archive',
+                    label: data.archived ? 'Restore' : 'Archive',
+                    onSelect: () =>
+                      ask({
+                        title: data.archived ? 'Restore this project?' : 'Archive this project?', message: data.archived ? 'Time can be logged on it again.' : 'Its history stays. Nobody can log time on it.',
+                        confirmLabel: data.archived ? 'Restore' : 'Archive', route: `projects/${data.id}/archive`, body: { archive: !data.archived },
+                        done: data.archived ? 'Project restored' : 'Project archived', then: refresh,
+                      }),
+                  },
+                  {
+                    id: 'delete',
+                    label: 'Delete',
+                    destructive: true,
+                    onSelect: () =>
+                      ask({
+                        title: 'Delete this project?', message: 'Its tasks, team and milestones go with it. Only a project without time, expenses and invoices can be deleted.', confirmLabel: 'Delete project',
+                        destructive: true, method: 'DELETE', route: `projects/${data.id}`, done: 'Project deleted', then: () => navigate('/projects'),
+                      }),
+                  },
+                ]}
+              />
+              {!data.archived && (
+                <LinkButton to={`/projects/${data.id}/edit`} icon="edit">
+                  Edit
+                </LinkButton>
+              )}
+            </>
+          )}
+        </>
       }
     >
       {status === 'loading' && <LoadingState size="page" look="skeleton" label="Loading the project" />}
       {status === 'error' && <ErrorState size="page" headingLevel={2} message={error === 'Not found' ? 'There is no such project.' : error} onRetry={reload} />}
       {data && <Project project={data} />}
+      {data && copying && <Duplicate project={data} onClose={() => setCopying(false)} />}
+      {dialog}
     </Page>
+  )
+}
+
+function Duplicate({ project, onClose }: { project: ProjectDetails; onClose: () => void }) {
+  const { data } = useLoad<ProjectOptions>('projects/options')
+  const navigate = useNavigate()
+  if (!data) return null
+  return (
+    <FormDialog
+      title="Duplicate project"
+      submitLabel="Make a copy"
+      intro={<p className="muted">Settings, tasks and budget are copied. Time, expenses and invoices are not.</p>}
+      initial={{ clientId: project.client.id, name: `${project.name} (copy)`, code: '' }}
+      fields={[
+        { name: 'clientId', label: 'Client', type: 'combo', required: true, options: data.clients.map(({ id, name }) => ({ value: String(id), label: name })) },
+        { name: 'name', label: 'Name', type: 'text', required: true, half: true },
+        { name: 'code', label: 'Code', type: 'text', half: true },
+        { name: 'withTeam', label: 'Copy the team', type: 'check' },
+      ]}
+      onClose={onClose}
+      onSubmit={async (values) => {
+        const { id } = await callApi<{ id: number }>('POST', `projects/${project.id}/duplicate`, values)
+        navigate(`/projects/${id}`)
+        onClose()
+      }}
+    />
   )
 }
 
