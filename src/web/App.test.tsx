@@ -19,7 +19,11 @@ async function renderAt(path: string, basename?: string) {
 const fetchMock = vi.fn<typeof fetch>()
 beforeEach(() => {
   fetchMock.mockReset().mockImplementation((url) =>
-    Promise.resolve(new Response(url === '/api/session' ? JSON.stringify(sessionInfo({ person })) : '{}')),
+    Promise.resolve(
+      url === '/api/session' || url === '/api/health'
+        ? new Response(url === '/api/session' ? JSON.stringify(sessionInfo({ person })) : '{}')
+        : new Response(JSON.stringify({ error: { code: 'internal_error', message: 'Something went wrong' } }), { status: 500 }),
+    ),
   )
   vi.stubGlobal('fetch', fetchMock)
   return () => vi.unstubAllGlobals()
@@ -34,15 +38,14 @@ describe('App', () => {
     expect(document.body).toHaveFocus()
   })
 
-  const notBuilt = navItems.filter(({ needs }) => !needs)
-  it.each(notBuilt.map((item) => [item.path, item.label]))('%s is the page "%s", and says that it is not available', async (path, label) => {
+  const forAll = navItems.filter(({ needs }) => !needs)
+  it.each(forAll.map((item) => [item.path, item.label]))('%s is the page "%s", and says when it cannot be loaded', async (path, label) => {
     await renderAt(path)
     expect(screen.getAllByRole('heading', { level: 1 }).map((heading) => heading.textContent)).toEqual([label])
     expect(document.title).toBe(`${label} | JETStream`)
     const main = within(screen.getByRole('main'))
-    expect(main.getByRole('heading', { level: 2, name: 'Not available yet' })).toBeInTheDocument()
-    expect(main.queryAllByRole('button')).toHaveLength(0)
-    expect(main.queryAllByRole('link')).toHaveLength(0)
+    expect((await main.findAllByText('Something went wrong')).length).toBeGreaterThan(0)
+    expect(main.getByRole('button', { name: /Retry|Try again/ })).toBeInTheDocument()
   })
 
   it.each(navItems.filter(({ needs }) => needs).map(({ path, label }) => [path, label]))('%s is refused to who lacks the permission, without asking for data', async (path, label) => {
@@ -51,7 +54,8 @@ describe('App', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'You do not have access to this page' })).toBeInTheDocument()
     expect(within(screen.getByRole('main')).getByRole('link', { name: 'Go to Time' })).toBeInTheDocument()
     expect(within(screen.getByRole('navigation', { name: 'Main' })).queryByRole('link', { name: label })).not.toBeInTheDocument()
-    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['/api/session'])
+    // The header asks for the running timer.
+    expect(fetchMock.mock.calls.map(([url]) => url).filter((url) => url !== '/api/time')).toEqual(['/api/session'])
   })
 
   it.each(['/no-such-page', '/time/nope', '/no/such/page'])('shows "Page not found" inside the shell at %s', async (path) => {

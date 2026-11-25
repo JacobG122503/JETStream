@@ -148,7 +148,7 @@ export function TimePage() {
               onClose={() => setEditing(null)}
               onSaved={(week, message) => {
                 setEditing(null)
-                setDate(week.from)
+                if (week.from !== data.from) setDate(week.from)
                 setDay(null)
                 setData(week)
                 timer.refresh()

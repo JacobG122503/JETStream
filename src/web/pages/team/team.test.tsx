@@ -44,11 +44,11 @@ const dialog = () => screen.findByRole('dialog')
 const press = (name: string | RegExp, within_: Pick<typeof screen, 'getByRole'> = screen) =>
   userEvent.click(within_.getByRole('button', { name }))
 
-it.each([['/team', 'Team'], ['/team/3', 'Person']])('%s is for administrators', async (path, heading) => {
+it.each([['/team', 'Team'], ['/team/3', 'Person']])('%s is not for everyone', async (path, heading) => {
   server.session = sessionInfo({ person })
   await open(path, heading)
   expect(screen.getByRole('heading', { level: 2, name: 'You do not have access to this page' })).toBeInTheDocument()
-  expect(server.calls.map(({ route }) => route).filter((route) => route !== 'session')).toEqual([])
+  expect(server.calls.map(({ route }) => route).filter((route) => route !== 'session' && route !== 'time')).toEqual([])
 })
 
 describe('team', () => {

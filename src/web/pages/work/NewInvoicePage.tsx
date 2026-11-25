@@ -134,7 +134,7 @@ function InvoiceForm({ client, from, to, onFrom, onTo }: InvoiceFormProps) {
         </div>
       </Card>
       <div className="stack">
-        <Card title="Lines">
+        <Card title="One line per">
           <RadioGroup
             label="One line for each"
             hideLabel
