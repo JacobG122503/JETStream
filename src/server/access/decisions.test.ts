@@ -52,8 +52,8 @@ describe('on the demo data', () => {
     actors.administrator = await byEmail('admin@jet.demo')
     actors.lead = lead
     actors.member = await byEmail('employee@jet.demo')
-    actors.bookkeeper = await byEmail('elena.marchetti@jet.example')
-    actors.archived = await byEmail('lydia.farrow@jet.example')
+    actors.bookkeeper = await byEmail('elena.test@jet.example')
+    actors.archived = await byEmail('lydia.test@jet.example')
     actors.manager = await copyOfLead({ roleId: manager.id })
     actors.managerWithExtras = await copyOfLead({ roleId: manager.id })
     await make.extras(actors.managerWithExtras, ...managerExtras)

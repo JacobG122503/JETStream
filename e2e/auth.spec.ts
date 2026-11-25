@@ -30,7 +30,7 @@ test('each demo account is one press away, and signing out leaves nothing behind
 
 test('people can be two at once, each in their own browser', async ({ adminPage, employeePage, leadPage }) => {
   for (const [page, name] of [[adminPage, 'Avery Test'], [leadPage, 'Jordan Test'], [employeePage, 'Casey Test']] as const) {
-    await open(page, 'time', 'Time')
+    await open(page, 'time', 'Timesheet')
     await expect(accountButton(page)).toHaveAccessibleName(new RegExp(name))
   }
   await open(employeePage, 'team', 'Team')
@@ -85,7 +85,7 @@ test('someone asks for an account, waits, is approved with a client and a projec
   await page.getByRole('button', { name: 'Check again' }).click()
   await expect(pageTitle(page)).toHaveText('Home')
 
-  await adminPage.getByRole('tab', { name: 'People' }).click()
+  await adminPage.getByRole('tab', { name: 'Accounts' }).click()
   await adminPage.getByLabel('Search people').fill(email)
   await adminPage.getByRole('link', { name: 'Noor Fictional' }).click()
   await expect(pageTitle(adminPage)).toHaveText('Noor Fictional')
@@ -181,7 +181,7 @@ test('in a second tab someone else signs in: the first tab becomes theirs', asyn
   await expect(pageTitle(page)).toHaveText('Home')
   await open(page, 'account', 'Account')
   const tab = await context.newPage()
-  await open(tab, `${appUrl}time`, 'Time')
+  await open(tab, `${appUrl}time`, 'Timesheet')
   await signOut(tab)
   await tab.getByRole('button', { name: /^Administrator/ }).click()
   await expect(pageTitle(tab)).toHaveText('Home')
@@ -204,7 +204,7 @@ test('in a second tab someone else signs in: the first tab becomes theirs', asyn
 })
 
 test('changing the password signs out other devices and keeps this one', async ({ page, adminPage, browser, appUrl, pageProblems }) => {
-  await open(adminPage, 'time', 'Time')
+  await open(adminPage, 'time', 'Timesheet')
   const { email, link } = await inviteLink(adminPage)
   await accept(page, link)
   const other = await newBrowser(browser, appUrl)
@@ -237,7 +237,7 @@ test('changing the password signs out other devices and keeps this one', async (
 })
 
 test('a large photo is shown as a square, shrunk, stored and removed', async ({ page, adminPage }) => {
-  await open(adminPage, 'time', 'Time')
+  await open(adminPage, 'time', 'Timesheet')
   await accept(page, (await inviteLink(adminPage)).link)
   await open(page, 'account', 'Account')
   const file = await page.evaluate(async () => {
@@ -256,7 +256,7 @@ test('a large photo is shown as a square, shrunk, stored and removed', async ({ 
   await expect(page.getByAltText('Your new photo, as it will be shown')).toBeVisible()
   await page.getByRole('button', { name: 'Save photo' }).click()
   await expect(page.getByText('Photo saved')).toBeVisible()
-  const picture = page.locator('.shell-header .avatar img')
+  const picture = page.locator('.account-button .avatar img')
   await expect(picture).toBeVisible()
   expect(await picture.evaluate((image: HTMLImageElement) => [image.naturalWidth, image.naturalHeight])).toEqual([512, 512])
   await input.setInputFiles({ name: 'a.png', mimeType: 'image/png', buffer: Buffer.from('<!doctype html>') })
@@ -264,7 +264,7 @@ test('a large photo is shown as a square, shrunk, stored and removed', async ({ 
   await page.getByRole('button', { name: 'Remove photo' }).click()
   await dialog(page).getByRole('button', { name: 'Remove photo' }).click()
   await expect(picture).toHaveCount(0)
-  await expect(page.locator('.shell-header .avatar')).toHaveText('RF')
+  await expect(page.locator('.account-button .avatar')).toHaveText('RF')
 })
 
 test('every answer has the security headers', async ({ request, page, pageProblems }) => {

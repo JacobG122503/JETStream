@@ -34,16 +34,16 @@ test.describe('at 1440px', () => {
       await expect(mainNav(page).locator('[aria-current]')).toHaveCount(1)
     }
     await page.goBack()
-    await expect(pageTitle(page)).toHaveText('Invoices')
-    await page.goBack()
     await expect(pageTitle(page)).toHaveText('Reports')
-    await page.goForward()
+    await page.goBack()
     await expect(pageTitle(page)).toHaveText('Invoices')
+    await page.goForward()
+    await expect(pageTitle(page)).toHaveText('Reports')
     await expectSameDocument(page)
   })
 
   test('a Ctrl or Cmd click opens the page in a new tab', async ({ page, context, appUrl }) => {
-    await open(page, 'time', 'Time')
+    await open(page, 'time', 'Timesheet')
     const newTab = context.waitForEvent('page')
     await mainNav(page).getByRole('link', { name: 'Reports' }).click({ modifiers: ['ControlOrMeta'] })
     await expect(await newTab).toHaveURL(`${appUrl}reports`)
@@ -52,12 +52,12 @@ test.describe('at 1440px', () => {
   })
 
   test('the current item is marked by more than colour', async ({ page }) => {
-    await open(page, 'time', 'Time')
+    await open(page, 'time', 'Timesheet')
     const look = (name: string) =>
       mainNav(page)
         .getByRole('link', { name, exact: true })
         .evaluate((link) => [getComputedStyle(link).fontWeight, getComputedStyle(link, '::after').content])
-    expect(await look('Time')).not.toEqual(await look('Reports'))
+    expect(await look('Timesheet')).not.toEqual(await look('Reports'))
   })
 
   test('navigation stays in view while the page scrolls', async ({ page }) => {
@@ -88,7 +88,7 @@ test.describe('at 1440px', () => {
   test('at 1280x720 and in a low window every item can be reached', async ({ page }) => {
     for (const height of [720, 400]) {
       await page.setViewportSize({ width: 1280, height })
-      await open(page, 'time', 'Time')
+      await open(page, 'time', 'Timesheet')
       const settings = mainNav(page).getByRole('link', { name: 'Settings' })
       await settings.focus()
       await expect(settings).toBeInViewport({ ratio: 1 })
@@ -100,7 +100,7 @@ test.describe('at 375px', () => {
   test.use({ viewport: phone })
 
   test('the drawer keeps focus, and choosing an item goes to its page', async ({ page, appUrl }) => {
-    await open(page, 'time', 'Time')
+    await open(page, 'time', 'Timesheet')
     await expect(mainNav(page)).toBeHidden()
     const button = page.getByRole('button', { name: 'Menu', exact: true })
     await expect(button).toHaveAttribute('aria-expanded', 'false')
@@ -115,7 +115,7 @@ test.describe('at 375px', () => {
       seen.add(await page.evaluate(() => document.activeElement?.textContent || (document.activeElement?.getAttribute('aria-label') ?? '')))
       await page.keyboard.press(i < 14 ? 'Tab' : 'Shift+Tab')
     }
-    expect(seen.size).toBe(11)
+    expect(seen.size).toBe(15)
     await mainNav(page).getByRole('link', { name: 'Invoices' }).click()
     await expect(drawer).toBeHidden()
     await expect(page).toHaveURL(`${appUrl}invoices`)
@@ -124,7 +124,7 @@ test.describe('at 375px', () => {
   })
 
   test('the drawer closes with Escape, its button and a tap outside, and focus returns', async ({ page }) => {
-    await open(page, 'time', 'Time')
+    await open(page, 'time', 'Timesheet')
     const button = page.getByRole('button', { name: 'Menu', exact: true })
     const drawer = dialog(page, 'Main menu')
     for (const close of [
@@ -177,13 +177,13 @@ test('every page can be opened and reloaded directly, styled, with every file fo
     await open(page, path, heading)
     await expect(page).toHaveTitle(`${heading} | JETStream`)
     await expect(page.locator('h1')).toHaveCount(1)
-    expect(await pageTitle(page).evaluate((h1) => getComputedStyle(h1).fontFamily), path).toContain('Bricolage Grotesque')
+    expect(await pageTitle(page).evaluate((h1) => getComputedStyle(h1).fontFamily), path).toContain('Geist Variable')
     expect(await page.evaluate(() => document.fonts.check('16px "Geist Variable"')), path).toBe(true)
   }
 })
 
 test('a trailing slash shows the same page, marked current', async ({ page }) => {
-  for (const [path, heading] of [['time/', 'Time'], ['projects/', 'Projects']] as const) {
+  for (const [path, heading] of [['time/', 'Timesheet'], ['projects/', 'Projects']] as const) {
     await open(page, path, heading)
     await expect(mainNav(page).locator('[aria-current="page"]')).toHaveText(heading)
   }
@@ -198,7 +198,7 @@ test('an unknown address shows "Page not found" inside the shell, with a link to
     await expect(pageTitle(page)).toHaveText('Page not found')
     await page.getByRole('link', { name: 'Go to Time' }).click()
     await expect(page).toHaveURL(`${appUrl}time`)
-    await expect(pageTitle(page)).toHaveText('Time')
+    await expect(pageTitle(page)).toHaveText('Timesheet')
   }
 })
 

@@ -4,13 +4,14 @@ import { expect, settled } from './fixtures'
 /** Path (relative to the base path) and heading of every section, in the order of the navigation. */
 export const sections = [
   ['home', 'Home'],
-  ['time', 'Time'],
+  ['time', 'Timesheet'],
   ['expenses', 'Expenses'],
-  ['projects', 'Projects'],
-  ['clients', 'Clients'],
   ['team', 'Team'],
-  ['reports', 'Reports'],
+  ['clients', 'Clients'],
+  ['projects', 'Projects'],
+  ['tasks', 'Tasks'],
   ['invoices', 'Invoices'],
+  ['reports', 'Reports'],
   ['settings', 'Settings'],
 ] as const
 
@@ -25,6 +26,8 @@ export const signedOutPages = [
 
 export const allPages = [
   ...sections,
+  ['time?view=week', 'Timesheet'],
+  ['team?tab=people', 'Team'],
   ['projects/1', 'Turbine foundation design'],
   ['clients/1', 'Tallgrass Wind Cooperative'],
   ['invoices/new', 'New invoice'],

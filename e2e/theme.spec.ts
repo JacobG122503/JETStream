@@ -7,8 +7,8 @@ test.use({ account: 'admin' })
 // Everything here runs at both base paths.
 
 const background = (page: Page) => page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor)
-const light = 'rgb(244, 247, 246)'
-const dark = 'rgb(10, 16, 14)'
+const light = 'rgb(255, 255, 255)'
+const dark = 'rgb(28, 27, 26)'
 
 async function choose(page: Page, choice: string) {
   await page.getByRole('button', { name: /^Appearance/ }).click()

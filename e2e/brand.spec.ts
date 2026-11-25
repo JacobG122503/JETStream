@@ -37,7 +37,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
         await expect(page.locator('.plain-header')).toContainText('by JET Engineering')
 
         await signInAs(context, appUrl, 'admin')
-        await open(page, 'time', 'Time')
+        await open(page, 'time', 'Timesheet')
         if (width >= 1024) {
           await expectWholeName(page, page.locator('.shell-sidebar'), 'sidebar')
           await expect(page.locator('.shell-sidebar').getByText('by JET Engineering')).toBeVisible()

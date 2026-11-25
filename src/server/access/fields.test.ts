@@ -45,7 +45,7 @@ beforeAll(async () => {
   await make.extras(nothing.id, ...managerExtras)
   const ids = {
     administrator: await byEmail('admin@jet.demo'), lead, member: await byEmail('employee@jet.demo'), manager: await copy(manager.id),
-    managerWithExtras: extras, managerOfNothing: nothing.id, bookkeeper: await byEmail('elena.marchetti@jet.example'),
+    managerWithExtras: extras, managerOfNothing: nothing.id, bookkeeper: await byEmail('elena.test@jet.example'),
     customManaged: await copy((await make.role(scoped('managed'))).id), customAll: (await make.person({ roleId: (await make.role(scoped('all'))).id })).id,
   }
   for (const [name, id] of Object.entries(ids)) actors[name] = await loadActor(db, id)
