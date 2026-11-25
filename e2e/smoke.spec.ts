@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { expect, test } from './fixtures'
+import { expect, settled, test } from './fixtures'
 
 test.use({ account: 'admin' })
 
@@ -14,6 +14,7 @@ test('the gallery shows that the server is connected, and can be reloaded, left 
   await expect(status).toHaveText('Server connected')
   await page.goto('no/such/page')
   await expect(heading).toHaveText('Page not found')
+  await settled(page)
   await page.goBack()
   await expect(status).toHaveText('Server connected')
   // Leaving without waiting for the answer, by a link inside the app.
@@ -52,7 +53,7 @@ test('files are served under the base path, and nothing else', async ({ page, re
       expect((await request.get(origin + path)).status(), path).toBe(404)
     }
     await page.goto(origin + basePath.slice(0, -1))
-    await expect(page).toHaveURL(`${appUrl}time`)
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Time')
+    await expect(page).toHaveURL(`${appUrl}home`)
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Home')
   }
 })

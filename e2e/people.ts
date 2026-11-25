@@ -49,7 +49,7 @@ export async function accept(page: Page, link: string) {
   await page.goto(link)
   await page.getByRole('textbox', { name: /^Password/ }).fill(goodPassword)
   await page.getByRole('button', { name: 'Accept and sign in' }).click()
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Time')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Home')
 }
 
 export async function signIn(page: Page, email: string, password = goodPassword) {

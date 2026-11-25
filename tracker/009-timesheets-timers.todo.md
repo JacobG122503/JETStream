@@ -13,6 +13,8 @@ Note from 008 PM: use 008's person lock helper (AC20) when adding or moving time
 
 Note from 007 PM: use 007's project lock helper (AC28) when adding or moving time; a timer left running on a project archived meanwhile must still be stoppable; a changed billable flag of a project task applies to new time only, so consider an action for existing open entries.
 
+Note from 028 (2026-11-25): a simple version of this exists (`src/server/work/`, `src/web/pages/work/`). Build on it, and bring it up to this spec, instead of starting anew.
+
 ## Spec
 _PM fills this in during grooming._
 

@@ -15,6 +15,8 @@ Note from 006 PM: take 006's client lock when adding expenses, because expenses 
 
 Note from 007 PM: use 007's project lock helper (AC28), which includes the client lock's place in the order.
 
+Note from 028 (2026-11-25): a simple version of this exists (`src/server/work/`, `src/web/pages/work/`). Build on it, and bring it up to this spec, instead of starting anew.
+
 ## Spec
 _PM fills this in during grooming._
 

@@ -7,6 +7,8 @@ A home page for each role: administrator/billing (unbilled, open, overdue and pa
 
 Overall goal: match every Harvest capability in this area or provide something similar, within the product rules in CLAUDE.md.
 
+Note from 028 (2026-11-25): a simple version of this exists (`src/server/work/`, `src/web/pages/work/`). Build on it, and bring it up to this spec, instead of starting anew.
+
 ## Spec
 _PM fills this in during grooming._
 

@@ -13,6 +13,8 @@ Note from 006 PM: reuse 006's figure functions for the uninvoiced report.
 
 Note from 007 PM: reuse 007's budget functions and visibility rules for the budget report.
 
+Note from 028 (2026-11-25): a simple version of this exists (`src/server/work/`, `src/web/pages/work/`). Build on it, and bring it up to this spec, instead of starting anew.
+
 ## Spec
 _PM fills this in during grooming._
 

@@ -301,6 +301,30 @@
   font-size: var(--text-xs);
 }
 
+/* Room for the name on the smallest phones. */
+@media (max-width: 359.98px) {
+  .shell-header {
+    gap: var(--space-1);
+    padding-inline: var(--space-1);
+  }
+
+  .shell-header-brand .brand {
+    gap: var(--space-2);
+  }
+
+  .shell-header-brand .brand-name {
+    font-size: var(--text-lg);
+  }
+
+  .shell-header-content {
+    gap: 0;
+  }
+
+  .account-button .menu-chevron {
+    display: none;
+  }
+}
+
 /* Only the picture on phones; the name is still the button's name, and shown in the menu. */
 @media (max-width: 639.98px) {
   .account-button .account-text {

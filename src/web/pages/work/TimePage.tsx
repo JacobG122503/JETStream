@@ -104,11 +104,11 @@ export function TimePage() {
                           type="button"
                           className={classNames('sheet-day', one === data.today && 'is-today')}
                           aria-pressed={one === day}
-                          aria-label={`${formatLongDate(one)}, ${formatHours(minutesOn(one))}`}
+                          aria-current={one === data.today ? 'date' : undefined}
                           onClick={() => setDay(one)}
                         >
-                          <span className="sheet-day-name">{weekdayNames[weekdayOf(one)].slice(0, 3)}</span>
-                          <span className="sheet-day-number">{partsOf(one).day}</span>
+                          <span className="sheet-day-name">{weekdayNames[weekdayOf(one)].slice(0, 3)}</span>{' '}
+                          <span className="sheet-day-number">{partsOf(one).day}</span>{' '}
                           <span className="sheet-day-hours">{minutesOn(one) > 0 ? formatHours(minutesOn(one)) : '-'}</span>
                         </button>
                       ))}
@@ -231,10 +231,13 @@ function Entry({ entry, today, onEdit, onDelete }: EntryProps) {
             <Icon name="lock" />
           </span>
         ) : (
+          // A running entry is changed once it is stopped.
+          !isRunning && (
           <>
             <IconButton icon="edit" size="small" variant="quiet" label={`Edit ${what}`} onClick={onEdit} />
             <IconButton icon="trash" size="small" variant="quiet" label={`Delete ${what}`} onClick={onDelete} />
           </>
+          )
         )}
       </div>
     </li>

@@ -11,6 +11,8 @@ Note from 005 PM: project creation and duplication that set or copy a manager fl
 
 Note from 006 PM: use 006's client lock helper (AC15) when creating, restoring or moving projects, and its client creation and choice services (AC16) for `projects.create`; link project names on the client page; optionally offer archiving a client with its projects.
 
+Note from 028 (2026-11-25): a simple version of this exists (`src/server/work/`, `src/web/pages/work/`). Build on it, and bring it up to this spec, instead of starting anew.
+
 ## Spec
 ### Goal
 In JETStream, JET Engineering sets up its projects once (client, tasks, team, how the work is billed, and the budget) and then sees at a glance how each one stands. The billing manager sees everything, a project lead runs their own projects without touching money unless allowed, and an employee sees the projects they work on.

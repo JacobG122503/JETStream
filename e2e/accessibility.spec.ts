@@ -185,7 +185,7 @@ async function* accountScreens(page: Page, appUrl: string) {
   await page.goto(`${appUrl}sign-in`)
   // Another link: the first was replaced above.
   await page.getByRole('button', { name: /^Administrator/ }).click()
-  await expect(pageTitle(page)).toHaveText('Time')
+  await expect(pageTitle(page)).toHaveText('Home')
   const pending = newEmail()
   const fresh = await inviteLink(page)
   expect(link).not.toBe(fresh.link)

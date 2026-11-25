@@ -176,7 +176,11 @@ In progress (2026-11-24). Baseline before starting: `npm test` 1340 passed, 16 s
 - Database: `person_extras`, `roles.description`, `invites.ended_at`, `invites.role_id` nullable with `role_name`.
 - Web: permissions in the session, `X-Access` header tells the app that its access changed, page content is mounted anew then.
 
-**Status**: see below; filled in as parts get done.
+**Status**: done (2026-11-25). The team's engineer built the server; the main session finished the web side at the user's request: permission-aware navigation and pages (`navigation.ts`, `auth/Needs.tsx`), access refresh by `X-Access` (`api.ts`, `AuthProvider`), roles at `/settings/roles` (`pages/settings/`), Access section of a person (`PersonAccess.tsx`), Your access (`AccessCard.tsx`), phone header.
+
+**Differs from the spec on purpose** (028): Home is the first item and the landing page; Schedule, Time off and Estimates are not in the navigation until they are built; Settings lists Roles only.
+
+**Checked**: `team.test.tsx`, `roles.test.tsx`, `App.test.tsx`, `e2e/access.spec.ts` (navigation and refusals per demo account, an extra reaching an open window, the header at 320 and 305 px in both modes), axe on the new pages. **Not done**: the team's QA and PM stages, as the user asked; real PostgreSQL.
 
 ## QA report
 _QA tester fills this in._
@@ -192,3 +196,4 @@ _PM fills this in after QA passes._
 - 2026-11-24 PM: AC22 and an engineer note extended (from 027 acceptance: room in the phone header)
 - 2026-11-24 ORCH: groomed -> in-progress
 - 2026-11-25 ORCH: implementation interrupted by usage limit; run paused by the user
+- 2026-11-25 finished by the main session, without QA and PM, as the user asked; see git log of branch demoable

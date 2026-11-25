@@ -1,0 +1,76 @@
+import { expect, test } from './fixtures'
+import { dialog, open } from './pages'
+
+// The story of the demo (028). Once is enough.
+test.skip(({ basePath }) => basePath !== '/', 'once is enough')
+
+test('an employee tracks time with a timer and by hand', async ({ employeePage: page }) => {
+  await open(page, 'home', 'Home')
+  await page.getByRole('link', { name: 'Track time' }).click()
+  const box = dialog(page, 'Track time')
+  await box.getByRole('combobox', { name: /^Project/ }).fill('cold')
+  await page.getByRole('option', { name: 'Cold store expansion' }).click()
+  await box.getByRole('button', { name: 'Start timer' }).click()
+  const running = page.getByRole('group', { name: 'Running timer' })
+  await expect(running).toContainText('Cold store expansion')
+  await running.getByRole('button', { name: 'Stop timer' }).click()
+  await expect(running).toBeHidden()
+  await page.getByRole('button', { name: /^Edit .*Cold store/ }).click()
+  await dialog(page, 'Edit entry').getByLabel('Hours').fill('2:15')
+  await dialog(page, 'Edit entry').getByRole('button', { name: 'Save entry' }).click()
+  await expect(page.locator('.entry-time')).toHaveText('2:15')
+  await page.getByRole('tab', { name: 'Week' }).click()
+  await expect(page.getByRole('rowheader', { name: /Cold store expansion/ }).first()).toBeVisible()
+})
+
+test('hours become an invoice, which is sent and paid', async ({ adminPage: page }) => {
+  await open(page, 'invoices/new', 'New invoice')
+  await page.getByRole('button', { name: /Lumen Ridge/ }).click()
+  await page.getByLabel('Subject').fill('Cold store, autumn')
+  await page.getByRole('button', { name: 'Create draft' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Invoice INV-')
+  await expect(page.getByRole('article')).toContainText('Cold store, autumn')
+  await page.getByRole('button', { name: 'Mark as sent' }).click()
+  await dialog(page, 'Mark as sent?').getByRole('button', { name: 'Mark as sent' }).click()
+  await page.getByRole('button', { name: 'Record payment' }).click()
+  await dialog(page, 'Record payment').getByRole('button', { name: 'Record payment' }).click()
+  await expect(page.getByText('Paid in full')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Record payment' })).toBeHidden()
+})
+
+test('a project, a client and an expense are made', async ({ adminPage: page }) => {
+  await open(page, 'clients', 'Clients')
+  await page.getByRole('button', { name: 'New client' }).click()
+  await dialog(page).getByLabel(/^Name/).fill('Harbor Glass')
+  await dialog(page).getByRole('button', { name: 'Create client' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Harbor Glass')
+
+  await open(page, 'projects', 'Projects')
+  await page.getByRole('button', { name: 'New project' }).click()
+  const box = dialog(page, 'New project')
+  await box.getByRole('combobox', { name: /^Client/ }).fill('Harbor')
+  await page.getByRole('option', { name: 'Harbor Glass' }).click()
+  await box.getByLabel(/^Name/).fill('Furnace survey')
+  await box.getByLabel(/^Budget/).fill('40')
+  await box.getByRole('button', { name: 'Create project' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Furnace survey')
+  await expect(page.getByText('40:00').first()).toBeVisible()
+
+  await open(page, 'expenses', 'Expenses')
+  await page.getByRole('button', { name: 'New expense' }).click()
+  const expense = dialog(page, 'New expense')
+  await expense.getByRole('combobox', { name: /^Project/ }).fill('Furnace')
+  await page.getByRole('option', { name: 'Furnace survey' }).click()
+  await expense.getByLabel(/^Category/).selectOption({ label: 'Meals' })
+  await expense.getByLabel(/^Amount/).fill('18.50')
+  await expense.getByRole('button', { name: 'Add expense' }).click()
+  await expect(page.getByRole('cell', { name: '$18.50' })).toBeVisible()
+})
+
+test('a report can be downloaded', async ({ adminPage: page }) => {
+  await open(page, 'reports', 'Reports')
+  await page.getByRole('tab', { name: 'Projects' }).click()
+  const download = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Download CSV' }).click()
+  expect((await download).suggestedFilename()).toMatch(/^JETStream projects .*\.csv$/)
+})

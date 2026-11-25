@@ -21,6 +21,8 @@ Note from 006 PM: link invoice numbers on the client page, decide which manual l
 
 Note from 007 PM: link invoice numbers on the project page; take the project lock for lines that name a project, since it blocks deleting it or changing its client.
 
+Note from 028 (2026-11-25): a simple version of this exists (`src/server/work/`, `src/web/pages/work/`). Build on it, and bring it up to this spec, instead of starting anew.
+
 ## Spec
 _PM fills this in during grooming._
 

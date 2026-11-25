@@ -22,10 +22,17 @@ A manager can be shown the whole story in one sitting, with the seeded company: 
 Left to the planned tasks: what they add beyond this (006 to 017 stay open and build on it).
 
 ## Implementation notes
-In progress.
+Done (2026-11-25), on branch `demoable`.
+
+- Server: `src/server/work/` (figures, time, projects, clients, expenses, invoices, reports, home), routes in `api/routes/work.ts`, types in `src/shared/work.ts`. Every service takes the actor; billing goes through `src/server/billing` only.
+- Web: `src/web/pages/work/`, `src/web/work/` (timer, formats), `ui/charts.tsx`. New look in `styles/tokens.css`, `shell/`, `ui/*.css`; fonts Geist and Bricolage Grotesque, bundled.
+- Tests: `work.test.ts` (server, over the demo company), `work.test.tsx`, `format.test.ts`, `e2e/work.spec.ts`; axe at 375 and 1440 px in both modes on every page.
+
+Simpler than the planned tasks, which stay open: no submitting or approving of weeks, receipts, editing of projects and clients, invoice editing, email, estimates, schedule or time off. Project lists and reports value every entry they cover in memory, which is fine for a demo and for a small company; 007 and 015 should add up in the database.
 
 ## QA report
-_Not run by the team; see the notes for what was checked._
+_Not run by the team, as the user asked._
 
 ## History
 - 2026-11-25 created, started by the main session on branch `demoable`
+- 2026-11-25 done

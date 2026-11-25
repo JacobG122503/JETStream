@@ -8,20 +8,20 @@ test.use({ account: 'admin' })
 test.describe('at 1440px', () => {
   test.use({ viewport: desktop })
 
-  test('the root leads to Time, and Back does not bounce', async ({ page, appUrl }) => {
+  test('the root leads to Home, and Back does not bounce', async ({ page, appUrl }) => {
     await page.goto('about:blank')
-    await open(page, '', 'Time')
-    await expect(page).toHaveURL(`${appUrl}time`)
-    await expect(page).toHaveTitle('Time | JETStream')
+    await open(page, '', 'Home')
+    await expect(page).toHaveURL(`${appUrl}home`)
+    await expect(page).toHaveTitle('Home | JETStream')
     const links = mainNav(page).getByRole('link')
     await expect(links).toHaveText(sections.map(([, label]) => label))
-    await expect(mainNav(page).locator('[aria-current="page"]')).toHaveText('Time')
+    await expect(mainNav(page).locator('[aria-current="page"]')).toHaveText('Home')
     await page.goBack()
     await expect(page).toHaveURL('about:blank')
   })
 
   test('links have the base path, change page without reloading, and Back and Forward work', async ({ page, appUrl, basePath }) => {
-    await open(page, '', 'Time')
+    await open(page, '', 'Home')
     await markDocument(page)
     for (const [path, label] of sections) {
       const link = mainNav(page).getByRole('link', { name: label, exact: true })
@@ -34,11 +34,11 @@ test.describe('at 1440px', () => {
       await expect(mainNav(page).locator('[aria-current]')).toHaveCount(1)
     }
     await page.goBack()
-    await expect(pageTitle(page)).toHaveText('Estimates')
-    await page.goBack()
     await expect(pageTitle(page)).toHaveText('Invoices')
+    await page.goBack()
+    await expect(pageTitle(page)).toHaveText('Reports')
     await page.goForward()
-    await expect(pageTitle(page)).toHaveText('Estimates')
+    await expect(pageTitle(page)).toHaveText('Invoices')
     await expectSameDocument(page)
   })
 
@@ -115,7 +115,7 @@ test.describe('at 375px', () => {
       seen.add(await page.evaluate(() => document.activeElement?.textContent || (document.activeElement?.getAttribute('aria-label') ?? '')))
       await page.keyboard.press(i < 14 ? 'Tab' : 'Shift+Tab')
     }
-    expect(seen.size).toBe(13)
+    expect(seen.size).toBe(11)
     await mainNav(page).getByRole('link', { name: 'Invoices' }).click()
     await expect(drawer).toBeHidden()
     await expect(page).toHaveURL(`${appUrl}invoices`)

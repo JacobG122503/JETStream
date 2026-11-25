@@ -8,7 +8,7 @@ test('each demo account is one press away, and signing out leaves nothing behind
   await open(page, 'sign-in', 'Sign in')
   for (const [label, role] of [['Employee', 'Member'], ['Project lead', 'Manager'], ['Administrator', 'Administrator']] as const) {
     await page.getByRole('button', { name: new RegExp(`^${label}`) }).click()
-    await expect(pageTitle(page)).toHaveText('Time')
+    await expect(pageTitle(page)).toHaveText('Home')
     await expect(accountButton(page)).toHaveAccessibleName(new RegExp(`${role}$`))
     const cookies = await context.cookies()
     expect(cookies).toHaveLength(1)
@@ -49,13 +49,13 @@ test('signed out, pages lead to sign-in and back, and never elsewhere', async ({
   for (const next of ['//evil.example', '/\\evil.example', 'https://evil.example', 'javascript:alert(1)', '/\n/evil.example']) {
     await page.goto(`sign-in?next=${encodeURIComponent(next)}`)
     await page.getByRole('button', { name: /^Employee/ }).click()
-    await expect(page).toHaveURL(`${appUrl}time`)
+    await expect(page).toHaveURL(`${appUrl}home`)
     await signOut(page)
   }
   await page.getByRole('button', { name: /^Employee/ }).click()
-  await expect(pageTitle(page)).toHaveText('Time')
+  await expect(pageTitle(page)).toHaveText('Home')
   await page.goto('sign-in')
-  await expect(page).toHaveURL(`${appUrl}time`)
+  await expect(page).toHaveURL(`${appUrl}home`)
 })
 
 test('someone asks for an account, waits, is approved with a client and a project, and is in', async ({ page, adminPage }) => {
@@ -83,7 +83,7 @@ test('someone asks for an account, waits, is approved with a client and a projec
   await box.getByRole('button', { name: 'Approve' }).click()
   await expect(box).toBeHidden()
   await page.getByRole('button', { name: 'Check again' }).click()
-  await expect(pageTitle(page)).toHaveText('Time')
+  await expect(pageTitle(page)).toHaveText('Home')
 
   await adminPage.getByRole('tab', { name: 'People' }).click()
   await adminPage.getByLabel('Search people').fill(email)
@@ -119,7 +119,7 @@ test('an invite is made, opened without a trace in the address, accepted once, a
   await expect(page.getByText('Manager')).toBeVisible()
   await page.getByRole('textbox', { name: /^Password/ }).fill(goodPassword)
   await page.getByRole('button', { name: 'Accept and sign in' }).click()
-  await expect(pageTitle(page)).toHaveText('Time')
+  await expect(pageTitle(page)).toHaveText('Home')
   await expect(accountButton(page)).toHaveAccessibleName(/Robin Fictional.*Manager$/)
   expect(requested.join()).not.toContain(link.split('#')[1])
 
@@ -165,11 +165,9 @@ test('a forgotten password: help is asked for, a link handed over, and all devic
   await page.getByRole('button', { name: 'Set password' }).click()
   await expect(page.getByText('Your new password is set. Sign in with it.')).toBeVisible()
   await signIn(page, email, 'another good password')
-  await expect(pageTitle(page)).toHaveText('Time')
+  await expect(pageTitle(page)).toHaveText('Home')
 
-  await old.page.getByRole('link', { name: 'Team' }).first().click()
-  await accountButton(old.page).click()
-  await old.page.getByRole('menuitem', { name: 'Account' }).click()
+  await old.page.getByRole('link', { name: 'Projects' }).first().click()
   await expect(pageTitle(old.page)).toHaveText('Sign in')
   await expect(old.page.getByText('Your session has ended. Sign in again to go on.')).toBeVisible()
   await old.context.close()
@@ -180,13 +178,13 @@ test('a forgotten password: help is asked for, a link handed over, and all devic
 test('in a second tab someone else signs in: the first tab becomes theirs', async ({ page, context, appUrl, pageProblems }) => {
   await open(page, 'sign-in', 'Sign in')
   await page.getByRole('button', { name: /^Employee/ }).click()
-  await expect(pageTitle(page)).toHaveText('Time')
+  await expect(pageTitle(page)).toHaveText('Home')
   await open(page, 'account', 'Account')
   const tab = await context.newPage()
   await open(tab, `${appUrl}time`, 'Time')
   await signOut(tab)
   await tab.getByRole('button', { name: /^Administrator/ }).click()
-  await expect(pageTitle(tab)).toHaveText('Time')
+  await expect(pageTitle(tab)).toHaveText('Home')
   // Not through the page, which would notice on getting focus.
   const name = page.getByRole('textbox', { name: /^Name/ })
   await name.fill('Wrong person')
@@ -211,7 +209,7 @@ test('changing the password signs out other devices and keeps this one', async (
   await accept(page, link)
   const other = await newBrowser(browser, appUrl)
   await signIn(other.page, email)
-  await expect(pageTitle(other.page)).toHaveText('Time')
+  await expect(pageTitle(other.page)).toHaveText('Home')
 
   await open(page, 'account', 'Account')
   const devices = page.getByRole('table', { name: 'Devices that are signed in' })

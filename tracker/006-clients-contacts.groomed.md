@@ -7,6 +7,8 @@ User: "they work with a lot of clients". Client companies with address, currency
 
 Overall goal: match every Harvest capability in this area or provide something similar, within the product rules in CLAUDE.md.
 
+Note from 028 (2026-11-25): a simple version of this exists (`src/server/work/`, `src/web/pages/work/`). Build on it, and bring it up to this spec, instead of starting anew.
+
 ## Spec
 ### Goal
 JET Engineering keeps all its client companies in one place: whom to call, how each is billed, and what the work for it is worth, billed and still unbilled. The billing manager runs it; a project lead sees the clients of the projects they manage, with money only if allowed.
