@@ -7,7 +7,6 @@ import { useForm } from '../../auth/useForm'
 import { Page } from '../../shell/Page'
 import { Badge, Button, Card, ErrorState, formatDate, LoadingState, Notice, TextArea, TextField, useToast } from '../../ui'
 import { saveFile } from '../../work/csv'
-import { formatMoney } from '../../work/format'
 import { PrintedDocument } from '../../work/PrintedDocument'
 import { useLinkCheck } from '../auth/useLinkCheck'
 import { useLinkToken } from '../auth/useLinkToken'
@@ -33,26 +32,12 @@ function Opening({ title, error, onRetry }: { title: string; error: unknown; onR
 export function ClientInvoicePage() {
   const token = useLinkToken()
   const { data, error, retry } = useLinkCheck<ClientInvoice>('client/invoice', token, true)
-  const [paid, setPaid] = useState<ClientInvoice | null>(null)
   if (!data) return <Opening title="Invoice" error={error} onRetry={retry} />
-  return <InvoiceView key={token} token={token} invoice={paid ?? data} onPaid={setPaid} />
+  return <InvoiceView key={token} token={token} invoice={data} />
 }
 
-function InvoiceView({ token, invoice, onPaid }: { token: string; invoice: ClientInvoice; onPaid: (invoice: ClientInvoice) => void }) {
-  const [busy, setBusy] = useState(false)
+function InvoiceView({ token, invoice }: { token: string; invoice: ClientInvoice }) {
   const toast = useToast()
-  const due = formatMoney(invoice.dueAmount, invoice.currency)
-  const pay = async () => {
-    setBusy(true)
-    try {
-      const answer = await callApi<{ redirect?: string; invoice?: ClientInvoice }>('POST', 'client/invoice/pay', { token })
-      if (answer.redirect) window.location.assign(answer.redirect)
-      if (answer.invoice) onPaid(answer.invoice)
-    } catch (reason) {
-      toast.error(errorMessage(reason))
-    }
-    setBusy(false)
-  }
   const download = async (fileId: number) => {
     try {
       const { name, mediaType, content } = await callApi<{ name: string; mediaType: string; content: string }>('POST', 'client/invoice/file', { token, fileId })
@@ -71,19 +56,11 @@ function InvoiceView({ token, invoice, onPaid }: { token: string; invoice: Clien
         </span>
       }
       actions={
-        <>
-          <Button icon="printer" onClick={() => window.print()}>
-            Print or PDF
-          </Button>
-          {invoice.online !== null && (
-            <Button variant="primary" icon="dollar" loading={busy} loadingLabel="Paying" onClick={() => void pay()}>
-              {invoice.online === 'simulated' ? `Pay ${due} (simulated)` : `Pay ${due}`}
-            </Button>
-          )}
-        </>
+        <Button icon="printer" onClick={() => window.print()}>
+          Print or PDF
+        </Button>
       }
     >
-      {invoice.online === 'simulated' && <Notice tone="warning" title="Payment is simulated">No card is asked for and no money moves. The invoice is only marked as paid.</Notice>}
       <PrintedDocument
         word="Invoice"
         document={invoice}

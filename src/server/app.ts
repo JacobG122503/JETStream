@@ -4,7 +4,6 @@ import type { AppContext } from './context'
 import type { Db } from './db'
 import { captureSender, type EmailSender } from './email/sender'
 import { securityHeaders } from './headers'
-import { type PaymentProvider, simulatedPayments } from './payments/provider'
 import { createWebRouter } from './web'
 
 export interface AppOptions extends ApiOptions {
@@ -20,7 +19,6 @@ export interface AppOptions extends ApiOptions {
   mode?: 'development' | 'demo' | 'production'
   now?: () => Date
   email?: EmailSender
-  payments?: PaymentProvider
 }
 
 export function createContext(options: AppOptions): AppContext {
@@ -33,7 +31,6 @@ export function createContext(options: AppOptions): AppContext {
     demo: mode === 'demo',
     now: options.now ?? (() => new Date()),
     email: options.email ?? captureSender(db),
-    payments: options.payments ?? (mode === 'production' ? null : simulatedPayments),
   }
 }
 

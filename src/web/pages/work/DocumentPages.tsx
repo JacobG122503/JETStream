@@ -1,7 +1,7 @@
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import type { DocumentClient, DocumentOptions, EstimateDetails, InvoiceDetails, RecurringDetails } from '../../../shared/billing'
 import { callApi } from '../../api'
-import { useLoad } from '../../auth/useLoad'
+import { type Load, useLoad } from '../../auth/useLoad'
 import { Page } from '../../shell/Page'
 import { addDays, Combobox, EmptyState, ErrorState, LinkButton, LoadingState, useToast } from '../../ui'
 import { termFields, termOptions } from '../../work/billing'
@@ -58,7 +58,7 @@ function useEditor<T extends { client: { id: number } }>({ route }: Pick<EditorP
 }
 
 interface FrameProps extends EditorPageProps {
-  editor: ReturnType<typeof useEditor>
+  editor: Pick<ReturnType<typeof useEditor>, 'options' | 'document' | 'client' | 'choose'> & { existing: Pick<Load<unknown>, 'status' | 'error' | 'reload'> }
   children: (client: DocumentClient, options: DocumentOptions) => React.ReactNode
 }
 

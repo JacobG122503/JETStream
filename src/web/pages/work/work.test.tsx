@@ -184,10 +184,10 @@ describe('home', () => {
 describe('invoices', () => {
   const invoice = (more: Partial<InvoiceDetails> = {}): InvoiceDetails => ({
     id: 3, number: 'INV-0003', client: { id: 1, name: 'Tallgrass' }, subject: 'Work', status: 'draft', issuedOn: '2026-11-25', dueOn: '2026-12-25', late: false,
-    currency: 'USD', total: 10_000, dueAmount: 10_000, version: 4, company: { name: 'JET Engineering', address: 'Here' }, clientAddress: 'There', purchaseOrder: '',
-    notes: '', lines: [{ id: 1, description: 'Design', quantity: 1000, unitPrice: 10_000, amount: 10_000, kind: 'time', minutes: 60 }], subtotal: 10_000,
+    currency: 'USD', total: 10_000, dueAmount: 10_000, version: 4, company: { name: 'JET Engineering', address: 'Here', logo: false }, clientName: 'Tallgrass', clientAddress: 'There', purchaseOrder: '',
+    notes: '', lines: [{ id: 1, description: 'Design', quantity: 1000, unitPrice: 10_000, amount: 10_000, kind: 'time', minutes: 60, projectId: 1, categoryId: null, tax1: false, tax2: false }], subtotal: 10_000,
     discountPercent: null, discountAmount: 0, tax1Name: null, tax1Percent: null, tax1Amount: 0, tax2Name: null, tax2Percent: null, tax2Amount: 0, paidAmount: 0,
-    payments: [], canPay: false, ...more,
+    payments: [], canPay: false, paymentTerms: 'net_30', writeOff: null, messages: [], links: [], attachments: [], receipts: 0, recurring: false, retainers: [], contacts: [], canManagePayments: true, ...more,
   })
   beforeEach(() => {
     server.session = sessionInfo({ person: administrator })
@@ -196,9 +196,10 @@ describe('invoices', () => {
 
   it('says that marking as sent sends nothing', async () => {
     await open('/invoices/3', 'Invoice INV-0003')
-    await press('Mark as sent')
+    await press('More')
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Mark as sent' }))
     const box = await dialog()
-    expect(box.getByText(/JETStream does not send it/)).toBeInTheDocument()
+    expect(box.getByText(/JETStream sends nothing/)).toBeInTheDocument()
     server.handlers['POST invoices/3/send'] = () => invoice({ status: 'open', canPay: true, version: 5 })
     await press('Mark as sent', box)
     expect(await screen.findByRole('button', { name: 'Record payment' })).toBeInTheDocument()
@@ -214,14 +215,15 @@ describe('invoices', () => {
     expect(amount).toHaveValue('100.00')
     await userEvent.clear(amount)
     await userEvent.type(amount, '100.01')
+    server.handlers['POST invoices/3/payments'] = () => failure(409, 'payment_exceeds_due', { message: 'This is more than is due.' })
     await press('Record payment', box)
-    expect(box.getAllByText('At most $100.00 is due.').length).toBeGreaterThan(0)
+    expect(await box.findByRole('alert')).toHaveTextContent('This is more than is due.')
     await userEvent.clear(amount)
     await userEvent.type(amount, '100')
     server.handlers['POST invoices/3/payments'] = () => invoice({ status: 'paid', dueAmount: 0, paidAmount: 10_000 })
     await press('Record payment', box)
     expect(await screen.findByText('Paid in full')).toBeInTheDocument()
-    expect(server.sent('POST invoices/3/payments')[0]?.body).toMatchObject({ amount: 10_000, method: 'check' })
+    expect(server.sent('POST invoices/3/payments')[1]?.body).toMatchObject({ amount: 10_000, method: 'check' })
   })
 
   it('is made of the projects that are left chosen', async () => {

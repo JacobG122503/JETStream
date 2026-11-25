@@ -1,9 +1,7 @@
 import express, { type RequestHandler } from 'express'
 import { requireActor } from '../../auth/access'
-import { clientAddress } from '../../auth/clientAddress'
-import { takeAttempt } from '../../auth/limits'
 import { ApiError } from '../../errors'
-import { payAsClient, readClientFile, readClientInvoice, takePaymentNotice } from '../../work/clientInvoices'
+import { readClientFile, readClientInvoice } from '../../work/clientInvoices'
 import { answererName, estimateReaders, invoiceReaders, messageReaders, readDocumentOptions, recurringReaders } from '../../work/documents'
 import {
   answerAsClient, createEstimate, createEstimateLink, deleteEstimate, draftEstimateMessage, duplicateEstimate, invoiceFromEstimate, listEstimates, markEstimateSent, projectFromEstimate,
@@ -23,8 +21,6 @@ import type { AddRoutes } from './types'
 
 const period = { projectIds: ids, from: optional(date), to: optional(date), grouping: oneOf('task', 'person', 'project', 'detailed'), withExpenses: flag }
 const fileBody = bodyReader(express.raw({ type: () => true, limit: attachmentBytes }))
-/** Read as it is, because its signature is made of the bytes. */
-const noticeBody: RequestHandler = bodyReader(express.raw({ type: () => true, limit: 256 * 1024 }))
 
 /** Invoices, estimates, recurring invoices, retainers, and what clients see of them. */
 export const billingRoutes: AddRoutes = (api, access, ctx) => {
@@ -271,10 +267,6 @@ export const billingRoutes: AddRoutes = (api, access, ctx) => {
     res.json(await withLinkLimit(ctx, req, () => readClientFile(ctx, input.token, input.fileId)))
   })
 
-  api.post('/client/invoice/pay', access.public, jsonBody, async (req, res) => {
-    res.json(await withLinkLimit(ctx, req, () => payAsClient(ctx, readInput(req.body, token).token)))
-  })
-
   api.post('/client/estimate', access.public, jsonBody, async (req, res) => {
     res.json(await withLinkLimit(ctx, req, () => readClientEstimate(ctx, readInput(req.body, token).token)))
   })
@@ -282,14 +274,5 @@ export const billingRoutes: AddRoutes = (api, access, ctx) => {
   api.post('/client/estimate/answer', access.public, jsonBody, async (req, res) => {
     const { token: sent, ...input } = readInput(req.body, { ...token, answer: oneOf('accepted', 'declined'), name: answererName, comment: text(1000) })
     res.json(await withLinkLimit(ctx, req, () => answerAsClient(ctx, sent, input)))
-  })
-
-  api.post('/payment-notice', access.public, noticeBody, async (req, res) => {
-    const body: unknown = req.body
-    const attempt = await takeAttempt(ctx, 'payment_notice', { address: clientAddress(req) })
-    if (!Buffer.isBuffer(body)) throw new ApiError(400, 'bad_notice', 'The notice could not be read.')
-    await takePaymentNotice(ctx, body, req.get('Stripe-Signature') ?? '')
-    await attempt.succeeded()
-    res.json({})
   })
 }

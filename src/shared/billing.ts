@@ -159,8 +159,6 @@ export interface ClientInvoice extends PrintedDocument {
   paidAmount: number
   dueAmount: number
   attachments: { id: number; name: string }[]
-  /** How it can be paid here, if at all. */
-  online: 'simulated' | 'stripe' | null
 }
 
 export interface EstimateRow extends Named {

@@ -1,6 +1,5 @@
 // Invoices, estimates, recurring invoices, retainers and what clients see, over the demo company.
-import { createHmac } from 'node:crypto'
-import { and, eq } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import request from 'supertest'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type {
@@ -11,10 +10,9 @@ import type { UnbilledClient } from '../../shared/work'
 import type { createApp } from '../app'
 import { createContext } from '../app'
 import type { Database } from '../db'
-import { clients, invoices, payments, recurringInvoices } from '../db/schema'
+import { clients, invoices, recurringInvoices } from '../db/schema'
 import { demoPassword } from '../demo/accounts'
 import { seedDemo } from '../demo'
-import { simulatedPayments, stripePayments } from '../payments/provider'
 import { browser, type Browser, signedIn, standInSender, testApp, testClock } from '../testing/apiClient'
 import { createTestDatabase } from '../testing/testDatabase'
 import { makeDueInvoices } from './recurring'
@@ -31,7 +29,7 @@ let options: DocumentOptions
 beforeAll(async () => {
   database = await createTestDatabase()
   await seedDemo(database.db, { today })
-  app = testApp({ db: database.db, now: clock.now, email: sender, payments: simulatedPayments })
+  app = testApp({ db: database.db, now: clock.now, email: sender })
   admin = await signedIn(app, 'admin@jet.demo', demoPassword)
   lead = await signedIn(app, 'lead@jet.demo', demoPassword)
   stranger = browser(app)
@@ -189,7 +187,7 @@ describe('money', () => {
 })
 
 describe('a client', () => {
-  it('opens an invoice with its link only, pays it in simulation, and not twice', async () => {
+  it('opens an invoice with its link only', async () => {
     const draft = await make()
     expect(codeOf(await admin.post(`/invoices/${draft.id}/link`))).toEqual([409, 'is_draft'])
     const suggested = await get<MessageInput>(admin, `/invoices/${draft.id}/message?kind=sent`)
@@ -204,24 +202,17 @@ describe('a client', () => {
 
     const token = sentToken()
     const seen = (await stranger.post('/client/invoice', { token })).body as ClientInvoice
-    expect(seen).toMatchObject({ number: draft.number, total: 100_000, status: 'open', online: 'simulated' })
+    expect(seen).toMatchObject({ number: draft.number, total: 100_000, status: 'open' })
     expect(codeOf(await stranger.post('/client/invoice', { token: 'x'.repeat(43) }))).toEqual([410, 'link_invalid'])
     expect(codeOf(await stranger.post('/client/invoice', { token: { nested: true } }))).toEqual([410, 'link_invalid'])
-    const answers = await Promise.all([1, 2].map(() => stranger.post('/client/invoice/pay', { token })))
-    expect(answers.map(({ status }) => status).sort()).toEqual([200, 409])
-    expect(await get<InvoiceDetails>(admin, `/invoices/${draft.id}`)).toMatchObject({ status: 'paid', payments: [{ simulated: true, method: 'online' }] })
-
     await post(`/invoices/${draft.id}/revoke-links`)
     expect(codeOf(await stranger.post('/client/invoice', { token }))).toEqual([410, 'link_invalid'])
   })
 
-  it('cannot open a draft, nor pay in production where nothing is set up', async () => {
+  it('cannot open what became a draft again', async () => {
     const invoice = await open()
     const { link } = (await admin.post(`/invoices/${invoice.id}/link`)).body as { link: string }
     const token = link.split('#')[1]
-    const production = browser(testApp({ db: database.db, now: clock.now, email: sender }))
-    expect((await production.post('/client/invoice', { token })).body).toMatchObject({ online: null })
-    expect(codeOf(await production.post('/client/invoice/pay', { token }))).toEqual([409, 'invoice_not_payable'])
     await post(`/invoices/${invoice.id}/draft`, { version: invoice.version })
     expect(codeOf(await stranger.post('/client/invoice', { token }))).toEqual([410, 'link_invalid'])
   })
@@ -237,36 +228,6 @@ describe('a client', () => {
     expect(codeOf(await stranger.post('/client/invoice/file', { token, fileId: 1 }))).toEqual([404, 'not_found'])
     expect(codeOf(await lead.get(`/invoices/${invoice.id}/attachments/${file?.id}`))).toEqual([403, 'forbidden'])
     expect((await post(`/invoices/${invoice.id}/detach`, { fileId: file?.id })).attachments).toEqual([])
-  })
-})
-
-describe('Stripe', () => {
-  const secret = 'whsec_test'
-  const provider = stripePayments({ secretKey: 'sk_test', webhookSecret: secret })
-  const notice = (body: object, at = clock.now()) => {
-    const text = JSON.stringify(body)
-    const time = Math.floor(at.getTime() / 1000)
-    return { text, signature: `t=${time},v1=${createHmac('sha256', secret).update(`${time}.${text}`).digest('hex')}` }
-  }
-  const completed = (invoice: number, id: string, amount: number) => ({
-    type: 'checkout.session.completed', data: { object: { id, payment_status: 'paid', amount_total: amount, currency: 'usd', metadata: { invoice: String(invoice) } } },
-  })
-
-  it('counts a signed notice once, and refuses any other', async () => {
-    const stripeApp = testApp({ db: database.db, now: clock.now, email: sender, payments: provider })
-    const send = ({ text, signature }: { text: string; signature: string }) => request(stripeApp).post('/api/payment-notice').set('Content-Type', 'application/json').set('Stripe-Signature', signature).send(text)
-    const invoice = await open()
-    const good = notice(completed(invoice.id, 'cs_1', 40_000))
-    expect((await send({ ...good, signature: good.signature.replace(/v1=.*/, `v1=${'0'.repeat(64)}`) })).status).toBe(400)
-    expect((await send(notice(completed(invoice.id, 'cs_old', 1), new Date(clock.now().getTime() - 3_600_000)))).status).toBe(400)
-    expect((await send(good)).status).toBe(200)
-    expect((await send(good)).status).toBe(200)
-    expect(await get<InvoiceDetails>(admin, `/invoices/${invoice.id}`)).toMatchObject({ dueAmount: 60_000, payments: [{ method: 'online', simulated: false }] })
-    // More than is due: what is due is counted, and someone is told.
-    expect((await send(notice(completed(invoice.id, 'cs_2', 90_000)))).status).toBe(200)
-    expect(await get<InvoiceDetails>(admin, `/invoices/${invoice.id}`)).toMatchObject({ status: 'paid', dueAmount: 0 })
-    expect(await database.db.$count(payments, and(eq(payments.invoiceId, invoice.id)))).toBe(2)
-    expect((await request(app).post('/api/payment-notice').set('Stripe-Signature', good.signature).send(good.text)).status).toBeGreaterThanOrEqual(400)
   })
 })
 
