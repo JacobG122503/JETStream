@@ -15,6 +15,12 @@ Note from 003 QA: `changeInvoiceLines` can alter a time line without its entry l
 
 Note from 003 PM: decide whether hours billed at rate 0 (fixed-fee or no-rate projects) show on the client's invoice.
 
+Note from 006 PM: take the client lock first, before 003's lock order, and refuse archived clients for new documents.
+
+Note from 006 PM: link invoice numbers on the client page, decide which manual lines count towards a fixed fee, preselect recipients from the client's contacts.
+
+Note from 007 PM: link invoice numbers on the project page; take the project lock for lines that name a project, since it blocks deleting it or changing its client.
+
 ## Spec
 _PM fills this in during grooming._
 

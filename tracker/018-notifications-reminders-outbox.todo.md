@@ -9,6 +9,8 @@ Overall goal: match every Harvest capability in this area or provide something s
 
 Server change: real email over SMTP when configured, Outbox capture when not; live in-app notifications; scheduled jobs run once even after restarts.
 
+Note from 007 PM: 007 computes alert and over state (AC28) but sends nothing; writing `budget_alerts` (once per project, period and percentage) and sending are 018's, only to people who may see that budget.
+
 ## Spec
 _PM fills this in during grooming._
 

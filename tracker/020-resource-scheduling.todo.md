@@ -7,6 +7,8 @@ Forecast-style schedule: weekly/monthly grid by person and by project, assign ho
 
 Overall goal: match every Harvest capability in this area or provide something similar, within the product rules in CLAUDE.md.
 
+Note from 007 PM: use 007's project lock helper (AC28); an assignment blocks deleting its project or task, milestones go with the project; placeholders are not members.
+
 ## Spec
 _PM fills this in during grooming._
 

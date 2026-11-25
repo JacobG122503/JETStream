@@ -9,6 +9,8 @@ Overall goal: match every Harvest capability in this area or provide something s
 
 Server change: scheduled reports run from the server scheduler.
 
+Note from 008 PM: reuse 008's capacity, utilization and billable share functions; a person's cost figures are left to this task.
+
 ## Spec
 _PM fills this in during grooming._
 

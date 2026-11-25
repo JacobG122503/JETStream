@@ -7,6 +7,12 @@ Day, week and calendar views. Live start/stop timers (one running per person, su
 
 Overall goal: match every Harvest capability in this area or provide something similar, within the product rules in CLAUDE.md.
 
+Note from 006 PM: use 006's shared money, hours and date formatting.
+
+Note from 008 PM: use 008's person lock helper (AC20) when adding or moving time, and its one function for stopping a timer (archiving a person stops theirs); the breakdown's entries (AC25) can then link to the timesheet.
+
+Note from 007 PM: use 007's project lock helper (AC28) when adding or moving time; a timer left running on a project archived meanwhile must still be stoppable; a changed billable flag of a project task applies to new time only, so consider an action for existing open entries.
+
 ## Spec
 _PM fills this in during grooming._
 

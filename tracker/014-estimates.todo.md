@@ -7,6 +7,12 @@ Estimates with line items, taxes, discount, states draft, sent, accepted, declin
 
 Overall goal: match every Harvest capability in this area or provide something similar, within the product rules in CLAUDE.md.
 
+Note from 006 PM: take the client lock first, before 003's lock order, and refuse archived clients for new documents.
+
+Note from 006 PM: consider an estimates part on the client page.
+
+Note from 007 PM: create projects through 007's service (AC28); it applies client lock, permissions and the manager rule.
+
 ## Spec
 _PM fills this in during grooming._
 

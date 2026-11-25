@@ -320,3 +320,4 @@ Engineer's follow-up for 026 was added to that task; the cookie name and message
 - 2026-11-24 QA: pass (second pass, after rework)
 - 2026-11-24 ORCH: qa -> review
 - 2026-11-24 PM: accepted
+- 2026-11-24 committed 598cbb6

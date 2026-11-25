@@ -10,6 +10,8 @@ Note from 001 PM: test against a real PostgreSQL with TLS if one is available, o
 
 Note from 003 QA: migrations, seed, reset, value conversion, lock contention and 16 skipped tests (`TEST_DATABASE_URL`) have never run on a real PostgreSQL server. Do not install or run one without the user's approval.
 
+Note from 004 PM: untried so far: interleaved transactions on a real PostgreSQL (sign-in against password change, reset, archive), Secure cookies over HTTPS, a real reverse proxy (`TRUST_PROXY`), Windows, browsers other than Chromium. Document that a demo opened from other computers needs `PUBLIC_URL`, since with `HOST=0.0.0.0` its links begin with `http://0.0.0.0`; and that `npm run dev` pages have no Content-Security-Policy, so dev must never be exposed. Successful sign-ins, and sessions per person, are not limited.
+
 ## Spec
 _PM fills this in during grooming._
 
@@ -25,3 +27,4 @@ _PM fills this in after QA passes._
 ## History
 - 2026-11-23 created
 - 2026-11-23 ORCH: replaced the GitHub Pages scope
+- 2026-11-24 PM: note added (from 004 acceptance)

@@ -7,6 +7,8 @@ Time-off policies (vacation, sick, unpaid), balances and accrual, requests with 
 
 Overall goal: match every Harvest capability in this area or provide something similar, within the product rules in CLAUDE.md.
 
+Note from 008 PM: 008's capacity function counts Monday to Friday at the current weekly capacity; replace it here with work schedules, holidays and time off, for the team list, breakdown and reports alike.
+
 ## Spec
 _PM fills this in during grooming._
 

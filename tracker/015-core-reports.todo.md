@@ -9,6 +9,10 @@ Overall goal: match every Harvest capability in this area or provide something s
 
 Note from 002 QA: tables wider than the paper are cut off when printed; wide tables need a print layout.
 
+Note from 006 PM: reuse 006's figure functions for the uninvoiced report.
+
+Note from 007 PM: reuse 007's budget functions and visibility rules for the budget report.
+
 ## Spec
 _PM fills this in during grooming._
 

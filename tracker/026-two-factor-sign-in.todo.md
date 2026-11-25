@@ -10,6 +10,8 @@ Overall goal: match every Harvest capability in this area or provide something s
 
 Note from 005 PM: administrator reset of two-factor must use 005's outranking rule.
 
+Note from 004 PM: keep the `SignInProof` (person and password version) between the two steps and pass it to `beginSession`, which checks it again, so that a password change or archiving in between ends the sign-in.
+
 ## Spec
 _PM fills this in during grooming._
 
@@ -24,3 +26,4 @@ _PM fills this in after QA passes._
 
 ## History
 - 2026-11-23 created (split from 004 by PM)
+- 2026-11-24 PM: note added (from 004 acceptance)

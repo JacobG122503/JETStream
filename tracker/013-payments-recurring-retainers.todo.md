@@ -11,6 +11,10 @@ Server change: reminders and recurring invoices run from a server scheduler, not
 
 Note from 003 QA: a refund on a closed invoice is accepted; an open invoice with total 0 can never become paid (read in code, not run). Decide and fix.
 
+Note from 006 PM: take the client lock first, before 003's lock order, and refuse archived clients for new documents.
+
+Note from 006 PM: decide what happens when a paused recurring invoice is resumed for an archived client.
+
 ## Spec
 _PM fills this in during grooming._
 

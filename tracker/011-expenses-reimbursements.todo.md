@@ -9,6 +9,12 @@ Overall goal: match every Harvest capability in this area or provide something s
 
 Note from 001 QA: body parsers added to a single route (uploads) answer 500 instead of 413/400, because only the shared JSON parser is recognised; handle upload errors properly.
 
+Note from 006 PM: use 006's shared money, hours and date formatting.
+
+Note from 006 PM: take 006's client lock when adding expenses, because expenses lock the client's currency.
+
+Note from 007 PM: use 007's project lock helper (AC28), which includes the client lock's place in the order.
+
 ## Spec
 _PM fills this in during grooming._
 

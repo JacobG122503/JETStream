@@ -11,6 +11,10 @@ Note from 001 QA: see the upload error note in 011.
 
 Note from 005 PM: imports that set a manager flag must go through 005's grant check.
 
+Note from 008 PM: import people through 008's services (email refusals, outranking, rates by permission).
+
+Note from 007 PM: import projects and tasks through 007's services (locks, limits, amounts by permission); names and codes are not unique.
+
 ## Spec
 _PM fills this in during grooming._
 
