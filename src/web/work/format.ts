@@ -75,10 +75,10 @@ export function formatDay(date: string): string {
   return `${weekdayNames[weekdayOf(date)]}, ${day} ${shortMonth(month)}`
 }
 
-/** "21 to 27 Nov 2026" */
+/** "21 – 27 Nov 2026" */
 export function formatWeek(from: string, to: string): string {
   const [first, last] = [partsOf(from), partsOf(to)]
-  return `${first.day}${first.month === last.month ? '' : ` ${shortMonth(first.month)}`} to ${last.day} ${shortMonth(last.month)} ${last.year}`
+  return `${first.day}${first.month === last.month ? '' : ` ${shortMonth(first.month)}`} – ${last.day} ${shortMonth(last.month)} ${last.year}`
 }
 
 /** 90 is 1.5 h, for axes and sums where minutes do not matter. */

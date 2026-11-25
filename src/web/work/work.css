@@ -771,11 +771,11 @@
 }
 
 .key-billable {
-  background: var(--c-chart-1);
+  background: var(--c-hours-billable);
 }
 
 .key-other {
-  background: var(--c-chart-rest);
+  background: var(--c-hours-other);
 }
 
 .team-scroll {
@@ -891,10 +891,11 @@
 }
 
 .report-share .ring-track {
-  stroke: var(--c-chart-rest);
+  stroke: var(--c-hours-other);
 }
 
 .report-share .ring-fill {
+  stroke: var(--c-hours-billable);
   stroke-linecap: butt;
 }
 
@@ -1183,55 +1184,16 @@
   grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
 }
 
+.share-bar {
+  display: flex;
+  height: 1.125rem;
+  overflow: hidden;
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--c-surface-3);
+}
+
 /* Approvals */
-.approvals {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius-lg);
-}
-
-.approval {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-}
-
-.approval + .approval {
-  border-top: 1px solid var(--c-border);
-}
-
-.approval-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-4);
-}
-
-.approval-who {
-  display: flex;
-  flex: 1 1 10rem;
-  flex-direction: column;
-}
-
-.approval-share {
-  width: 13rem;
-}
-
-.approval-hours {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  width: 10rem;
-}
-
-.approval-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
 .approval-lines th[scope='rowgroup'] {
   padding-top: var(--space-4);
   color: var(--c-text);
@@ -1316,9 +1278,6 @@
 }
 
 @media (max-width: 639.98px) {
-  .approval-share {
-    width: auto;
-  }
 }
 
 /* Documents */
@@ -1335,26 +1294,28 @@
 .sub-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-1);
+  gap: 0 var(--space-5);
+  border-bottom: 1px solid var(--c-border);
 }
 
 .sub-nav a {
   display: inline-flex;
   align-items: center;
   min-height: var(--control-md);
-  padding: 0 var(--space-3);
-  border-radius: var(--radius-md);
+  margin-bottom: -1px;
+  padding: 0 var(--space-1);
+  border-bottom: 2px solid transparent;
   color: var(--c-text-muted);
   text-decoration: none;
 }
 
 .sub-nav a:hover,
 .sub-nav a[aria-current='page'] {
-  background: var(--c-surface-2);
   color: var(--c-text);
 }
 
 .sub-nav a[aria-current='page'] {
+  border-bottom-color: var(--c-accent);
   font-weight: var(--weight-strong);
 }
 

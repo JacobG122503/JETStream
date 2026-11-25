@@ -1,17 +1,23 @@
-import { type ReactNode, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { PermissionKey } from '../../../shared/permissions'
 import type { ReportRow, TimeReport } from '../../../shared/work'
 import { useCan } from '../../auth/authContext'
 import { useLoad } from '../../auth/useLoad'
+import { photoUrl } from '../../shell/photo'
 import { Page } from '../../shell/Page'
-import { Button, Checkbox, ErrorState, IconButton, LoadingState, Ring, Tabs } from '../../ui'
+import { Avatar, Checkbox, ErrorState, IconButton, LinkButton, LoadingState, Menu, Ring, Tabs } from '../../ui'
 import { formatHours, formatMoney, moneyInput, percentOf } from '../../work/format'
 import { downloadCsv } from '../../work/csv'
 import { Amounts } from '../../work/parts'
 import { PeriodBar, usePeriod } from '../../work/Period'
-import { ReportsNav } from './ReportsNav'
+import { useQuery } from '../../work/query'
+import { ShareBar } from '../../work/ShareBar'
+import { NewReportMenu, ReportsNav } from './ReportsNav'
+import { type ReportColumn, ReportTable } from './ReportTable'
+import { SaveReport } from './SaveReport'
 import '../../work/work.css'
+import './reports.css'
 
 interface GroupInfo {
   id: 'byClient' | 'byProject' | 'byTask' | 'byPerson'
@@ -19,42 +25,53 @@ interface GroupInfo {
   /** Where a name leads, for those who may go there. */
   path?: string
   needs?: PermissionKey
+  /** What the detailed report calls it. */
+  filter: string
 }
 
 const groups: GroupInfo[] = [
-  { id: 'byClient', label: 'Clients', path: '/clients', needs: 'clients.view' },
-  { id: 'byProject', label: 'Projects', path: '/projects' },
-  { id: 'byTask', label: 'Tasks' },
-  { id: 'byPerson', label: 'Teammates', path: '/team', needs: 'people.view' },
+  { id: 'byClient', label: 'Clients', path: '/clients', needs: 'clients.view', filter: 'clients' },
+  { id: 'byProject', label: 'Projects', path: '/projects', filter: 'projects' },
+  { id: 'byTask', label: 'Tasks', filter: 'tasks' },
+  { id: 'byPerson', label: 'Teammates', filter: 'people' },
 ]
 
 export function ReportsPage() {
   const period = usePeriod('week')
-  const { range } = period
-  const [activeOnly, setActiveOnly] = useState(false)
-  const { status, data, error, reload } = useLoad<TimeReport>(`reports/time?from=${range.start}&to=${range.end}${activeOnly ? '&active=1' : ''}`)
+  const { start, end } = period.range
+  const { get, change } = useQuery()
+  const department = get('department')
+  const query = new URLSearchParams({ from: start, to: end, ...(get('active') && { active: '1' }), ...(get('fixed') && { fixed: '1' }), ...(department && { department }) })
+  const { status, data, error, reload } = useLoad<TimeReport>(`reports/time?${query}`)
+  const departments = data?.departments ?? (department ? [department] : [])
   return (
-    <Page title="Reports">
+    <Page title="Reports" actions={<NewReportMenu />}>
       <ReportsNav current="/reports" />
-      <PeriodBar period={period} />
+      <div className="report-bar no-print">
+        {departments.length > 0 && (
+          <Menu
+            label={department || 'All departments'}
+            items={['', ...departments].map((name) => ({ id: name || 'all', label: name || 'All departments', checked: name === department, onSelect: () => change({ department: name }) }))}
+          />
+        )}
+        <PeriodBar period={period} />
+        <div className="report-save">
+          <SaveReport />
+        </div>
+      </div>
       {status === 'loading' && <LoadingState size="page" look="skeleton" label="Loading the report" />}
       {status === 'error' && <ErrorState size="page" headingLevel={2} message={error} onRetry={reload} />}
-      {data && <Report report={data} activeOnly={activeOnly} onActiveOnly={setActiveOnly} />}
+      {data && <Report report={data} />}
     </Page>
   )
 }
 
-interface ReportProps {
-  report: TimeReport
-  activeOnly: boolean
-  onActiveOnly: (on: boolean) => void
-}
-
-function Report({ report, activeOnly, onActiveOnly }: ReportProps) {
+function Report({ report }: { report: TimeReport }) {
   const can = useCan()
-  const { minutes, billableMinutes, showAmounts, amounts, uninvoiced, scope } = report
+  const { get, change } = useQuery()
+  const { from, to, minutes, billableMinutes, showAmounts, amounts, uninvoiced, scope } = report
   const percent = percentOf(billableMinutes, minutes)
-  const amount = (value: TimeReport['amounts']): ReactNode => (showAmounts ? <Amounts amounts={value} /> : 'N/A')
+  const department = get('department')
   return (
     <>
       <div className="report-panel">
@@ -77,35 +94,63 @@ function Report({ report, activeOnly, onActiveOnly }: ReportProps) {
             <dd>{formatHours(minutes - billableMinutes)}</dd>
           </dl>
         </div>
-        <div>
+        <div className="report-amount">
           <p>Billable amount</p>
-          <p className="report-figure">{amount(amounts)}</p>
+          <p className="report-figure">{showAmounts ? <Amounts amounts={amounts} exact /> : 'N/A'}</p>
+          {showAmounts && (
+            <>
+              <Checkbox label="Include Fixed Fee projects" checked={get('fixed') !== ''} onChange={(on) => change({ fixed: on ? '1' : null })} />
+              <p className="report-note">Billable amounts for Fixed Fee projects are based on billable rates. The billable amount may not match the invoiced amount.</p>
+            </>
+          )}
         </div>
-        <div>
+        <div className="report-amount">
           <p>Uninvoiced amount</p>
-          <p className="report-figure">{amount(uninvoiced)}</p>
+          <p className="report-figure">{showAmounts ? <Amounts amounts={uninvoiced} exact /> : 'N/A'}</p>
+          {showAmounts && <p className="report-note">With billable expenses. Excludes Fixed Fee projects</p>}
         </div>
       </div>
       <Tabs
         label="Hours by"
+        value={get('tab') || 'byClient'}
+        onChange={(tab) => change({ tab: tab === 'byClient' ? null : tab })}
         items={groups
           .filter(({ id }) => scope === 'team' || id !== 'byPerson')
-          .map(({ id, label, path, needs }) => ({
-            id,
-            label,
-            content: (
-              <div className="stack">
-                <div className="report-tools no-print">
-                  <Checkbox label="Active projects only" checked={activeOnly} onChange={onActiveOnly} />
-                  <Button size="small" aria-disabled={report[id].length === 0 || undefined} onClick={() => download(label, report[id], report)}>
-                    Export CSV
-                  </Button>
-                  <IconButton size="small" variant="secondary" icon="printer" label="Print" onClick={() => window.print()} />
+          .map((group) => {
+            const { id, label, path, needs, filter } = group
+            return {
+              id,
+              label,
+              content: (
+                <div className="stack">
+                  <div className="report-tools no-print">
+                    <Checkbox label="Active projects only" checked={get('active') !== ''} onChange={(on) => change({ active: on ? '1' : null })} />
+                    <LinkButton size="small" to={`/reports/detailed?from=${from}&to=${to}`}>
+                      Detailed report
+                    </LinkButton>
+                    <Menu
+                      label="Export"
+                      size="small"
+                      align="end"
+                      items={[
+                        { id: 'csv', label: 'CSV', disabled: report[id].length === 0, onSelect: () => download(label, report[id], report) },
+                        { id: 'print', label: 'Print or save as PDF', onSelect: () => window.print() },
+                      ]}
+                    />
+                    <IconButton size="small" variant="secondary" icon="printer" label="Print" onClick={() => window.print()} />
+                  </div>
+                  <Group
+                    title={label}
+                    rows={report[id]}
+                    report={report}
+                    people={id === 'byPerson'}
+                    path={path && (!needs || can(needs)) ? path : undefined}
+                    detail={department ? undefined : (row) => `/reports/detailed?from=${from}&to=${to}&${filter}=${row}`}
+                  />
                 </div>
-                <Group title={label} rows={report[id]} report={report} path={path && (!needs || can(needs)) ? path : undefined} />
-              </div>
-            ),
-          }))}
+              ),
+            }
+          })}
       />
     </>
   )
@@ -123,68 +168,70 @@ interface GroupProps {
   title: string
   rows: ReportRow[]
   report: TimeReport
+  people: boolean
   path: string | undefined
+  /** Where the hours of a row are listed. */
+  detail?: (id: number) => string
 }
 
-function Group({ title, rows, report, path }: GroupProps) {
+function Group({ title, rows, report, people, path, detail }: GroupProps) {
   const most = Math.max(1, ...rows.map(({ minutes }) => minutes))
-  const { showAmounts } = report
-  if (rows.length === 0) return <div className="day-empty">Nothing was tracked in this period.</div>
-  return (
-    <div className="table-scroll team-scroll" tabIndex={0} role="region" aria-label={title}>
-      <table className="team-table">
-        <thead>
-          <tr>
-            <th scope="col">Name</th>
-            <th scope="col" className="is-numeric">
-              Hours
-            </th>
-            <th scope="col">
-              <span className="sr-only">Share</span>
-            </th>
-            <th scope="col" className="is-numeric">
-              Billable hours
-            </th>
-            {showAmounts && (
-              <th scope="col" className="is-numeric">
-                Billable amount
-              </th>
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(({ id, name, sub, minutes, billableMinutes, amount, currency }) => (
-            <tr key={id}>
-              <th scope="row">
-                {path ? <Link to={`${path}/${id}`}>{name}</Link> : name}
-                {sub && <span className="muted"> ({sub})</span>}
-              </th>
-              <td className="is-numeric">{formatHours(minutes)}</td>
-              <td className="team-bar">
-                <span className="share" aria-hidden="true">
-                  <span className="key-billable" style={{ width: `${(billableMinutes / most) * 100}%` }} />
-                  <span className="key-other" style={{ width: `${((minutes - billableMinutes) / most) * 100}%` }} />
-                </span>
-              </td>
-              <td className="is-numeric">
-                {formatHours(billableMinutes)} <span className="muted">({percentOf(billableMinutes, minutes)}%)</span>
-              </td>
-              {showAmounts && <td className="is-numeric">{amount === null || currency === undefined ? <span className="muted">-</span> : formatMoney(amount, currency)}</td>}
-            </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr>
-            <th scope="row">Total</th>
-            <td className="is-numeric">{formatHours(report.minutes)}</td>
-            <td />
-            <td className="is-numeric">{formatHours(report.billableMinutes)}</td>
-            {showAmounts && <td className="is-numeric">{totals(report.amounts)}</td>}
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-  )
+  const nameOf = ({ id, name, sub }: ReportRow) => {
+    const to = people ? detail?.(id) : path && `${path}/${id}`
+    return (
+      <>
+        {to ? <Link to={to}>{name}</Link> : name}
+        {sub && <span className="muted"> ({sub})</span>}
+      </>
+    )
+  }
+  const columns: ReportColumn<ReportRow>[] = [
+    {
+      id: 'name', header: 'Name', value: ({ name }) => name,
+      cell: (row) =>
+        people ? (
+          <span className="team-member">
+            <Avatar name={row.name} src={photoUrl(row.photoId ?? null)} size="small" decorative />
+            {nameOf(row)}
+          </span>
+        ) : (
+          nameOf(row)
+        ),
+    },
+    {
+      id: 'hours', header: 'Hours', numeric: true, value: ({ minutes }) => minutes, total: formatHours(report.minutes),
+      cell: ({ id, name, minutes }) =>
+        detail ? (
+          <Link to={detail(id)} aria-label={`${formatHours(minutes)} hours of ${name}`}>
+            {formatHours(minutes)}
+          </Link>
+        ) : (
+          formatHours(minutes)
+        ),
+    },
+    { id: 'share', header: '', bar: true, cell: ({ minutes, billableMinutes }) => <ShareBar billable={billableMinutes} minutes={minutes} most={most} /> },
+    ...(people
+      ? [{
+          id: 'utilization', header: 'Utilization', numeric: true, value: (row: ReportRow) => percentOf(row.minutes, row.capacityMinutes ?? 0),
+          cell: (row: ReportRow) => (row.capacityMinutes ? `${percentOf(row.minutes, row.capacityMinutes)}%` : <span className="muted">-</span>),
+        }]
+      : []),
+    {
+      id: 'billable', header: 'Billable hours', numeric: true, value: ({ billableMinutes }) => billableMinutes, total: formatHours(report.billableMinutes),
+      cell: ({ minutes, billableMinutes }) => (
+        <>
+          {formatHours(billableMinutes)} <span className="muted report-percent">({percentOf(billableMinutes, minutes)}%)</span>
+        </>
+      ),
+    },
+    ...(report.showAmounts
+      ? [{
+          id: 'amount', header: 'Billable amount', numeric: true, value: (row: ReportRow) => row.amount ?? 0, total: totals(report.amounts),
+          cell: ({ amount, currency }: ReportRow) => (amount === null || currency === undefined ? <span className="muted">-</span> : <strong>{formatMoney(amount, currency)}</strong>),
+        }]
+      : []),
+  ]
+  return <ReportTable label={title} columns={columns} rows={rows} />
 }
 
 function download(title: string, rows: ReportRow[], { from, to }: TimeReport) {

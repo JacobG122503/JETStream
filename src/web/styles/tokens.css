@@ -74,6 +74,9 @@
   --c-chart-4: light-dark(#7a62c9, #a893ee);
   --c-chart-5: light-dark(#cf5f4b, #f08b79);
   --c-chart-6: light-dark(#6b6a65, #9c9a94);
+  /* Billable and other hours, in reports and approvals */
+  --c-hours-billable: light-dark(#3569d9, #5b8cf0);
+  --c-hours-other: light-dark(#86b0ef, #b5cff7);
   --c-chart-rest: light-dark(#b9dcc7, #a5d6ba);
 
   --c-tooltip-bg: light-dark(#1d1d1b, #eeedea);
@@ -83,13 +86,13 @@
   --c-skeleton-shine: light-dark(#f6f6f4, #3b3a37);
 
   /* Avatars */
-  --c-avatar-1: light-dark(#d5ebdd, #2f4a3a);
-  --c-avatar-2: light-dark(#d8e5f2, #2e4357);
-  --c-avatar-3: light-dark(#f4e5c8, #4d4023);
-  --c-avatar-4: light-dark(#e6dff2, #42385a);
+  --c-avatar-1: light-dark(#33322f, #4a4844);
+  --c-avatar-2: light-dark(#2f3338, #444a52);
+  --c-avatar-3: light-dark(#383029, #524838);
+  --c-avatar-4: light-dark(#352f38, #4c4452);
   /* Behind the transparent parts of an uploaded picture; also read by account/shrinkPhoto.ts. */
   --c-photo-ground: #ffffff;
-  --c-avatar-text: light-dark(#1d1d1b, #eeedea);
+  --c-avatar-text: #ffffff;
 
   /* Spacing */
   --space-0: 0.125rem;

@@ -107,15 +107,18 @@ describe('reference data', () => {
     const { db } = database
     const fresh = await createTestDatabase()
     try {
-      const created = await fresh.db.select().from(roles)
+      const created = await fresh.db.select().from(roles).orderBy(roles.id)
       expect(created.map(({ key, name, builtIn, permissions }) => ({ key, name, builtIn, permissions }))).toEqual([
         { key: 'administrator', name: 'Administrator', builtIn: true, permissions: [] },
-        { key: 'manager', name: 'Manager', builtIn: true, permissions: [] },
+        { key: 'manager', name: 'Project Manager', builtIn: true, permissions: [] },
         { key: 'member', name: 'Member', builtIn: true, permissions: [] },
+        { key: 'people_admin', name: 'People Admin', builtIn: true, permissions: [] },
+        { key: 'accounting', name: 'Accounting', builtIn: true, permissions: [] },
+        { key: 'executive', name: 'Executive Manager', builtIn: true, permissions: [] },
       ])
       for (const table of await allTables()) {
         const [row] = await queryRows<{ n: number }>(fresh.db, sql`select count(*)::int as n from ${sql.identifier(table)}`)
-        const expected = { roles: 3, company_settings: 1, number_sequences: 2, item_categories: 2 }[table] ?? 0
+        const expected = { roles: 6, company_settings: 1, number_sequences: 2, item_categories: 2 }[table] ?? 0
         expect([table, row?.n]).toEqual([table, expected])
       }
     } finally {

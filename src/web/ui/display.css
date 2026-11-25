@@ -301,3 +301,7 @@
     padding: var(--space-4);
   }
 }
+
+.page-title-more {
+  font-weight: var(--weight-normal);
+}

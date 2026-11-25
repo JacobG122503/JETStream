@@ -56,7 +56,7 @@ describe.each(dates)('demo data for %s', (_name, today) => {
     expect(active().some(({ kind }) => kind === 'contractor')).toBe(true)
     const role = (email: string) => find(data.roles, ({ id }) => id === person(email).roleId).name
     expect(['admin', 'lead', 'employee'].map((name) => role(`${name}@jet.demo`))).toEqual([
-      'Administrator', 'Manager', 'Member',
+      'Administrator', 'Project Manager', 'Member',
     ])
     for (const { email, phone } of data.people) {
       expect(email).toMatch(/^(admin|lead|employee)@jet\.demo$|\.example$/)

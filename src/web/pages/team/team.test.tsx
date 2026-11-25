@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -172,12 +172,12 @@ describe('team', () => {
 })
 
 const access = (more: Partial<PersonAccessDetails> = {}): PersonAccessDetails => ({
-  state: 'a', editable: 'all', reason: null, roleId: 13, extras: [], refusedExtras: [], managedPeople: [],
+  state: 'a', editable: 'all', reason: null, roleId: 13, extras: [], permissions: null, held: everything(), refusedExtras: [], managedPeople: [],
   projects: [{ id: 1, name: 'Project 1', client: 'Tallgrass', archived: false, isManager: false }],
   roles: [
-    { id: 11, key: 'administrator', name: 'Administrator', builtIn: true, grants: everything(), refusal: null },
-    { id: 12, key: 'manager', name: 'Manager', builtIn: true, grants: managerGrants(), refusal: null },
-    { id: 13, key: 'member', name: 'Member', builtIn: true, grants: {}, refusal: null },
+    { id: 11, key: 'administrator', name: 'Administrator', description: '', builtIn: true, grants: everything(), refusal: null },
+    { id: 12, key: 'manager', name: 'Project Manager', description: 'Manage their projects.', builtIn: true, grants: managerGrants(), refusal: null },
+    { id: 13, key: 'member', name: 'Member', description: 'Track time.', builtIn: true, grants: {}, refusal: null },
   ],
   people: [{ id: 4, name: 'Marcus', active: true }],
   ...more,
@@ -189,49 +189,103 @@ describe('the access of a person', () => {
     server.handlers['GET people/3/access'] = () => access()
   })
 
-  it('is given as a role with extras, which bring what they need, and projects to manage', async () => {
-    await open('/team/3', 'Priya')
-    await userEvent.selectOptions(await screen.findByLabelText('Role'), 'Manager')
-    const invoices = screen.getByRole('checkbox', { name: 'Create, edit, send, delete invoices' })
-    expect(invoices).not.toBeChecked()
-    await userEvent.click(invoices)
-    expect(screen.getByRole('checkbox', { name: 'Billable rates, billable amounts, fee budgets' })).toBeChecked()
+  const open3 = () => open('/team/3/permissions', 'Priya\u2019s permissions')
+  const radio = (name: string) => screen.getByRole('radio', { name })
+  const update = () => press('Update permissions')
+
+  it('is a profile, whose permissions are ticked by area; a tick brings what it needs', async () => {
+    await open3()
+    expect(await screen.findByRole('radio', { name: 'Member' })).toBeChecked()
+    expect(screen.getByRole('button', { name: 'Update permissions' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByText('6 of 50 enabled')).toBeInTheDocument()
+    await userEvent.click(radio('Project Manager'))
+    expect(screen.getByText('12 of 50 enabled')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /^Invoices/ }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Create, edit, send, delete invoices (only what they manage)' }))
     expect(screen.getByText(/Also switched on/)).toHaveTextContent('Billable rates')
-    await userEvent.click(screen.getByRole('switch', { name: 'Project 1 (Tallgrass)' }))
-    expect(screen.getByText('Manages these projects: Project 1.')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Expand all' }))
+    expect(screen.getByRole('checkbox', { name: 'Billable rates, billable amounts, fee budgets (only what they manage)' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Track their own time' })).toBeDisabled()
     server.handlers['PUT people/3/access'] = () => access({ state: 'b', roleId: 12, extras: ['billable.view', 'invoices.manage'] })
-    await press('Save access')
+    await update()
     await waitFor(() => expect(server.sent('PUT people/3/access')).toHaveLength(1))
+    // What the Manager role can give with extras is sent as these.
     expect(server.sent('PUT people/3/access')[0]?.body).toEqual({
-      roleId: 12, extras: ['billable.view', 'invoices.manage'], managedPersonIds: [], managedProjectIds: [1], state: 'a',
+      roleId: 12, extras: ['billable.view', 'invoices.manage'], permissions: null, managedPersonIds: [], managedProjectIds: [], state: 'a',
     })
   })
 
-  it('loses extras with the role only after a confirmation that names them', async () => {
-    server.handlers['GET people/3/access'] = () => access({ roleId: 12, extras: ['time.approve'] })
-    await open('/team/3', 'Priya')
-    await userEvent.selectOptions(await screen.findByLabelText('Role'), 'Member')
-    await press('Save access')
-    const box = within(await dialog())
-    expect(box.getByText('Approve, reject, withdraw approval of time and expenses')).toBeInTheDocument()
-    expect(server.sent('PUT people/3/access')).toEqual([])
-    server.handlers['PUT people/3/access'] = () => access({ state: 'b' })
-    await press('Remove and save', box)
-    await waitFor(() => expect(server.sent('PUT people/3/access')[0]?.body).toMatchObject({ roleId: 13, extras: [] }))
+  it('can be a list of their own, and goes back to the defaults of the profile', async () => {
+    await open3()
+    await userEvent.click(await screen.findByRole('button', { name: 'Time 1 of 6' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: "Others' time and expenses (everything)" }))
+    expect(screen.getByRole('checkbox', { name: "Others' time and expenses (only what they manage)" })).toBeChecked()
+    await press('Reset to Member defaults')
+    expect(screen.getByRole('checkbox', { name: "Others' time and expenses (everything)" })).not.toBeChecked()
+    await userEvent.click(screen.getByRole('checkbox', { name: "Others' time and expenses (everything)" }))
+    server.handlers['PUT people/3/access'] = () => access({ state: 'b', permissions: { 'time.view': 'all' } })
+    await update()
+    await waitFor(() => expect(server.sent('PUT people/3/access')[0]?.body).toMatchObject({ roleId: 13, extras: [], permissions: { 'time.view': 'all' } }))
+    expect(await screen.findByText('8 of 50 enabled')).toBeInTheDocument()
   })
 
-  it('is shown read-only with the reason when it may not be changed', async () => {
+  it('loses permissions only after a confirmation that names them', async () => {
+    server.handlers['GET people/3/access'] = () => access({ roleId: 12, extras: ['time.approve'] })
+    await open3()
+    await userEvent.click(await screen.findByRole('radio', { name: 'Member' }))
+    await update()
+    const box = within(await dialog())
+    expect(box.getByText('approve, reject and withdraw approval of time and expenses (managed)')).toBeInTheDocument()
+    expect(server.sent('PUT people/3/access')).toEqual([])
+    server.handlers['PUT people/3/access'] = () => access({ state: 'b' })
+    await press('Update permissions', box)
+    await waitFor(() => expect(server.sent('PUT people/3/access')[0]?.body).toMatchObject({ roleId: 13, extras: [], permissions: null }))
+  })
+
+  it('cannot be given what the editor does not hold, and is shown read-only when it may not be changed', async () => {
+    server.handlers['GET people/3/access'] = () => access({ held: { 'people.view': 'all', 'roles.manage': 'all' } })
+    await open3()
+    await userEvent.click(await screen.findByRole('button', { name: 'Expand all' }))
+    expect(screen.getByRole('checkbox', { name: 'Company settings and modules' })).toBeDisabled()
+    expect(screen.getByRole('checkbox', { name: 'Team list and person pages (no rates) (everything)' })).toBeEnabled()
+    cleanup()
     server.handlers['GET people/3/access'] = () => access({ editable: 'none', reason: 'You cannot change your own access.' })
-    await open('/team/3', 'Priya')
+    await open3()
     expect(await screen.findByText('You cannot change your own access.')).toBeInTheDocument()
-    expect(screen.getByLabelText('Role')).toBeDisabled()
-    expect(screen.queryByRole('button', { name: 'Save access' })).not.toBeInTheDocument()
+    expect(radio('Administrator')).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Update permissions' })).not.toBeInTheDocument()
+  })
+
+  it('deletes a custom profile where it is chosen', async () => {
+    const custom = { id: 20, key: null, name: 'Site member', description: '', builtIn: false, grants: {}, refusal: null }
+    server.handlers['GET people/3/access'] = () => access({ roles: [...access().roles, custom] })
+    server.handlers['GET roles/20'] = () => ({ ...custom, people: 0, invites: 0, version: 4 })
+    await open3()
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete the profile Site member' }))
+    const box = within(await screen.findByRole('dialog', { name: 'Delete Site member?' }))
+    server.handlers['POST roles/20/delete'] = () => ({ roles: [] })
+    server.handlers['GET people/3/access'] = () => access()
+    await press('Delete role', box)
+    await waitFor(() => expect(screen.queryByRole('radio', { name: 'Site member' })).not.toBeInTheDocument())
+    expect(server.sent('POST roles/20/delete')[0]?.body).toEqual({ version: 4, replacementId: null })
+  })
+
+  it('has managed people and projects on pages of their own, which keep the rest', async () => {
+    server.handlers['GET people/3/access'] = () => access({ roleId: 12, extras: ['time.approve'] })
+    await open('/team/3/projects', 'Priya\u2019s assigned projects')
+    await userEvent.click(await screen.findByRole('switch', { name: 'Project 1 (Tallgrass)' }))
+    server.handlers['PUT people/3/access'] = () => access({ state: 'b' })
+    await press('Save managed projects')
+    await waitFor(() => expect(server.sent('PUT people/3/access')[0]?.body).toEqual({ roleId: 12, extras: ['time.approve'], permissions: null, managedPersonIds: [], managedProjectIds: [1], state: 'a' }))
+    cleanup()
+    await open('/team/3/people', 'Priya\u2019s assigned people')
+    expect(await screen.findByRole('combobox', { name: 'Manages these people' })).toBeInTheDocument()
   })
 })
 
 const work: PersonWork = {
   version: 1, name: 'Priya', email: 'priya@jet.example', phone: null, kind: 'employee', weeklyCapacityMinutes: 2400, startedOn: null, notes: null, labels: [], status: 'active',
-  canManage: true, refusal: null, knownLabels: [], currency: 'USD', rates: [], mayEditRates: { billable: true, cost: true },
+  canManage: true, refusal: null, knownLabels: [], department: '', knownDepartments: [], currency: 'USD', rates: [], mayEditRates: { billable: true, cost: true },
 }
 
 describe('a person', () => {
@@ -251,7 +305,7 @@ describe('a person', () => {
   })
 
   it('is assigned; archived assignments are shown read-only', async () => {
-    await open('/team/3', 'Priya')
+    await open('/team/3/projects', 'Priya\u2019s assigned projects')
     expect(screen.getByRole('checkbox', { name: 'Old Quarry (archived)' })).toBeDisabled()
     expect(screen.getAllByText('Archived, stays assigned')).toHaveLength(2)
     await userEvent.click(screen.getByRole('checkbox', { name: 'All projects of Tallgrass' }))
@@ -263,7 +317,7 @@ describe('a person', () => {
   })
 
   it('loses a client only after a confirmation that names the projects', async () => {
-    await open('/team/3', 'Priya')
+    await open('/team/3/projects', 'Priya\u2019s assigned projects')
     await userEvent.click(screen.getByRole('checkbox', { name: 'Tallgrass' }))
     expect(screen.getByRole('checkbox', { name: 'Project 1' })).not.toBeChecked()
     await press('Save assignments')
@@ -278,7 +332,7 @@ describe('a person', () => {
   })
 
   it('keeps the choice when someone else changed it, and offers to reload', async () => {
-    await open('/team/3', 'Priya')
+    await open('/team/3/projects', 'Priya\u2019s assigned projects')
     await userEvent.click(screen.getByRole('checkbox', { name: 'Kestrel' }))
     server.handlers['PUT people/3/assignments'] = () => failure(409, 'stale', { message: 'Someone else changed this.' })
     await press('Save assignments')
@@ -290,7 +344,7 @@ describe('a person', () => {
 
   it('cannot be assigned unless active', async () => {
     server.handlers['GET people/3'] = () => details({ status: 'archived' })
-    await open('/team/3', 'Priya')
+    await open('/team/3/projects', 'Priya\u2019s assigned projects')
     expect(screen.getByText('Only active people can be assigned.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Save assignments' })).not.toBeInTheDocument()
   })

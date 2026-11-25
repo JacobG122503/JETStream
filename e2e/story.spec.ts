@@ -38,19 +38,18 @@ test('from an hour worked to a paid invoice, with three people and a client', as
   await expect(employeePage.getByText('Waiting for approval')).toBeVisible()
 
   // The project lead is told, looks at the details and approves.
-  await open(leadPage, 'approvals', 'Approvals')
+  await open(leadPage, 'approvals?status=submitted', 'Approvals')
   await expect(leadPage.getByRole('button', { name: /^Notifications, \d+ new/ }).first()).toBeVisible()
-  const week = leadPage.locator('.approval').filter({ hasText: 'Casey Test' }).last()
-  await week.getByRole('button', { name: /details of Casey Test/ }).click()
-  await expect(week.getByText(notes).first()).toBeVisible()
-  await week.getByRole('button', { name: 'Approve the week of Casey Test' }).click()
+  await leadPage.getByRole('button', { name: /details of Casey Test/ }).click()
+  await expect(leadPage.getByRole('table', { name: 'Time of Casey Test' }).getByText(notes).first()).toBeVisible()
+  await leadPage.getByRole('button', { name: 'Approve the week of Casey Test' }).click()
   await expect(leadPage.getByText('Approved Casey Test')).toBeVisible()
   // Invoices are not for the lead.
   await open(leadPage, 'invoices/new', 'New invoice')
   await expect(leadPage.getByRole('heading', { name: 'You do not have access to this page' })).toBeVisible()
 
   // Whoever does the billing approves the rest, if any, and invoices the client.
-  await open(adminPage, 'approvals', 'Approvals')
+  await open(adminPage, 'approvals?status=submitted', 'Approvals')
   const rest = adminPage.getByRole('button', { name: 'Approve the week of Casey Test' })
   if (await rest.count()) {
     await rest.last().click()

@@ -5,11 +5,14 @@ import { formatInstant } from '../../auth/timeZones'
 import { useLoad } from '../../auth/useLoad'
 import { Button, DatePicker, FilterBar, SearchField, Select, Table, type TableColumn } from '../../ui'
 import { downloadCsv } from '../../work/csv'
+import { Page } from '../../shell/Page'
+import { ReportsNav } from '../work/ReportsNav'
 import { SettingsLayout } from './SettingsLayout'
 
 const types = ['person', 'role', 'client', 'project', 'task', 'time', 'expense', 'submission', 'invoice', 'estimate', 'retainer', 'settings', 'time_off', 'assignment', 'import']
 
-export function ActivityPage() {
+/** In Settings, and among the reports. */
+export function ActivityPage({ report = false }: { report?: boolean }) {
   const { timeZone } = usePerson()
   const weekStart = useWeekStart()
   const [search, setSearch] = useState('')
@@ -25,16 +28,12 @@ export function ActivityPage() {
     { id: 'what', header: 'What', cell: ({ summary }) => summary, sortValue: ({ summary }) => summary },
     { id: 'type', header: 'About', cell: ({ type: about }) => about.replaceAll('_', ' '), sortValue: ({ type: about }) => about },
   ]
-  return (
-    <SettingsLayout
-      title="Activity log"
-      current="/settings/activity"
-      actions={
+  const actions = (
         <Button aria-disabled={rows.length === 0 || undefined} onClick={() => downloadCsv('activity', [['When', 'Who', 'What', 'About'], ...rows.map((row) => [row.at, row.actor ?? 'System', row.summary, row.type])])}>
           Export CSV
         </Button>
-      }
-    >
+  )
+  const content = (
       <div className="stack">
         <FilterBar label="Filter activity">
           <SearchField label="Search activity" hideLabel placeholder="Who or what" value={search} onChange={setSearch} />
@@ -56,6 +55,18 @@ export function ActivityPage() {
           empty={{ icon: 'inbox', title: 'Nothing found', description: 'Nothing like this was recorded.' }}
         />
       </div>
+  )
+  if (report) {
+    return (
+      <Page title="Activity log" actions={actions}>
+        <ReportsNav current="/reports/activity" />
+        {content}
+      </Page>
+    )
+  }
+  return (
+    <SettingsLayout title="Activity log" current="/settings/activity" actions={actions}>
+      {content}
     </SettingsLayout>
   )
 }

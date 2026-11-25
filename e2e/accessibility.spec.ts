@@ -167,8 +167,24 @@ async function* accountScreens(page: Page, appUrl: string) {
   yield 'link'
   await open(page, 'team', 'Team')
   await page.getByRole('link', { name: 'Casey Test' }).click()
-  await expect(pageTitle(page)).toHaveText('Casey Test')
+  await expect(pageTitle(page)).toHaveText('Casey\u2019s basic info')
   yield 'person'
+  await page.getByRole('link', { name: 'Permissions', exact: true }).click()
+  await page.getByRole('radio', { name: 'Project Manager' }).check()
+  await page.getByRole('button', { name: 'Expand all' }).click()
+  yield 'permissions'
+  await open(page, 'approvals', 'Approvals')
+  await page.getByRole('button', { name: 'Department' }).click()
+  yield 'approvals with a filter'
+  await page.keyboard.press('Escape')
+  await page.getByRole('checkbox', { name: 'Choose everyone' }).check()
+  yield 'approvals with people chosen'
+  await open(page, 'approvals?status=submitted&from=2026-11-14', 'Approvals')
+  await page.getByRole('button', { name: /^Show details of/ }).first().click()
+  yield 'approvals with details'
+  await open(page, 'reports/expenses?from=2026-07-18&to=2026-07-24', 'Detailed expense report')
+  await page.getByRole('combobox', { name: 'Teammates' }).click()
+  yield 'report filters'
   await open(page, 'account', 'Account')
   await accountButton(page).click()
   yield 'account menu'
@@ -223,7 +239,7 @@ for (const width of [320, 375, 1440]) {
         const small = await page.evaluate(() =>
           [...document.querySelectorAll<HTMLElement>('button, .btn, input, select')]
             .filter((element) => element.checkVisibility() && !element.closest('.sr-only') && !element.classList.contains('sr-only'))
-            .map((element) => (element.matches('[type="checkbox"]') ? (element.closest('label') ?? element) : element))
+            .map((element) => (element.matches('[type="checkbox"], [type="radio"]') ? (element.closest('label') ?? element) : element))
             .filter((element) => element.getBoundingClientRect().height < 43.99)
             .map((element) => `${element.tagName} ${element.textContent} ${element.getBoundingClientRect().height}`),
         )

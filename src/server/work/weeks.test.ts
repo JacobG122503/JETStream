@@ -6,7 +6,7 @@ import type { NotificationList } from '../../shared/notifications'
 import type { Approvals, CompanySettings, ExpenseOptions, ExpenseRow, TeamExpense, TimeOptions, TimeWeek } from '../../shared/work'
 import { createApp } from '../app'
 import type { Database } from '../db'
-import { expenses, files, people, submissions, timeEntries } from '../db/schema'
+import { approvalEvents, expenses, files, notifications, people, submissions, timeEntries } from '../db/schema'
 import { demoPassword } from '../demo/accounts'
 import { seedDemo } from '../demo'
 import { type Browser, signedIn, standInSender, testApp, testClock } from '../testing/apiClient'
@@ -93,14 +93,14 @@ describe('a week', () => {
   const submit = async (day: string) => {
     expect((await employee.post('/time', await entry(day))).status).toBe(201)
     expect((await employee.post('/time/submit', { date: day })).status).toBe(200)
-    const found = (await get<Approvals>(admin, '/approvals')).pending.find(({ person, from, to }) => person.id === employeeId && day >= from && day <= to)
+    const found = (await get<Approvals>(admin, `/approvals?from=${day}&to=${day}`)).pending.find(({ person, from, to }) => person.id === employeeId && day >= from && day <= to)
     expect(found).toBeDefined()
     return found?.submissionId ?? 0
   }
 
   it('is approved, which tells its owner and locks it, and can be opened again', async () => {
     const id = await submit(free)
-    expect(codeOf(await employee.get('/approvals'))).toEqual([403, 'forbidden'])
+    expect(codeOf(await employee.get(`/approvals?from=${free}&to=${free}`))).toEqual([403, 'forbidden'])
     expect(codeOf(await employee.post(`/approvals/${id}/approve`))).toEqual([403, 'forbidden'])
     expect((await admin.post(`/approvals/${id}/approve`)).status).toBe(200)
     expect(codeOf(await admin.post(`/approvals/${id}/approve`))).toEqual([409, 'already_handled'])
@@ -149,10 +149,83 @@ describe('a week', () => {
   })
 
   it('that is missing can be asked for', async () => {
-    const { missing } = await get<Approvals>(admin, '/approvals')
-    expect(missing.length).toBeGreaterThan(0)
+    const { people: team } = await get<Approvals>(admin, '/approvals?from=2026-11-14&to=2026-11-20')
+    expect(team.find(({ name }) => name === 'Dana Test')).toMatchObject({ missing: true, canSubmit: true, canRemind: true })
     expect((await admin.post('/approvals/remind', { personIds: [employeeId], date: '2026-11-14' })).body).toEqual({ reminded: 1 })
     expect(await unread(employee)).toContain('Please submit your week')
+  })
+})
+
+describe('a period of approvals', () => {
+  // The week before the demo's today.
+  const last = 'from=2026-11-14&to=2026-11-20'
+  const period = { from: '2026-11-14', to: '2026-11-20' }
+  const read = (client: Browser) => get<Approvals>(client, `/approvals?${last}`)
+  const idOf = (data: Approvals, name: string) => data.people.find((person) => person.name === name)?.id ?? 0
+
+  it('has the time and expenses of everyone one decides about, by status', async () => {
+    const data = await read(admin)
+    const entries = await database.db.select().from(timeEntries)
+    const mine = entries.filter(({ spentOn }) => spentOn >= period.from && spentOn <= period.to)
+    expect(data.lines.reduce((sum, { minutes }) => sum + minutes, 0)).toBe(mine.reduce((sum, { minutes }) => sum + minutes, 0))
+    const statusOf = (name: string) => [...new Set(data.lines.filter(({ personId }) => personId === idOf(data, name)).map(({ status }) => status))]
+    expect([statusOf('Dana Test'), statusOf('Owen Test'), statusOf('Marcus Test'), statusOf('Priya Test')]).toEqual([['open'], ['open'], ['submitted'], ['approved']])
+    expect(data.pending.map(({ person }) => person.name)).toEqual(['Marcus Test', 'Tomas Test'])
+    expect(data).toMatchObject({ canLock: true, canUnlock: true, reminder: { weekday: 5, minute: 1020 } })
+    expect(data.people.find(({ name }) => name === 'Dana Test')?.department).toBe('Field services')
+
+    const led = await read(lead)
+    expect(led.lines.length).toBeLessThan(data.lines.length)
+    expect(led.people.map(({ name }) => name)).not.toContain('Jordan Test')
+    expect(led).toMatchObject({ canLock: false, canUnlock: false })
+    expect((await get<Approvals>(admin, '/approvals?from=2026-10-01&to=2026-10-02')).elsewhere).toContainEqual({ ...period, count: 2 })
+    expect(codeOf(await admin.get('/approvals?from=2020-01-01&to=2026-01-01'))).toEqual([400, 'invalid_input'])
+  })
+
+  it('can be submitted for people, which tells them, only by those who decide about them', async () => {
+    const dana = idOf(await read(admin), 'Dana Test')
+    const body = { personIds: [dana], ...period }
+    expect(codeOf(await employee.post('/approvals/submit', body))).toEqual([403, 'forbidden'])
+    // Dana is on none of the lead's projects and is not managed by the lead.
+    expect(codeOf(await lead.post('/approvals/submit', body))).toEqual([404, 'not_found'])
+    messages.length = 0
+    expect((await admin.post('/approvals/submit', body)).body).toEqual({ submitted: 1, refused: [] })
+    expect((await admin.post('/approvals/submit', body)).body).toEqual({ submitted: 0, refused: [] })
+    const told = await database.db.select().from(notifications).where(and(eq(notifications.personId, dana), eq(notifications.kind, 'submitted_for')))
+    expect(told).toHaveLength(1)
+    const after = await read(admin)
+    expect(after.people.find(({ id }) => id === dana)).toMatchObject({ missing: false, canSubmit: false })
+    expect(after.pending.map(({ person }) => person.name)).toContain('Dana Test')
+    const [event] = await database.db.select({ actorId: approvalEvents.actorId }).from(approvalEvents).innerJoin(submissions, eq(submissions.id, approvalEvents.submissionId)).where(and(eq(submissions.personId, dana), eq(submissions.periodStart, period.from)))
+    expect(event?.actorId).toBe(idOf(after, 'Avery Test'))
+  })
+
+  it('is submitted once when two do it at the same time', async () => {
+    const owen = idOf(await read(admin), 'Owen Test')
+    const body = { personIds: [owen], ...period }
+    const answers = await Promise.all([admin.post('/approvals/submit', body), admin.post('/approvals/submit', body)])
+    expect(answers.map(({ body: answer }) => (answer as { submitted: number }).submitted).sort()).toEqual([0, 1])
+  })
+
+  it('is approved for several at once, and those that were decided meanwhile are left out', async () => {
+    const ids = (await read(admin)).pending.map(({ submissionId }) => submissionId)
+    expect(codeOf(await employee.post('/approvals/approve', { ids }))).toEqual([403, 'forbidden'])
+    expect((await admin.post(`/approvals/${ids[0]}/approve`)).status).toBe(200)
+    expect((await admin.post('/approvals/approve', { ids })).body).toEqual({ approved: ids.length - 1 })
+    expect((await read(admin)).pending).toEqual([])
+  })
+
+  it('is locked by a date, by those who may, and never unlocked by that', async () => {
+    const before = await get<CompanySettings>(admin, '/settings')
+    expect(codeOf(await lead.post('/approvals/lock', { through: '2026-08-31' }))[0]).toBe(403)
+    expect((await admin.post('/approvals/lock', { through: '2026-08-31' })).status).toBe(200)
+    expect(codeOf(await admin.post('/approvals/lock', { through: '2026-07-31' }))).toEqual([409, 'already_locked'])
+    expect(codeOf(await employee.post('/time', await entry('2026-08-05')))).toEqual([409, 'period_closed'])
+    expect((await read(admin)).lock).toEqual({ through: '2026-08-31', afterDays: null })
+    const { version, logoFileId: _logo, ...settings } = await get<CompanySettings>(admin, '/settings')
+    // Who had the settings open does not overwrite the lock.
+    expect(version).toBeGreaterThan(before.version)
+    await admin.put('/settings', { ...settings, lockedThrough: null, version })
   })
 })
 

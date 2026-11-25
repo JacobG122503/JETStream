@@ -1,5 +1,5 @@
 import { expect, settled, test } from './fixtures'
-import { allPages, desktop, dialog, expectNoSidewaysScroll, expectSameDocument, mainNav, markDocument, open, pageTitle, phone, sections } from './pages'
+import { allPages, desktop, dialog, expectHeading, expectNoSidewaysScroll, expectSameDocument, mainNav, markDocument, open, pageTitle, phone, sections } from './pages'
 
 test.use({ account: 'admin' })
 
@@ -169,10 +169,11 @@ test.describe('at 375px', () => {
 })
 
 test('every page can be opened and reloaded directly, styled, with every file found', async ({ page }) => {
+  test.slow()
   for (const [path, heading] of allPages) {
     await open(page, path, heading)
     await page.reload()
-    await expect(pageTitle(page)).toHaveText(heading)
+    await expectHeading(page, heading)
     await settled(page)
     await open(page, path, heading)
     await expect(page).toHaveTitle(`${heading} | JETStream`)

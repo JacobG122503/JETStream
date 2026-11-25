@@ -3,8 +3,8 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { projectRoot } from '../server/paths'
 import {
-  administratorOnly, type Catalogue, chooseExtra, chooseLevel, compareGrants, describePermission, everything, grantedKeys, type Grants,
-  managerExtras, managerGrants, missingFrom, permissionCatalogue, permissionOf, problemWith, problemWithExtras, reaches, readGrants,
+  administratorOnly, asManagerExtras, baseByArea, type Catalogue, chooseExtra, chooseLevel, compareGrants, countChoices, describePermission, everything, grantedKeys, type Grants,
+  managerExtras, managerGrants, missingFrom, permissionCatalogue, permissionOf, personGrants, problemWith, problemWithExtras, profileGrants, reaches, readGrants,
   roleGrants, writeGrants,
 } from './permissions'
 
@@ -78,7 +78,7 @@ describe('built-in roles', () => {
 
   it('a permission added later is held by administrators at once and by nobody else', () => {
     const list: Catalogue<string> = [
-      ...permissionCatalogue, { key: 'time.fly', area: 'Company', label: 'fly', allows: 'Fly', levels: ['managed', 'all'], needs: [], manager: 'no' },
+      ...permissionCatalogue, { key: 'time.fly', area: 'Account', label: 'fly', allows: 'Fly', levels: ['managed', 'all'], needs: [], manager: 'no' },
     ]
     expect(roleGrants(role('administrator'), [], list)).toMatchObject({ 'time.fly': 'all' })
     const custom = { key: null, builtIn: false, permissions: writeGrants(everything()) }
@@ -87,6 +87,49 @@ describe('built-in roles', () => {
     }
     // Once it is stored with a role, it counts there.
     expect(roleGrants({ ...custom, permissions: ['time.fly:managed'] }, [], list)).toEqual({ 'time.fly': 'managed' })
+  })
+})
+
+describe('profiles', () => {
+  it('are complete, and as their descriptions say', () => {
+    for (const [key, grants] of Object.entries(profileGrants)) {
+      expect(problemWith(grants), key).toBeNull()
+      expect(roleGrants({ key, builtIn: true, permissions: ['settings.manage:all'] })).toEqual(grants)
+      // Nobody but administrators gives permissions or changes settings.
+      for (const none of ['roles.manage', 'settings.manage', 'outbox.view', 'billable.edit', 'cost.edit'] as const) expect(grants).not.toHaveProperty([none])
+    }
+    for (const none of ['billable.view', 'cost.view', 'invoices.manage'] as const) expect(profileGrants.people_admin).not.toHaveProperty([none])
+    for (const none of ['people.view', 'people.manage', 'time.edit'] as const) expect(profileGrants.accounting).not.toHaveProperty([none])
+    expect(roleGrants({ key: 'constructor', builtIn: true, permissions: [] })).toEqual({})
+  })
+
+  it('give way to the list of one person, except for administrators', () => {
+    const manager = { key: 'manager', builtIn: true, permissions: [] }
+    expect(personGrants(manager, ['time.approve'], null)).toEqual(managerGrants(['time.approve']))
+    expect(personGrants(manager, ['time.approve'], ['time.view:all', 'old.key:all'])).toEqual({ 'time.view': 'all' })
+    expect(personGrants(manager, [], [])).toEqual({})
+    expect(personGrants({ key: 'administrator', builtIn: true, permissions: [] }, [], [])).toEqual(everything())
+  })
+
+  it('a list that the Manager role can give with extras is told as these', () => {
+    expect(asManagerExtras(managerGrants(['billable.view', 'time.approve']))).toEqual(['time.approve', 'billable.view'])
+    expect(asManagerExtras(managerGrants())).toEqual([])
+    expect(asManagerExtras({ ...managerGrants(), 'time.view': 'all' })).toBeNull()
+    expect(asManagerExtras({ 'time.view': 'managed' })).toBeNull()
+  })
+})
+
+describe('what can be ticked', () => {
+  it('is every permission at every level, and what everyone has', () => {
+    const { of } = countChoices({})
+    expect(of).toBe(permissionCatalogue.reduce((sum, { levels }) => sum + levels.length, 0) + Object.keys(baseByArea).length)
+    expect(countChoices({}).on).toBe(Object.keys(baseByArea).length)
+    expect(countChoices(everything())).toEqual({ on: of, of })
+  })
+
+  it('everything includes what they manage', () => {
+    expect(countChoices({ 'time.view': 'managed' }, ['Time'])).toEqual({ on: 2, of: 6 })
+    expect(countChoices({ 'time.view': 'all' }, ['Time'])).toEqual({ on: 3, of: 6 })
   })
 })
 

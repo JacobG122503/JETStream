@@ -15,7 +15,7 @@ it.each([
 it('writes hours, clocks and money', () => {
   expect([0, 5, 90, 375, 87_075].map(formatHours)).toEqual(['0.00', '0.08', '1.50', '6.25', '1,451.25'])
   expect(formatDay('2026-11-25')).toBe('Wednesday, 25 Nov')
-  expect([formatWeek('2026-11-21', '2026-11-27'), formatWeek('2026-11-28', '2026-12-04')]).toEqual(['21 to 27 Nov 2026', '28 Nov to 4 Dec 2026'])
+  expect([formatWeek('2026-11-21', '2026-11-27'), formatWeek('2026-11-28', '2026-12-04')]).toEqual(['21 – 27 Nov 2026', '28 Nov – 4 Dec 2026'])
   // No minute is lost between showing and saving.
   for (let minutes = 0; minutes <= 1440; minutes++) expect(parseHours(hoursInput(minutes))).toBe(minutes)
   expect([0, 59, 3729].map(formatClock)).toEqual(['0:00:00', '0:00:59', '1:02:09'])

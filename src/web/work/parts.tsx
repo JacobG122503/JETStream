@@ -1,7 +1,7 @@
 import type { ProjectRow } from '../../shared/work'
 import { Avatar, type ChartSeries, Meter } from '../ui'
 import { photoUrl } from '../shell/photo'
-import { formatHours, formatMoney, percentOf } from './format'
+import { formatHours, formatMoney, getFormats, percentOf } from './format'
 
 // eslint-disable-next-line react-refresh/only-export-components -- belongs to the charts of hours
 export const hourSeries: ChartSeries[] = [
@@ -32,16 +32,17 @@ export function BudgetBar({ project: { budget, currency } }: { project: Pick<Pro
 }
 
 /** Amounts in several currencies, the largest first and biggest. */
-export function Amounts({ amounts }: { amounts: readonly { currency: string; amount: number }[] }) {
+export function Amounts({ amounts, exact = false }: { amounts: readonly { currency: string; amount: number }[]; exact?: boolean }) {
   const sorted = [...amounts].sort((a, b) => b.amount - a.amount)
-  const [first = { currency: 'USD', amount: 0 }, ...rest] = sorted
+  const [first = { currency: getFormats().currency, amount: 0 }, ...rest] = sorted
+  const whole = !exact
   return (
     <>
-      {formatMoney(first.amount, first.currency, { whole: true })}
+      {formatMoney(first.amount, first.currency, { whole })}
       {rest.map(({ currency, amount }) => (
         <span key={currency} className="amount-more">
           {' '}
-          + {formatMoney(amount, currency, { whole: true })}
+          + {formatMoney(amount, currency, { whole })}
         </span>
       ))}
     </>

@@ -4,7 +4,7 @@ export const personStatuses = ['pending', 'active', 'archived'] as const
 export const personKinds = ['employee', 'contractor'] as const
 export const rateKinds = ['billable', 'cost'] as const
 
-export const builtInRoleKeys = ['administrator', 'manager', 'member'] as const
+export const builtInRoleKeys = ['administrator', 'manager', 'member', 'people_admin', 'accounting', 'executive'] as const
 
 export const projectTypes = ['time_materials', 'fixed_fee', 'non_billable'] as const
 export const rateMethods = ['project', 'task', 'person', 'none'] as const

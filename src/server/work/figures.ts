@@ -36,8 +36,8 @@ export interface Valued extends TimeRow {
   amount: number | null
 }
 
-/** Reads entries with what they are worth. */
-export async function loadValued(db: Db | Tx, condition: SQL | undefined): Promise<Valued[]> {
+/** Reads entries with what they are worth. With `fixedFee`, work for a fixed fee is worth what its rates say. */
+export async function loadValued(db: Db | Tx, condition: SQL | undefined, { fixedFee = false } = {}): Promise<Valued[]> {
   const rows = await selectTime(db).where(condition)
   if (rows.length === 0) return []
   const settings = await getSettings(db)
@@ -58,7 +58,7 @@ export async function loadValued(db: Db | Tx, condition: SQL | undefined): Promi
     const resolved = resolveBillableRate({
       date: row.spentOn,
       billable: row.billable,
-      project: { type: row.projectType, rateMethod: row.rateMethod, rate: row.projectRate, currency: row.currency },
+      project: { type: fixedFee && row.projectType === 'fixed_fee' ? 'time_materials' : row.projectType, rateMethod: row.rateMethod, rate: row.projectRate, currency: row.currency },
       task: { projectRate: row.taskRate, defaultRate: row.defaultRate },
       person: { projectRate: memberRates.get(`${row.projectId}/${row.personId}`) ?? null, rates: dated.get(row.personId) ?? [] },
       companyCurrency: settings.currency,

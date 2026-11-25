@@ -1,7 +1,7 @@
 /** Roles: the built-in ones to look at, the others to make and change. */
 import { and, asc, count, eq, gt, isNull, ne, sql } from 'drizzle-orm'
 import type { RoleDetails, RoleSummary } from '../../shared/api'
-import { builtInDescriptions, type BuiltInRole, type Grants, roleGrants, writeGrants } from '../../shared/permissions'
+import { builtInDescriptions, type BuiltInRole, builtInOrder, type Grants, roleGrants, writeGrants } from '../../shared/permissions'
 import { type Actor, actorId, type Holdings, isSystem, readPersonAccess, type RoleRow } from '../access/actor'
 import { requirePermission } from '../access/decisions'
 import { checkHoldings, holdersOf, lockAccess, lockForAccessChange, refuse, type Refusal } from '../access/grants'
@@ -19,11 +19,14 @@ const summaryOf = (role: RoleRow, holders: number): RoleSummary => ({
   id: role.id, key: role.key, builtIn: role.builtIn, name: role.name, description: descriptionOf(role), people: holders,
 })
 
+/** The built-in ones first, from the least to the most; the others stay as they are. */
+export const rankOf = ({ key, builtIn }: Pick<RoleRow, 'key' | 'builtIn'>): number => (builtIn ? builtInOrder.indexOf(key as BuiltInRole) : builtInOrder.length)
+
 export async function listRoles(db: Db, actor: Actor): Promise<RoleSummary[]> {
   requirePermission(actor, 'roles.manage', 'all')
   const rows = await db.select().from(roles).orderBy(asc(sql`not ${roles.builtIn}`), asc(sql`lower(${roles.name})`))
   const counts = await db.select({ roleId: people.roleId, holders: count() }).from(people).groupBy(people.roleId)
-  return rows.map((role) => summaryOf(role, counts.find(({ roleId }) => roleId === role.id)?.holders ?? 0))
+  return rows.map((role) => summaryOf(role, counts.find(({ roleId }) => roleId === role.id)?.holders ?? 0)).sort((a, b) => rankOf(a) - rankOf(b))
 }
 
 /** Invites that can still be used, or would be if their maker's access allowed it. */
@@ -54,13 +57,23 @@ async function checkRoleEdit(db: Db | Tx, editor: Actor, role: RoleRow): Promise
   return checkHoldings(editor, roleHoldings(role))
 }
 
+/** What each of them holds now, which may be a list of their own. */
+async function holdingsOfAll(tx: Tx, holders: readonly { id: number }[]): Promise<Map<number, Holdings>> {
+  const found = new Map<number, Holdings>()
+  for (const { id } of holders) {
+    const access = await readPersonAccess(tx, id)
+    if (access) found.set(id, access)
+  }
+  return found
+}
+
 export interface RoleInput {
   name: string
   description: string
   grants: Grants
 }
 
-const reserved = ['administrator', 'manager', 'member']
+const reserved = ['administrator', 'manager', 'project manager', 'member', 'people admin', 'accounting', 'executive manager']
 
 async function checkName(tx: Tx, name: string, exceptId = 0): Promise<void> {
   const same = await tx
@@ -103,8 +116,9 @@ export async function updateRole(
     await checkName(tx, name, id)
     const before = roleHoldings(role)
     const holders = await holdersOf(tx, id)
+    const held = await holdingsOfAll(tx, holders)
     await updateVersioned(tx, roles, id, version, { name, description, permissions: writeGrants(grants) })
-    await endLostLinks(tx, ctx.now(), new Map(holders.map((holder) => [holder.id, before])))
+    await endLostLinks(tx, ctx.now(), held)
     await logRoleActivity(tx, actor, {
       action: 'role_changed', roleId: id, summary: `Changed the role ${name}`,
       changes: {
@@ -141,8 +155,10 @@ export async function deleteRole(
     }
 
     const before = roleHoldings(role)
+    const held = await holdingsOfAll(tx, holders)
+    for (const holdings of held.values()) refuse(checkHoldings(editor, holdings))
     if (replacement) {
-      await tx.update(people).set({ roleId: replacement.id }).where(eq(people.roleId, id))
+      await tx.update(people).set({ roleId: replacement.id, permissions: null }).where(eq(people.roleId, id))
       await tx
         .update(invites)
         .set({ roleId: replacement.id })
@@ -151,7 +167,7 @@ export async function deleteRole(
     // Invites of the past only tell the name.
     await tx.update(invites).set({ roleId: null, roleName: role.name }).where(eq(invites.roleId, id))
     await tx.delete(roles).where(eq(roles.id, id))
-    await endLostLinks(tx, now, new Map(holders.map((holder) => [holder.id, before])))
+    await endLostLinks(tx, now, held)
     for (const holder of holders) {
       await logActivity(tx, {
         actorId: actorId(actor), action: 'access_changed', personId: holder.id, summary: `Changed the access of ${holder.name}`,

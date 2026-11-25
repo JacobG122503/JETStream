@@ -105,3 +105,269 @@
 .panel > .field:first-child {
   max-width: 26rem;
 }
+
+/* A person's pages */
+.person-back {
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--c-border);
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-sm);
+  color: var(--c-text);
+  font-weight: var(--weight-strong);
+  text-decoration: none;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.person-columns {
+  display: grid;
+  grid-template-columns: 16rem minmax(0, 1fr);
+  gap: var(--space-8);
+}
+
+.person-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-width: 0;
+  padding-right: var(--space-4);
+  border-right: 1px solid var(--c-border);
+}
+
+.person-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.person-card > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.person-email {
+  font-size: var(--text-sm);
+}
+
+.person-role {
+  display: inline-block;
+  padding: var(--space-0) var(--space-3);
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--radius-full);
+  color: var(--c-text-muted);
+  font-size: var(--text-sm);
+}
+
+.person-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.person-nav a {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-md);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--c-text-muted);
+  text-decoration: none;
+}
+
+.person-nav a:hover {
+  background: var(--c-surface-2);
+}
+
+.person-nav a[aria-current='page'] {
+  background: var(--c-accent-soft);
+  color: var(--c-text);
+  font-weight: var(--weight-strong);
+}
+
+.person-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+  max-width: 64rem;
+}
+
+.profiles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.profile-row {
+  display: grid;
+  grid-template-columns: 14rem minmax(0, 1fr);
+  gap: var(--space-4) var(--space-6);
+}
+
+.profile-row > div:last-child {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.profile-row > div:last-child > .btn {
+  align-self: flex-start;
+}
+
+.profile-row h2 {
+  font-size: var(--text-md);
+}
+
+.profile-title {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.profile-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.permission-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+  padding: var(--space-5);
+  border-radius: var(--radius-md);
+  background: var(--c-accent-soft);
+}
+
+.permission-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-4);
+}
+
+.permission-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.link-button {
+  min-height: var(--control-sm);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--c-on-accent-soft);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link-button.is-quiet {
+  color: var(--c-text-muted);
+}
+
+.link-button[aria-disabled='true'] {
+  text-decoration: none;
+  cursor: default;
+}
+
+.permission-areas {
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--c-surface);
+}
+
+.permission-area + .permission-area {
+  border-top: 1px solid var(--c-border);
+}
+
+.permission-area h3 button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--control-md);
+  padding: var(--space-2) var(--space-5);
+  border: 0;
+  background: transparent;
+  color: var(--c-text);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  text-align: start;
+  cursor: pointer;
+}
+
+.permission-area h3 button:hover {
+  background: var(--c-surface-2);
+}
+
+.permission-area h3 .icon,
+.permission-count {
+  color: var(--c-text-muted);
+}
+
+.permission-count {
+  margin-inline-start: auto;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-normal);
+}
+
+.permission-choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0 var(--space-5) var(--space-4) var(--space-12);
+}
+
+.profile-foot {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--z-raised);
+  /* The button is below the profiles. */
+  display: grid;
+  grid-template-columns: 14rem minmax(0, 1fr);
+  justify-items: start;
+  gap: var(--space-6);
+  padding: var(--space-4) 0;
+  border-top: 1px solid var(--c-border);
+  background: var(--c-bg);
+}
+
+@media (max-width: 899.98px) {
+  .person-columns,
+  .profile-foot,
+  .profile-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .person-side {
+    gap: var(--space-4);
+    padding: 0 0 var(--space-3);
+    border-right: 0;
+    border-bottom: 1px solid var(--c-border);
+  }
+
+  .person-nav {
+    flex-flow: row wrap;
+  }
+
+}
+
+.profile-foot .btn {
+  grid-column: -2;
+}

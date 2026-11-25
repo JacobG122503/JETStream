@@ -77,7 +77,7 @@ export async function approveRequest(
     const role = await requireRole(tx, input.roleId)
     refuse(checkNewRole(decider, role))
     const chosen = await checkAssignments(tx, input)
-    await tx.update(people).set({ status: 'active', roleId: role.id }).where(eq(people.id, personId))
+    await tx.update(people).set({ status: 'active', roleId: role.id, permissions: null }).where(eq(people.id, personId))
     await tx.delete(personExtras).where(eq(personExtras.personId, personId))
     const target = await readPersonAccess(tx, personId)
     if (!target) throw alreadyHandled()

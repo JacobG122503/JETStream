@@ -3,12 +3,16 @@
  * (src/server/access), the web app shows. docs/permissions.md explains the rules in words, and a
  * test compares it with this file.
  */
+import type { builtInRoleKeys } from './domain'
 
 /** `managed`: for the projects and people someone manages. `all`: for everything. */
 export const permissionLevels = ['managed', 'all'] as const
 export type Level = (typeof permissionLevels)[number]
 
-export const permissionAreas = ['People', 'Clients and projects', 'Time and expenses', 'Rates and costs', 'Billing', 'Schedule and time off', 'Company'] as const
+/** In the order in which they are shown. */
+export const permissionAreas = [
+  'Time', 'Expenses', 'Projects', 'Clients & Tasks', 'People', 'Rates', 'Invoices', 'Estimates', 'Reports', 'Approvals', 'Schedule & Time Off', 'Account',
+] as const
 export type PermissionArea = (typeof permissionAreas)[number]
 
 export interface Permission<K extends string = string> {
@@ -33,31 +37,31 @@ const catalogue = [
   { key: 'people.view', area: 'People', label: 'see the team list and person pages', allows: 'Team list and person pages (no rates)', levels: both, needs: [], manager: 'yes' },
   { key: 'people.manage', area: 'People', label: 'add, invite, edit and archive people, and assign them to clients and projects', allows: 'Add, invite, edit, archive people; requests, invites, reset links, sign-up switch; client and project assignment', levels: companyWide, needs: ['people.view'], manager: 'no' },
   { key: 'roles.manage', area: 'People', label: 'give roles and extras, and choose who manages what', allows: 'Roles, extras, managed people and projects (grant rule)', levels: companyWide, needs: ['people.view'], manager: 'no' },
-  { key: 'clients.view', area: 'Clients and projects', label: 'see client pages and contacts', allows: 'Client pages and contacts (no amounts)', levels: both, needs: [], manager: 'yes' },
-  { key: 'clients.manage', area: 'Clients and projects', label: 'create, edit and archive clients and contacts', allows: 'Create, edit, archive clients and contacts', levels: companyWide, needs: ['clients.view'], manager: 'no' },
-  { key: 'projects.view', area: 'Clients and projects', label: 'see project pages', allows: 'Project pages (no amounts)', levels: both, needs: [], manager: 'yes' },
-  { key: 'projects.edit', area: 'Clients and projects', label: 'edit, archive and delete projects, with their team, tasks and hour budgets', allows: 'Edit, archive, delete projects; team, tasks, hour budgets', levels: both, needs: ['projects.view'], manager: 'yes' },
-  { key: 'projects.create', area: 'Clients and projects', label: 'create projects and manage them', allows: 'Create projects (creator becomes its manager) for any active client, shown by name only, or a new client with name and currency', levels: companyWide, needs: [], manager: 'extra' },
-  { key: 'tasks.manage', area: 'Clients and projects', label: 'manage the task library and expense categories', allows: 'Task library and expense categories', levels: companyWide, needs: [], manager: 'no' },
-  { key: 'time.view', area: 'Time and expenses', label: "see others' time and expenses", allows: "Others' time and expenses", levels: both, needs: [], manager: 'yes' },
-  { key: 'time.edit', area: 'Time and expenses', label: "enter, edit and delete others' time and expenses", allows: "Enter, edit, delete others' time and expenses", levels: both, needs: ['time.view'], manager: 'extra' },
-  { key: 'time.approve', area: 'Time and expenses', label: 'approve, reject and withdraw approval of time and expenses', allows: 'Approve, reject, withdraw approval of time and expenses', levels: both, needs: ['time.view'], manager: 'extra' },
-  { key: 'time.unlock', area: 'Time and expenses', label: 'unlock locked periods and entries', allows: 'Unlock locked periods and entries', levels: companyWide, needs: ['time.view'], manager: 'no' },
-  { key: 'expenses.reimburse', area: 'Time and expenses', label: 'record reimbursement of expenses', allows: 'Record reimbursement', levels: companyWide, needs: ['time.view'], manager: 'no' },
-  { key: 'billable.view', area: 'Rates and costs', label: 'see billable rates, billable amounts and fee budgets', allows: 'Billable rates, billable amounts, fee budgets', levels: both, needs: [], manager: 'extra' },
-  { key: 'billable.edit', area: 'Rates and costs', label: 'edit billable rates and fee budgets', allows: 'Edit billable rates and fee budgets', levels: both, needs: ['billable.view'], manager: 'extra' },
-  { key: 'cost.view', area: 'Rates and costs', label: 'see cost rates, costs and margins', allows: 'Cost rates, costs, margins', levels: both, needs: [], manager: 'extra' },
-  { key: 'cost.edit', area: 'Rates and costs', label: 'edit cost rates', allows: 'Edit cost rates', levels: companyWide, needs: ['cost.view'], manager: 'no' },
-  { key: 'invoices.manage', area: 'Billing', label: 'create, edit, send and delete invoices', allows: 'Create, edit, send, delete invoices', levels: both, needs: ['billable.view', 'time.view', 'clients.view'], manager: 'extra' },
-  { key: 'payments.manage', area: 'Billing', label: 'record payments, refunds, write-offs and retainers', allows: 'Record payments, refunds, write-offs, retainers', levels: both, needs: ['invoices.manage'], manager: 'extra' },
-  { key: 'estimates.manage', area: 'Billing', label: 'create, edit, send and convert estimates', allows: 'Create, edit, send, convert estimates', levels: both, needs: ['billable.view', 'clients.view'], manager: 'extra' },
-  { key: 'schedule.view', area: 'Schedule and time off', label: "see others' schedule", allows: "Others' schedule", levels: both, needs: [], manager: 'yes' },
-  { key: 'schedule.edit', area: 'Schedule and time off', label: "plan others' schedule", allows: "Plan others' schedule", levels: both, needs: ['schedule.view'], manager: 'extra' },
-  { key: 'timeoff.approve', area: 'Schedule and time off', label: 'decide time-off requests', allows: 'Decide time-off requests', levels: both, needs: ['people.view'], manager: 'extra' },
-  { key: 'timeoff.manage', area: 'Schedule and time off', label: 'manage time-off policies, balances, holidays and work schedules', allows: 'Policies, balances, holidays, work schedules', levels: companyWide, needs: ['people.view'], manager: 'no' },
-  { key: 'settings.manage', area: 'Company', label: 'change company settings and modules', allows: 'Company settings and modules', levels: companyWide, needs: [], manager: 'no' },
-  { key: 'activity.view', area: 'Company', label: 'see the activity log', allows: 'Activity log', levels: companyWide, needs: [], manager: 'no' },
-  { key: 'outbox.view', area: 'Company', label: 'see the Outbox and message templates', allows: 'Outbox and message templates', levels: companyWide, needs: [], manager: 'no' },
+  { key: 'clients.view', area: 'Clients & Tasks', label: 'see client pages and contacts', allows: 'Client pages and contacts (no amounts)', levels: both, needs: [], manager: 'yes' },
+  { key: 'clients.manage', area: 'Clients & Tasks', label: 'create, edit and archive clients and contacts', allows: 'Create, edit, archive clients and contacts', levels: companyWide, needs: ['clients.view'], manager: 'no' },
+  { key: 'projects.view', area: 'Projects', label: 'see project pages', allows: 'Project pages (no amounts)', levels: both, needs: [], manager: 'yes' },
+  { key: 'projects.edit', area: 'Projects', label: 'edit, archive and delete projects, with their team, tasks and hour budgets', allows: 'Edit, archive, delete projects; team, tasks, hour budgets', levels: both, needs: ['projects.view'], manager: 'yes' },
+  { key: 'projects.create', area: 'Projects', label: 'create projects and manage them', allows: 'Create projects (creator becomes its manager) for any active client, shown by name only, or a new client with name and currency', levels: companyWide, needs: [], manager: 'extra' },
+  { key: 'tasks.manage', area: 'Clients & Tasks', label: 'manage the task library and expense categories', allows: 'Task library and expense categories', levels: companyWide, needs: [], manager: 'no' },
+  { key: 'time.view', area: 'Time', label: "see others' time and expenses", allows: "Others' time and expenses", levels: both, needs: [], manager: 'yes' },
+  { key: 'time.edit', area: 'Time', label: "enter, edit and delete others' time and expenses", allows: "Enter, edit, delete others' time and expenses", levels: both, needs: ['time.view'], manager: 'extra' },
+  { key: 'time.approve', area: 'Approvals', label: 'approve, reject and withdraw approval of time and expenses', allows: 'Approve, reject, withdraw approval of time and expenses', levels: both, needs: ['time.view'], manager: 'extra' },
+  { key: 'time.unlock', area: 'Time', label: 'unlock locked periods and entries', allows: 'Unlock locked periods and entries', levels: companyWide, needs: ['time.view'], manager: 'no' },
+  { key: 'expenses.reimburse', area: 'Expenses', label: 'record reimbursement of expenses', allows: 'Record reimbursement', levels: companyWide, needs: ['time.view'], manager: 'no' },
+  { key: 'billable.view', area: 'Rates', label: 'see billable rates, billable amounts and fee budgets', allows: 'Billable rates, billable amounts, fee budgets', levels: both, needs: [], manager: 'extra' },
+  { key: 'billable.edit', area: 'Rates', label: 'edit billable rates and fee budgets', allows: 'Edit billable rates and fee budgets', levels: both, needs: ['billable.view'], manager: 'extra' },
+  { key: 'cost.view', area: 'Rates', label: 'see cost rates, costs and margins', allows: 'Cost rates, costs, margins', levels: both, needs: [], manager: 'extra' },
+  { key: 'cost.edit', area: 'Rates', label: 'edit cost rates', allows: 'Edit cost rates', levels: companyWide, needs: ['cost.view'], manager: 'no' },
+  { key: 'invoices.manage', area: 'Invoices', label: 'create, edit, send and delete invoices', allows: 'Create, edit, send, delete invoices', levels: both, needs: ['billable.view', 'time.view', 'clients.view'], manager: 'extra' },
+  { key: 'payments.manage', area: 'Invoices', label: 'record payments, refunds, write-offs and retainers', allows: 'Record payments, refunds, write-offs, retainers', levels: both, needs: ['invoices.manage'], manager: 'extra' },
+  { key: 'estimates.manage', area: 'Estimates', label: 'create, edit, send and convert estimates', allows: 'Create, edit, send, convert estimates', levels: both, needs: ['billable.view', 'clients.view'], manager: 'extra' },
+  { key: 'schedule.view', area: 'Schedule & Time Off', label: "see others' schedule", allows: "Others' schedule", levels: both, needs: [], manager: 'yes' },
+  { key: 'schedule.edit', area: 'Schedule & Time Off', label: "plan others' schedule", allows: "Plan others' schedule", levels: both, needs: ['schedule.view'], manager: 'extra' },
+  { key: 'timeoff.approve', area: 'Schedule & Time Off', label: 'decide time-off requests', allows: 'Decide time-off requests', levels: both, needs: ['people.view'], manager: 'extra' },
+  { key: 'timeoff.manage', area: 'Schedule & Time Off', label: 'manage time-off policies, balances, holidays and work schedules', allows: 'Policies, balances, holidays, work schedules', levels: companyWide, needs: ['people.view'], manager: 'no' },
+  { key: 'settings.manage', area: 'Account', label: 'change company settings and modules', allows: 'Company settings and modules', levels: companyWide, needs: [], manager: 'no' },
+  { key: 'activity.view', area: 'Reports', label: 'see the activity log', allows: 'Activity log', levels: companyWide, needs: [], manager: 'no' },
+  { key: 'outbox.view', area: 'Account', label: 'see the Outbox and message templates', allows: 'Outbox and message templates', levels: companyWide, needs: [], manager: 'no' },
 ] as const
 
 export type PermissionKey = (typeof catalogue)[number]['key']
@@ -108,13 +112,19 @@ export function missingFrom(have: Grants, wanted: Grants): PermissionKey[] {
 
 // Built-in roles -----------------------------------------------------------------------------------
 
-export type BuiltInRole = 'administrator' | 'manager' | 'member'
+export type BuiltInRole = (typeof builtInRoleKeys)[number]
 
 export const builtInDescriptions: Record<BuiltInRole, string> = {
-  administrator: 'Can do everything, including what no permission gives.',
-  manager: 'Leads the projects and people assigned to them, with extras switched on for each person.',
-  member: 'Works on their own time, expenses and projects.',
+  member: 'Track time and expenses on assigned projects.',
+  manager: 'Manage their projects. View time and expenses for their team. No access to rates, invoices, approvals or account settings unless switched on for the person.',
+  people_admin: 'Manage people, and all time entries and expenses across the account. No access to rates, invoices, or account settings.',
+  accounting: 'Manage invoices, payments, estimates and clients, and pay expenses back. View rates and reports. No access to people or account settings.',
+  executive: 'Manage time, expenses, projects, people, invoices, and reports. View rates. No access to permissions or account settings.',
+  administrator: 'Full access to account settings, billing, and all permissions.',
 }
+
+/** In the order in which they are offered. */
+export const builtInOrder: readonly BuiltInRole[] = ['member', 'manager', 'people_admin', 'accounting', 'executive', 'administrator']
 
 /** Everything. Always from the catalogue, so that new permissions are included. */
 export function everything<K extends string = PermissionKey>(list: Catalogue<K> = permissionCatalogue as never): Grants<K> {
@@ -123,6 +133,24 @@ export function everything<K extends string = PermissionKey>(list: Catalogue<K> 
 
 /** What can be switched on for one person with the built-in Manager role. */
 export const managerExtras: readonly PermissionKey[] = permissionCatalogue.filter(({ manager }) => manager === 'extra').map(({ key }) => key)
+
+/** What the built-in roles between Manager and Administrator give: exactly this, also when there are new permissions. */
+export const profileGrants = {
+  people_admin: {
+    'people.view': 'all', 'people.manage': 'all', 'projects.view': 'all', 'clients.view': 'all', 'time.view': 'all', 'time.edit': 'all', 'time.approve': 'all',
+    'time.unlock': 'all', 'schedule.view': 'all', 'schedule.edit': 'all', 'timeoff.approve': 'all', 'timeoff.manage': 'all',
+  },
+  accounting: {
+    'clients.view': 'all', 'clients.manage': 'all', 'projects.view': 'all', 'time.view': 'all', 'expenses.reimburse': 'all', 'billable.view': 'all', 'cost.view': 'all',
+    'invoices.manage': 'all', 'payments.manage': 'all', 'estimates.manage': 'all',
+  },
+  executive: {
+    'people.view': 'all', 'people.manage': 'all', 'clients.view': 'all', 'clients.manage': 'all', 'projects.view': 'all', 'projects.edit': 'all', 'projects.create': 'all',
+    'tasks.manage': 'all', 'time.view': 'all', 'time.edit': 'all', 'time.approve': 'all', 'time.unlock': 'all', 'expenses.reimburse': 'all', 'billable.view': 'all', 'cost.view': 'all',
+    'invoices.manage': 'all', 'payments.manage': 'all', 'estimates.manage': 'all', 'schedule.view': 'all', 'schedule.edit': 'all', 'timeoff.approve': 'all', 'timeoff.manage': 'all',
+    'activity.view': 'all',
+  },
+} as const satisfies Partial<Record<BuiltInRole, Grants>>
 
 const isManagerExtra = (key: string): key is PermissionKey => managerExtras.some((extra) => extra === key)
 
@@ -145,8 +173,25 @@ export function roleGrants<K extends string = PermissionKey>(
 ): Grants<K> {
   if (!role.builtIn) return readGrants(role.permissions, list)
   if (role.key === 'administrator') return everything(list)
-  return (role.key === 'manager' ? managerGrants(extras) : {}) as Grants<K>
+  if (role.key === 'manager') return managerGrants(extras) as Grants<K>
+  return (Object.hasOwn(profileGrants, role.key ?? '') ? profileGrants[role.key as keyof typeof profileGrants] : {}) as Grants<K>
 }
+
+/**
+ * What someone holds: their own list where one was made for them, and otherwise what their role gives.
+ * Administrators hold everything, whatever is stored.
+ */
+export function personGrants(role: RoleLike, extras: readonly string[], own: unknown): Grants {
+  return own === null || own === undefined || isAdministratorRole(role) ? roleGrants(role, extras) : readGrants(own)
+}
+
+/** The extras that give exactly this list with the built-in Manager role, or null. */
+export function asManagerExtras(grants: Grants): PermissionKey[] | null {
+  const extras = managerExtras.filter((key) => grants[key] !== undefined)
+  return sameGrants(managerGrants(extras), grants) ? extras : null
+}
+
+export const sameGrants = (a: Grants, b: Grants): boolean => permissionCatalogue.every(({ key }) => a[key] === b[key])
 
 export const isAdministratorRole = ({ key, builtIn }: Pick<RoleLike, 'key' | 'builtIn'>): boolean => builtIn && key === 'administrator'
 
@@ -260,6 +305,38 @@ export function chooseExtra(extras: readonly PermissionKey[], key: PermissionKey
 // Words --------------------------------------------------------------------------------------------
 
 /** What every active person can do, whatever their role. */
+/** The same by area, to be shown among the permissions. */
+export const baseByArea: Partial<Record<PermissionArea, string>> = {
+  Time: 'Track their own time',
+  Expenses: 'Track their own expenses',
+  Projects: 'See the projects they are on',
+  Reports: 'See their own hours in reports',
+  'Schedule & Time Off': 'See their own schedule and time off',
+  Account: 'Manage their own account',
+}
+
+/** One thing to tick: a permission at a level. */
+export interface PermissionChoice {
+  key: PermissionKey
+  level: Level
+  label: string
+}
+
+/** Everything that can be ticked in an area. */
+export const choicesOf = (area: PermissionArea): PermissionChoice[] =>
+  permissionCatalogue
+    .filter((permission) => permission.area === area)
+    .flatMap(({ key, allows, levels }) =>
+      levels.map((level) => ({ key, level, label: levels.length === 1 ? allows : `${allows} (${level === 'all' ? 'everything' : 'only what they manage'})` })),
+    )
+
+/** How many of an area, or of all, are ticked. What everyone has counts too. */
+export function countChoices(grants: Grants, areas: readonly PermissionArea[] = permissionAreas): { on: number; of: number } {
+  const choices = areas.flatMap(choicesOf)
+  const base = areas.filter((area) => baseByArea[area] !== undefined).length
+  return { on: base + choices.filter(({ key, level }) => reaches(grants[key], level)).length, of: base + choices.length }
+}
+
 export const baseAccess =
   'their own account, time, expenses, time off and schedule, their own hours in reports, and the projects they are on'
 

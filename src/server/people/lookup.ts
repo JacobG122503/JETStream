@@ -1,4 +1,5 @@
 import { eq, sql } from 'drizzle-orm'
+import type { BuiltInRole } from '../../shared/permissions'
 import { administratorsWithPassword } from '../access/grants'
 import type { Db, Tx } from '../db'
 import { companySettings, people, personCredentials, roles } from '../db/schema'
@@ -47,7 +48,7 @@ export async function getSettings(db: Db | Tx) {
   return settings
 }
 
-export async function builtInRole(db: Db | Tx, key: 'administrator' | 'manager' | 'member') {
+export async function builtInRole(db: Db | Tx, key: BuiltInRole) {
   const [role] = await db.select().from(roles).where(eq(roles.key, key))
   if (!role) throw new Error(`The built-in role ${key} is missing`)
   return role

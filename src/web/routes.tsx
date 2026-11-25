@@ -27,6 +27,7 @@ import { StatementPage } from './pages/work/StatementPage'
 import { ExportPage } from './pages/settings/ExportPage'
 import { OutboxPage } from './pages/settings/OutboxPage'
 import { BudgetReportPage, DetailedTimePage, ExpenseReportPage, InvoiceReportPage, PaymentReportPage, UninvoicedReportPage } from './pages/work/ReportPages'
+import { ContractorPage, ProfitabilityPage, SavedReportsPage } from './pages/work/MoreReportPages'
 import { ActivityPage } from './pages/settings/ActivityPage'
 import { CompanyPage } from './pages/settings/CompanyPage'
 import { ProjectEditPage } from './pages/work/ProjectEditPage'
@@ -85,7 +86,7 @@ export const routes: RouteObject[] = [
         element: <RequireActive><SignedInShell /></RequireActive>,
         children: [
           ...navItems.map((item) => ({ path: item.path, element: sectionPage(item) })),
-          { path: '/team/:id', element: <Needs any={['people.view']} title="Person"><PersonPage /></Needs> },
+          { path: '/team/:id/:section?', element: <Needs any={['people.view']} title="Person"><PersonPage /></Needs> },
           { path: '/projects/:id', element: <ProjectPage /> },
           { path: '/projects/:id/edit', element: <ProjectEditPage /> },
           { path: '/settings/company', element: <Needs any={['settings.manage']} title="Company settings"><CompanyPage /></Needs> },
@@ -96,6 +97,10 @@ export const routes: RouteObject[] = [
           { path: '/settings/export', element: <Needs any={['settings.manage']} title="Export"><ExportPage /></Needs> },
           { path: '/reports/detailed', element: <DetailedTimePage /> },
           { path: '/reports/expenses', element: <ExpenseReportPage /> },
+          { path: '/reports/profitability', element: <Needs any={['cost.view']} title="Profitability"><ProfitabilityPage /></Needs> },
+          { path: '/reports/contractors', element: <Needs any={['time.view']} title="Contractor report"><ContractorPage /></Needs> },
+          { path: '/reports/activity', element: <Needs any={['activity.view']} title="Activity log"><ActivityPage report /></Needs> },
+          { path: '/reports/saved', element: <SavedReportsPage /> },
           { path: '/reports/budgets', element: <BudgetReportPage /> },
           { path: '/reports/uninvoiced', element: <Needs any={['invoices.manage']} title="Uninvoiced"><UninvoicedReportPage /></Needs> },
           { path: '/reports/invoices', element: <Needs any={['invoices.manage']} title="Invoices report"><InvoiceReportPage /></Needs> },

@@ -18,10 +18,15 @@ Some permissions have no managed level. They are for the whole company and shown
 They cannot be changed, renamed or deleted.
 
 - **Administrator** holds every permission there is or will be, and can do what no permission gives (below).
-- **Manager** holds the permissions marked "yes" in the table, at managed. Those marked "extra" can be switched on for one person, at managed, or company-wide where there is no managed level. Nothing is switched on by default, and only people with this role have extras.
+- **People Admin**, **Accounting** and **Executive Manager** hold a fixed list (`profileGrants` in the code). New permissions are not added to them by themselves.
+- **Manager**, shown as Project Manager, holds the permissions marked "yes" in the table, at managed. Those marked "extra" can be switched on for one person, at managed, or company-wide where there is no managed level. Nothing is switched on by default, and only people with this role have extras.
 - **Member** has base access only.
 
-Custom roles are made from the table by people with `roles.manage`. They carry all their permissions themselves.
+Custom roles are made from the table by people with `roles.manage`. They carry all their permissions themselves. On a person's Permissions page roles are called profiles.
+
+### A list of one person
+
+On the Permissions page, the permissions of the chosen profile can be changed for that person alone. The list then counts in place of what the role and extras give (`people.permissions`). Administrators cannot have one. It ends whenever the person gets another role: by a change of access, an accepted invite, an approved request, or because the role was deleted. Later changes of the role do not reach people with a list of their own. The grant and outranking rules go by what someone really holds, so by the list. A list that the Manager role can give with extras is stored as extras.
 
 ### What managing means
 
@@ -88,7 +93,7 @@ Keys are stored and never change. "Needs" are held at the same level or a higher
 
 ## Nobody raises their own access
 
-- **Grant rule.** Someone's access is their role, extras, managed people and manager flags. Changing it needs `roles.manage`; it is never one's own; and whoever changes it must hold every permission the other person has before and would have after, at the same or a higher level. To add or take away a managed project or person, they must also hold each of the other person's managed permissions for it. The content of a custom role follows the same rule, whether anyone holds the role or not, and nobody edits a role they hold. One exception: an Administrator may set their own manager flag, which gives them nothing.
+- **Grant rule.** Someone's access is their role, extras, own list, managed people and manager flags. Changing it needs `roles.manage`; it is never one's own; and whoever changes it must hold every permission the other person has before and would have after, at the same or a higher level. To add or take away a managed project or person, they must also hold each of the other person's managed permissions for it. The content of a custom role follows the same rule, whether anyone holds the role or not, and nobody edits a role they hold. One exception: an Administrator may set their own manager flag, which gives them nothing.
 - **Outranking rule.** Acting on a person's account (reset link, invite for someone who is already there, and later email, archive, delete and two-factor reset) needs `people.manage` and every permission that person has. Only an Administrator outranks an Administrator.
 - **Links** (invites and reset links) are judged when made and again when used, by what their maker may do at that time. A link whose maker lost the access to make it ends for good. A new link can always be made by someone who may.
 - **Coming back to a project** restores the manager flag only if whoever assigns the person could set it now. Assigning oneself never restores it, except for Administrators.

@@ -164,7 +164,7 @@ describe('the session status', () => {
     expect(anonymous.body).toMatchObject({ person: null, csrfToken: null, demoAccounts: [], company: { timeZone: 'America/Chicago' } })
     const client = await signedIn(app, person.email)
     expect((await client.get('/session')).body).toMatchObject({
-      person: { name: 'Sam Rivera', role: { name: 'Manager' }, administrator: false, status: 'active', timeZone: 'America/Chicago' },
+      person: { name: 'Sam Rivera', role: { name: 'Project Manager' }, administrator: false, status: 'active', timeZone: 'America/Chicago' },
     })
     const stale = browser(app)
     stale.cookie = `jetstream_session=${'x'.repeat(43)}`

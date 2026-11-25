@@ -40,10 +40,14 @@ export const people = pgTable(
     email: text('email').notNull(),
     phone: text('phone'),
     status: text('status', { enum: personStatuses }).notNull(),
+    /** Such as Engineering; empty without one. */
+    department: text('department').notNull().default(''),
     kind: text('kind', { enum: personKinds }).notNull().default('employee'),
     roleId: integer('role_id')
       .notNull()
       .references(() => roles.id),
+    /** `key:level`, in place of what the role gives; null for what the role gives. Ends when the role changes. */
+    permissions: jsonb('permissions').$type<string[]>(),
     weeklyCapacityMinutes: minutes('weekly_capacity_minutes').notNull().default(2400),
     /** IANA name; null means the company time zone. */
     timeZone: text('time_zone'),
@@ -59,6 +63,7 @@ export const people = pgTable(
     uniqueIgnoringCase(t.email),
     oneOf(t.status, personStatuses),
     oneOf(t.kind, personKinds),
+    rule(t.permissions, 'permissions_list', sql`${t.permissions} is null or jsonb_typeof(${t.permissions}) = 'array'`),
     rule(t.weeklyCapacityMinutes, 'weekly_capacity_range', sql`${t.weeklyCapacityMinutes} between 0 and 10080`),
     rule(t.archivedOn, 'archived_on_only_if_archived', sql`${t.archivedOn} is null or ${t.status} = 'archived'`),
     ...indexes(t.roleId, t.photoFileId),

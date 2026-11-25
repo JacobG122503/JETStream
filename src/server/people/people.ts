@@ -11,6 +11,7 @@ import type { Db } from '../db'
 import { people, personCredentials, roles } from '../db/schema'
 import { NotFoundError } from '../errors'
 import { readAssignments } from './assignments'
+import { rankOf } from './roles'
 import { openInviteEmails } from './invites'
 import { getSettings } from './lookup'
 
@@ -64,7 +65,7 @@ export async function readOptions(db: Db, actor: Actor): Promise<PeopleOptions> 
   requirePermission(actor, 'people.manage')
   const rows = await db.select().from(roles).orderBy(asc(sql`not ${roles.builtIn}`), asc(sql`case when ${roles.builtIn} then ${roles.id} end`), asc(sql`lower(${roles.name})`))
   return {
-    roles: rows.map((role) => ({ id: role.id, key: role.key, name: role.name, allowed: mayGiveRole(actor, role) })),
+    roles: rows.sort((a, b) => rankOf(a) - rankOf(b)).map((role) => ({ id: role.id, key: role.key, name: role.name, allowed: mayGiveRole(actor, role) })),
     clients: (await readAssignments(db)).clients,
   }
 }

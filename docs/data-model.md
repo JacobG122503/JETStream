@@ -42,7 +42,7 @@ Use `src/server/db` for all access. It gives the same interface for the embedded
 | Table | Purpose | Tasks |
 |---|---|---|
 | `app_meta` | Facts about this installation, one row each; the demo marker is one of them | 003 |
-| `company_settings` | The one company: name, address, logo, currency, time zone, formats, time rules, lock settings, modules, document defaults | 010, 018, 022 |
+| `company_settings` | The one company: name, address, logo, currency, time zone, formats, time rules, lock settings, weekday and time of the reminder to submit, modules, document defaults | 010, 018, 022 |
 | `number_sequences` | Prefix and next number of invoices and of estimates; locked while a number is taken | 012, 014 |
 | `retired_numbers` | Numbers of deleted documents, never handed out again | 012, 014 |
 | `activity_log` | Who changed what and when | 022 |
@@ -53,7 +53,7 @@ Use `src/server/db` for all access. It gives the same interface for the embedded
 
 | Table | Purpose | Tasks |
 |---|---|---|
-| `people` | Everyone who uses JETStream: unique email ignoring case, status, employee or contractor, capacity, time zone, photo, role | 004, 008 |
+| `people` | Everyone who uses JETStream: unique email ignoring case, status, employee or contractor, capacity, time zone, photo, department, role, and a permission list of their own in place of the role's (null without one) | 004, 008 |
 | `roles` | Built-in roles, whose permissions are in the code, and custom ones with their description and permission list (`key:level`) | 005 |
 | `person_extras` | Permissions switched on for one person with the built-in Manager role | 005 |
 | `labels` | Descriptive labels, such as Engineer | 008 |
@@ -142,7 +142,7 @@ Use `src/server/db` for all access. It gives the same interface for the embedded
 
 | Table | Purpose | Tasks |
 |---|---|---|
-| `saved_reports` | Saved report definitions, private or shared | 016 |
+| `saved_reports` | Saved reports: the page with what is chosen on it. Each is seen by its owner only; sharing and schedules are not built | 016 |
 | `report_shares` | People a shared report is limited to | 016 |
 | `report_schedules` | When a saved report is delivered and to whom | 016 |
 | `exchange_rates` | Dated exchange rates | 015, 016, 017 |

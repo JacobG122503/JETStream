@@ -152,13 +152,15 @@ export function ProgressBar({ label, percent, detail, overLabel = 'Over budget' 
 
 export interface PageHeaderProps {
   title: string
+  /** After the title, less strong, such as its dates. */
+  titleMore?: string
   /** 1 on pages, through the Page component; lower when a header is part of a page. */
   headingLevel?: 1 | 2 | 3
   description?: ReactNode
   actions?: ReactNode
 }
 
-export function PageHeader({ title, headingLevel = 1, description, actions }: PageHeaderProps) {
+export function PageHeader({ title, titleMore, headingLevel = 1, description, actions }: PageHeaderProps) {
   const Heading = `h${headingLevel}` as const
   return (
     <div className="page-header">
@@ -166,6 +168,7 @@ export function PageHeader({ title, headingLevel = 1, description, actions }: Pa
         <div className="page-header-text">
           <Heading className="page-title" tabIndex={headingLevel === 1 ? -1 : undefined}>
             {title}
+            {titleMore && <span className="page-title-more">{titleMore}</span>}
           </Heading>
           {description && <div className="page-description">{description}</div>}
         </div>

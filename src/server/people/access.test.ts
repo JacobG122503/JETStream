@@ -2,7 +2,7 @@
 import { and, eq } from 'drizzle-orm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { AccessInfo, PersonAccessDetails, PersonDetails, SavedAssignments, SessionInfo } from '../../shared/api'
-import { everything, type Grants, managerGrants } from '../../shared/permissions'
+import { everything, type Grants, managerGrants, profileGrants } from '../../shared/permissions'
 import { keepAnAdministrator } from '../access/grants'
 import { loadActor, readPersonAccess } from '../access/actor'
 import { can } from '../access/decisions'
@@ -39,8 +39,8 @@ const summary = (response: { status: number; body: unknown }) => [
 ]
 const ok = [200, undefined]
 const read = async (id: number, client = office) => (await client.get(`/people/${id}/access`)).body as PersonAccessDetails
-const inputOf = ({ state, roleId, extras, managedPeople, projects: list }: PersonAccessDetails) => ({
-  state, roleId, extras, managedPersonIds: managedPeople.map(({ id }) => id), managedProjectIds: list.filter(({ isManager }) => isManager).map(({ id }) => id),
+const inputOf = ({ state, roleId, extras, permissions, managedPeople, projects: list }: PersonAccessDetails) => ({
+  state, roleId, extras, permissions, managedPersonIds: managedPeople.map(({ id }) => id), managedProjectIds: list.filter(({ isManager }) => isManager).map(({ id }) => id),
 })
 /** Saves a change as the office reads it now, or as the client does. */
 const change = async (id: number, more: Partial<ReturnType<typeof inputOf>>, client = office) =>
@@ -56,6 +56,60 @@ const accessOf = async (id: number) =>
     await database.db.select({ projectId: projectMembers.projectId, isManager: projectMembers.isManager, removedAt: projectMembers.removedAt }).from(projectMembers).where(eq(projectMembers.personId, id)),
   ])
 const hr: Grants = { 'people.view': 'all', 'people.manage': 'all', 'roles.manage': 'all' }
+
+describe('a list of permissions of one person', () => {
+  const list: Grants = { 'people.view': 'all', 'time.view': 'all' }
+
+  it('counts in place of the role, is noted, and ends with the role', async () => {
+    const person = await account('member')
+    const client = await signedIn(app, person.email)
+    const saved = await change(person.id, { permissions: list })
+    expect(summary(saved)).toEqual(ok)
+    expect(saved.body).toMatchObject({ roleId: roleIds.member, permissions: list, held: everything() })
+    expect(((await client.get('/session')).body as SessionInfo).person?.permissions).toEqual(list)
+    expect(summary(await client.get('/people'))).toEqual(ok)
+    expect((await logOf(person.id))[0]?.changes).toEqual({ permissions: [null, ['people.view:all', 'time.view:all']] })
+    expect(summary(await change(person.id, { roleId: roleIds.accounting, permissions: null }))).toEqual(ok)
+    expect(((await client.get('/session')).body as SessionInfo).person?.permissions).toEqual(profileGrants.accounting)
+    expect((await rowOf(person.id))?.permissions).toBeNull()
+  })
+
+  it('gives an administrator nothing, must be complete, and does not go with extras', async () => {
+    const person = await account('member')
+    expect(summary(await change(person.id, { roleId: roleIds.administrator, permissions: list }))).toEqual([400, 'invalid_input'])
+    expect(summary(await change(person.id, { roleId: roleIds.manager, extras: ['time.approve'], permissions: list }))).toEqual([400, 'invalid_input'])
+    expect(summary(await change(person.id, { permissions: { 'time.approve': 'all' } }))).toEqual([400, 'invalid_input'])
+    expect(summary(await change(person.id, { permissions: { 'time.fly': 'all' } as Grants }))).toEqual([400, 'invalid_input'])
+    await database.db.update(people).set({ permissions: ['time.view:all'] }).where(eq(people.id, adminId))
+    expect((await loadActor(database.db, adminId)).grants).toEqual(everything())
+    await database.db.update(people).set({ permissions: null }).where(eq(people.id, adminId))
+  })
+
+  it('cannot give, or take away, what the editor does not hold', async () => {
+    const person = await account('member')
+    const editor = await signedIn(app, (await account(hr)).email)
+    expect(summary(await change(person.id, { permissions: list }, editor))).toEqual([403, 'cannot_grant'])
+    expect(summary(await change(person.id, { permissions: { 'people.view': 'all' } }, editor))).toEqual(ok)
+    expect(summary(await change(person.id, { permissions: list }))).toEqual(ok)
+    expect(summary(await change(person.id, { permissions: null }, editor))).toEqual([403, 'cannot_grant'])
+    // Nor through the role, which would end the list.
+    const role = await make.role()
+    await database.db.update(people).set({ roleId: role.id, permissions: ['cost.view:all'] }).where(eq(people.id, person.id))
+    const remove = await editor.post(`/roles/${role.id}/delete`, { version: role.version, replacementId: roleIds.member })
+    expect(summary(remove)).toEqual([403, 'cannot_grant'])
+    expect((await rowOf(person.id))?.permissions).toEqual(['cost.view:all'])
+    const own = await account(hr)
+    const self = await signedIn(app, own.email)
+    expect(summary(await change(own.id, { permissions: everything() }, self))).toEqual([403, 'own_access'])
+  })
+
+  it('is refused when someone else changed it meanwhile', async () => {
+    const person = await account('member')
+    const { state } = await read(person.id)
+    expect(summary(await change(person.id, { permissions: list }))).toEqual(ok)
+    expect(summary(await change(person.id, { permissions: null, state }))).toEqual([409, 'stale'])
+  })
+})
 
 describe('changing access', () => {
   it('gives role, extras, managed people and projects in one go, and the next request is judged by it', async () => {
@@ -80,14 +134,14 @@ describe('changing access', () => {
     const info = (await client.get('/session')).body as SessionInfo
     expect(info.person?.permissions).toEqual(managerGrants(['billable.view', 'invoices.manage']))
     expect((await client.get('/account/access')).body).toEqual({
-      role: { key: 'manager', name: 'Manager' }, administrator: false, grants: managerGrants(['billable.view', 'invoices.manage']),
+      role: { key: 'manager', name: 'Project Manager' }, administrator: false, grants: managerGrants(['billable.view', 'invoices.manage']),
       managedProjects: [project.name], managedPeople: [other.name],
     } satisfies AccessInfo)
     const [entry, ...more] = await logOf(person.id)
     expect(more).toEqual([])
     expect(entry).toMatchObject({
       actorId: adminId, changes: {
-        role: ['Member', 'Manager'], extras: [[], ['billable.view', 'invoices.manage']], managedPeople: [[], [other.name]], managedProjects: [[], [project.name]],
+        role: ['Member', 'Project Manager'], extras: [[], ['billable.view', 'invoices.manage']], managedPeople: [[], [other.name]], managedProjects: [[], [project.name]],
       },
     })
     expect(entry?.createdAt).toBeInstanceOf(Date)
@@ -100,7 +154,7 @@ describe('changing access', () => {
     expect(summary(await client.get('/people'))).toEqual([403, 'forbidden'])
     expect(await database.db.select().from(personExtras).where(eq(personExtras.personId, person.id))).toEqual([])
     expect((await client.get('/account/access')).body).toMatchObject({ grants: {}, managedProjects: [project.name], managedPeople: [other.name] })
-    expect((await logOf(person.id))[1]?.changes).toEqual({ role: ['Manager', 'Member'], extras: [['billable.view', 'invoices.manage'], []] })
+    expect((await logOf(person.id))[1]?.changes).toEqual({ role: ['Project Manager', 'Member'], extras: [['billable.view', 'invoices.manage'], []] })
   })
 
   it('tells the web app with each answer that access changed, also with a refusal', async () => {

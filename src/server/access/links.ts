@@ -22,7 +22,7 @@ const isMemberRole = (role: RoleRow) => role.builtIn && role.key === 'member'
 
 /** Whether giving the role changes someone's access. For someone new, every role but Member does. */
 export const changesAccess = (role: RoleRow, target?: PersonAccess): boolean =>
-  !isMemberRole(role) || (target !== undefined && !(isMemberRole(target.role) && target.extras.length === 0))
+  !isMemberRole(role) || (target !== undefined && !(isMemberRole(target.role) && target.extras.length === 0 && !target.customized))
 
 /** Everything it takes to invite someone with this role. */
 export function inviteNeeds(role: RoleRow, target?: PersonAccess): Holdings {

@@ -148,7 +148,7 @@ describe('making links', () => {
     expect(accepted.body).toMatchObject({ person: { permissions: managerGrants() } })
     expect(await database.db.select().from(personExtras).where(eq(personExtras.personId, lead.id))).toEqual([])
     const [entry] = await database.db.select().from(activityLog).where(and(eq(activityLog.subjectId, lead.id), eq(activityLog.action, 'invite_accepted')))
-    expect(entry?.changes).toMatchObject({ role: ['Manager', 'Manager'], extras: [['billable.view', 'cost.view'], []] })
+    expect(entry?.changes).toMatchObject({ role: ['Project Manager', 'Project Manager'], extras: [['billable.view', 'cost.view'], []] })
   })
 
   it('an accepted invite restores a manager flag only if its maker could give it', async () => {

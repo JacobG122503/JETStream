@@ -1,4 +1,4 @@
-// Migration 0005 on a database as 004 left it.
+// The migrations from 0005 on, on a database as 004 left it.
 import { cp, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { eq, sql } from 'drizzle-orm'
@@ -46,14 +46,18 @@ it('keeps the role of everyone, gives nobody more, and does nothing the second t
       await db.execute(sql`insert into invites (token_hash, name, email, role_id, created_by, expires_at) values (${`hash${role}`}, 'Ivy', ${`i${role}@client.example`}, ${role}, 1, now() + interval '1 day')`)
     }
     await db.execute(sql`update roles set permissions = '["cost.view:all"]' where key = 'member'`)
+    await db.execute(sql`insert into roles (name) values ('Accounting')`)
     const before = await queryRows(db, sql`select id, role_id, status from people order by id`)
 
-    expect(await countPendingMigrations(db)).toBe(1)
-    expect(await applyMigrations(database)).toBe(1)
+    expect(await countPendingMigrations(db)).toBe(3)
+    expect(await applyMigrations(database)).toBe(3)
     expect(await queryRows(db, sql`select id, role_id, status from people order by id`)).toEqual(before)
     const rolesNow = await db.select().from(roles).orderBy(roles.id)
     expect(rolesNow.map(({ key, builtIn: is, permissions, name }) => [key, is, permissions, name])).toEqual([
-      ['administrator', true, [], 'Administrator'], ['manager', true, [], 'Manager'], ['member', true, [], 'Member'],
+      ['administrator', true, [], 'Administrator'], ['manager', true, [], 'Project Manager'], ['member', true, [], 'Member'],
+      // Whoever made a role with the name of a new one keeps it under another.
+      [null, false, [], 'Accounting (custom 4)'],
+      ['people_admin', true, [], 'People Admin'], ['accounting', true, [], 'Accounting'], ['executive', true, [], 'Executive Manager'],
     ])
     for (const person of await db.select().from(people)) {
       const role = rolesNow.find(({ id }) => id === person.roleId)

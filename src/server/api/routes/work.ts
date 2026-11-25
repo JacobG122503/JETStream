@@ -2,7 +2,7 @@ import express from 'express'
 import { type NotificationKind, notificationKinds } from '../../../shared/notifications'
 import { requireActor } from '../../auth/access'
 import { ApiError } from '../../errors'
-import { approversOf, approveWeek, listApprovals, rejectWeek, remind, reopenWeek, unlockPeriod } from '../../work/approvals'
+import { approvalPath, approversOf, approveWeek, approveWeeks, forceSubmit, listApprovals, lockThrough, rejectWeek, remind, reopenWeek, unlockPeriod } from '../../work/approvals'
 import {
   addReceipt, archiveCategory, createExpense, deleteExpense, listCategories, listExpenses, listTeamExpenses, readExpenseOptions, readReceiptFile, receiptBytes, removeReceipt,
   saveCategory, setReimbursed, updateExpense,
@@ -11,7 +11,9 @@ import { exportNames, exportTable } from '../../work/exports'
 import { readHome } from '../../work/home'
 import { listNotifications, listPreferences, markRead, notify, savePreference } from '../../work/notify'
 import { listOutbox } from '../../work/outbox'
+import { readContractorReport, readProfitReport } from '../../work/profit'
 import { readDetailedTime, readExpenseReport, readPaymentReport, readTimeReport } from '../../work/reports'
+import { deleteSavedReport, listSavedReports, saveReport } from '../../work/savedReports'
 import { readTeamWeek } from '../../work/team'
 import {
   copyPreviousDay, createEntry, deleteEntry, readMonth, readTimeOptions, readWeek, removeFavorite, saveFavorite, startTimer, stopTimer, submitWeek, updateEntry, withdrawWeek,
@@ -33,6 +35,8 @@ const expense = {
 
 /** Home, time, projects, clients, expenses, invoices and reports. */
 export const workRoutes: AddRoutes = (api, access, ctx) => {
+  const dates = (query: unknown) => readInput(query, { from: date, to: date })
+
   api.get('/home', access.signedIn, async (_req, res) => {
     res.json(await readHome(ctx, requireActor(res)))
   })
@@ -77,7 +81,7 @@ export const workRoutes: AddRoutes = (api, access, ctx) => {
     const actor = requireActor(res)
     const { from, projectIds } = await submitWeek(ctx, actor, input.date)
     await notify(ctx, await approversOf(ctx.db, actor.id, projectIds), {
-      kind: 'approval', title: `${actor.name} submitted a week`, body: `The week from ${from} is waiting for approval.`, path: '/approvals',
+      kind: 'approval', title: `${actor.name} submitted a week`, body: `The week from ${from} is waiting for approval.`, path: approvalPath(from),
     })
     res.json(await readWeek(ctx, requireActor(res), input.date))
   })
@@ -138,11 +142,33 @@ export const workRoutes: AddRoutes = (api, access, ctx) => {
   })
 
   api.get('/reports/time', access.signedIn, async (req, res) => {
-    const { from, to, active } = readInput(req.query, { from: date, to: date, active: optional(oneOf('1')) })
-    res.json(await readTimeReport(ctx, requireActor(res), { from, to, activeOnly: active !== null }))
+    const { from, to, active, department, fixed } = readInput(req.query, { from: date, to: date, active: optional(oneOf('1')), department: text(80), fixed: optional(oneOf('1')) })
+    res.json(await readTimeReport(ctx, requireActor(res), { from, to, activeOnly: active !== null, department, fixedFee: fixed !== null }))
   })
 
-  const dates = (query: unknown) => readInput(query, { from: date, to: date })
+  api.get('/reports/profitability', access.permission('cost.view'), async (req, res) => {
+    const { from, to, fixed } = readInput(req.query, { from: date, to: date, fixed: optional(oneOf('1')) })
+    res.json(await readProfitReport(ctx, requireActor(res), { from, to, fixedFee: fixed !== null }))
+  })
+
+  api.get('/reports/contractors', access.permission('time.view'), async (req, res) => {
+    res.json(await readContractorReport(ctx, requireActor(res), dates(req.query)))
+  })
+
+  api.get('/reports/saved', access.signedIn, async (_req, res) => {
+    res.json({ reports: await listSavedReports(ctx.db, requireActor(res)) })
+  })
+
+  api.post('/reports/saved', access.signedIn, jsonBody, async (req, res) => {
+    await saveReport(ctx.db, requireActor(res), readInput(req.body, { name: thingName, path: text(2000) }))
+    res.status(201).json({ reports: await listSavedReports(ctx.db, requireActor(res)) })
+  })
+
+  api.delete('/reports/saved/:id', access.signedIn, async (req, res) => {
+    await deleteSavedReport(ctx.db, requireActor(res), pathId(req.params.id))
+    res.json({ reports: await listSavedReports(ctx.db, requireActor(res)) })
+  })
+
   api.get('/reports/detailed', access.signedIn, async (req, res) => {
     res.json(await readDetailedTime(ctx, requireActor(res), dates(req.query)))
   })
@@ -212,18 +238,33 @@ export const workRoutes: AddRoutes = (api, access, ctx) => {
   })
 
   // Approvals
-  api.get('/approvals', access.permission('time.approve'), async (_req, res) => {
-    res.json(await listApprovals(ctx, requireActor(res)))
+  api.get('/approvals', access.permission('time.approve'), async (req, res) => {
+    const { from, to } = dates(req.query)
+    res.json(await listApprovals(ctx, requireActor(res), from, to))
+  })
+
+  api.post('/approvals/approve', access.permission('time.approve'), jsonBody, async (req, res) => {
+    res.json({ approved: await approveWeeks(ctx, requireActor(res), readInput(req.body, { ids }).ids) })
+  })
+
+  api.post('/approvals/submit', access.permission('time.approve'), jsonBody, async (req, res) => {
+    const input = readInput(req.body, { personIds: ids, from: date, to: date })
+    res.json(await forceSubmit(ctx, requireActor(res), input.personIds, input.from, input.to))
+  })
+
+  api.post('/approvals/lock', access.permission('settings.manage'), jsonBody, async (req, res) => {
+    await lockThrough(ctx, requireActor(res), readInput(req.body, { through: date }).through)
+    res.json({})
   })
 
   api.post('/approvals/:id/approve', access.permission('time.approve'), async (req, res) => {
     await approveWeek(ctx, requireActor(res), pathId(req.params.id))
-    res.json(await listApprovals(ctx, requireActor(res)))
+    res.json({})
   })
 
   api.post('/approvals/:id/reject', access.permission('time.approve'), jsonBody, async (req, res) => {
     await rejectWeek(ctx, requireActor(res), pathId(req.params.id), readInput(req.body, { comment: text(1000) }).comment)
-    res.json(await listApprovals(ctx, requireActor(res)))
+    res.json({})
   })
 
   api.post('/approvals/:id/reopen', access.permission('time.unlock'), async (req, res) => {

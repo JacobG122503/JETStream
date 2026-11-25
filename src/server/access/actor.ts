@@ -1,7 +1,7 @@
 /** Who acts, with what they may do, as it is in the database now. */
 import { createHash } from 'node:crypto'
 import { and, eq, isNull } from 'drizzle-orm'
-import { grantedKeys, type Grants, isAdministratorRole, managerExtras, type PermissionKey, reaches, roleGrants } from '../../shared/permissions'
+import { grantedKeys, type Grants, isAdministratorRole, managerExtras, type PermissionKey, personGrants, reaches } from '../../shared/permissions'
 import type { Db, Tx } from '../db'
 import { people, personExtras, personManagers, projectMembers, projects, roles } from '../db/schema'
 
@@ -48,19 +48,23 @@ export interface PersonAccess extends Holdings {
   role: RoleRow
   /** As stored, if they have an effect or not. */
   extras: PermissionKey[]
+  /** Whether they have a list of their own in place of what the role gives. */
+  customized: boolean
 }
 
-/** Someone's role and extras, and what these give while the person is active. */
+/** Someone's role, extras and own list, and what these give while the person is active. */
 export async function readPersonAccess(db: Db | Tx, personId: number): Promise<PersonAccess | undefined> {
   const [row] = await db
-    .select({ person: { id: people.id, name: people.name, email: people.email, status: people.status }, role: roles })
+    .select({ person: { id: people.id, name: people.name, email: people.email, status: people.status }, own: people.permissions, role: roles })
     .from(people)
     .innerJoin(roles, eq(roles.id, people.roleId))
     .where(eq(people.id, personId))
   if (!row) return undefined
   const stored = await db.select({ key: personExtras.permission }).from(personExtras).where(eq(personExtras.personId, personId))
   const extras = managerExtras.filter((extra) => stored.some(({ key }) => key === extra))
-  return { ...row, extras, administrator: isAdministratorRole(row.role), grants: roleGrants(row.role, extras) }
+  const { own, ...rest } = row
+  const administrator = isAdministratorRole(row.role)
+  return { ...rest, extras, customized: own !== null && !administrator, administrator, grants: personGrants(row.role, extras, own) }
 }
 
 /** The projects where the person is a member now, with the manager flag. */

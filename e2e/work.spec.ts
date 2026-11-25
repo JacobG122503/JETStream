@@ -79,6 +79,7 @@ test('a report can be downloaded', async ({ adminPage: page }) => {
   await open(page, 'reports', 'Reports')
   await page.getByRole('tab', { name: 'Projects' }).click()
   const download = page.waitForEvent('download')
-  await page.getByRole('button', { name: 'Export CSV' }).click()
+  await page.getByRole('button', { name: 'Export' }).click()
+  await page.getByRole('menuitem', { name: 'CSV' }).click()
   expect((await download).suggestedFilename()).toMatch(/^JETStream projects .*\.csv$/)
 })

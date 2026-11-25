@@ -41,6 +41,13 @@ export function formatDate(date: IsoDate): string {
   return dateFormat === 'dmy' ? `${day} ${name} ${year}` : `${name} ${day}, ${year}`
 }
 
+/** "11/23/2026", where a column or heading has many dates. */
+export function formatNumericDate(date: IsoDate): string {
+  const [year, month, day] = date.split('-')
+  if (dateFormat === 'ymd') return date
+  return dateFormat === 'dmy' ? `${day}/${month}/${year}` : `${month}/${day}/${year}`
+}
+
 /** "Monday, November 23, 2026" */
 export function formatLongDate(date: IsoDate): string {
   const { year, month, day } = partsOf(date)

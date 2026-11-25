@@ -1,0 +1,40 @@
+.filter-menu {
+  display: inline-block;
+  max-width: 100%;
+}
+
+.filter-menu .btn.is-chosen {
+  border-color: var(--c-accent);
+  background: var(--c-accent-soft);
+  color: var(--c-on-accent-soft);
+}
+
+.filter-popup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: max-content;
+  min-width: 12rem;
+  max-width: min(22rem, calc(100vw - 2 * var(--space-2)));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.filter-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-sm);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.filter-option:hover {
+  background: var(--c-surface-2);
+}
+
+.filter-option span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

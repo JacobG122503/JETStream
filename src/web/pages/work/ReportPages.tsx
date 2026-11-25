@@ -1,17 +1,25 @@
-import { type ReactNode, useState } from 'react'
+import { Fragment, type ReactNode, useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { DetailedTime, ExpenseReport, InvoiceList, InvoiceRow, PaymentReport, ProjectRow, UnbilledClient } from '../../../shared/work'
+import type { DetailedTime, ExpenseReport, InvoiceList, InvoiceRow, PaymentReport, ProjectRow, ReportOption, ReportOptions, UnbilledClient } from '../../../shared/work'
+import { useWeekStart } from '../../auth/authContext'
 import { useLoad } from '../../auth/useLoad'
 import { Page } from '../../shell/Page'
-import { Badge, Button, formatDate, Select, StatTile, Table, type TableColumn } from '../../ui'
+import {
+  Badge, Button, Checkbox, DatePicker, type DateRange, formatDate, formatNumericDate, IconButton, isIsoDate, Menu, MultiCombobox, presetRange, type RangePresetId, rangePresets, Select, StatTile, Table,
+  type TableColumn,
+} from '../../ui'
 import { methodLabels } from '../../work/billing'
 import { downloadCsv } from '../../work/csv'
 import { formatAmounts, formatHours, formatMoney, moneyInput } from '../../work/format'
 import { BudgetBar } from '../../work/parts'
-import { PeriodBar, usePeriod } from '../../work/Period'
+import { PeriodBar, usePeriod, useToday } from '../../work/Period'
+import { useQuery } from '../../work/query'
+import { SubNav } from '../../work/SubNav'
 import { InvoiceStatusBadge } from './InvoiceStatusBadge'
-import { ReportsNav } from './ReportsNav'
+import { NewReportMenu, ReportsNav } from './ReportsNav'
+import { SaveReport } from './SaveReport'
 import '../../work/work.css'
+import './reports.css'
 
 type Csv = (string | number)[][]
 
@@ -23,6 +31,12 @@ interface FrameProps {
   name: string
   empty: boolean
 }
+
+const invoicing = [
+  { to: '/reports/invoices', label: 'Invoices' },
+  { to: '/reports/payments', label: 'Payments' },
+  { to: '/reports/uninvoiced', label: 'Uninvoiced' },
+]
 
 function Frame({ title, path, children, csv, name, empty }: FrameProps) {
   return (
@@ -39,7 +53,12 @@ function Frame({ title, path, children, csv, name, empty }: FrameProps) {
         </>
       }
     >
-      <ReportsNav current={path} />
+      <ReportsNav current={invoicing.some(({ to }) => to === path) ? '/reports/invoices' : path} />
+      {invoicing.some(({ to }) => to === path) && (
+        <div className="no-print">
+          <SubNav label="Invoicing" current={path} items={invoicing} />
+        </div>
+      )}
       {children}
     </Page>
   )
@@ -80,110 +99,237 @@ function useFilters<T>(rows: readonly T[], filters: readonly Filter<T>[]) {
   return { shown, bar }
 }
 
+type Line = { clientId: number; projectId: number; personId: number; tagIds: number[]; billable: boolean; spentOn: string }
+type Choice = { id: string; label: string; plural: string; options: ReportOption[]; has: (value: number) => boolean }
+
+const timeframes = [...rangePresets.map(({ id, label }) => ({ value: id as string, label })), { value: 'custom', label: 'Custom' }]
+
+/** The dates of a detailed report, kept in the address: a named timeframe stays current. */
+function useTimeframe(first: RangePresetId) {
+  const { get, change } = useQuery()
+  const today = useToday()
+  const weekStart = useWeekStart()
+  const [from, to] = [get('from'), get('to')]
+  const custom = isIsoDate(from) && isIsoDate(to) && from <= to
+  const preset = rangePresets.find(({ id }) => id === get('timeframe'))?.id ?? first
+  const range: DateRange = custom ? { start: from, end: to } : presetRange(preset, today, weekStart)
+  return {
+    range, weekStart, today, value: custom ? 'custom' : preset,
+    choose: (value: string) =>
+      value === 'custom' ? change({ timeframe: null, from: range.start, to: range.end }) : change({ timeframe: value === first ? null : value, from: null, to: null }),
+    setRange: ({ start, end }: DateRange) => change({ timeframe: null, from: start, to: end }),
+  }
+}
+
+interface DetailedProps<T extends Line> {
+  title: string
+  path: string
+  frame: ReturnType<typeof useTimeframe>
+  options: ReportOptions | undefined
+  rows: readonly T[]
+  /** Between projects and teammates. */
+  third: { id: 'tasks' | 'categories'; label: string; valueOf: (row: T) => number }
+  children: (rows: T[], tools: (csv: () => Csv) => ReactNode) => ReactNode
+  sums: (rows: T[]) => ReactNode
+}
+
+/** A list of everything of a timeframe, with what it can be filtered by. */
+function Detailed<T extends Line>({ title, path, frame, options, rows, third, children, sums: figures }: DetailedProps<T>) {
+  const { get, list, change } = useQuery()
+  const [shown, setShown] = useState(true)
+  const { range, weekStart, today } = frame
+  const archived = get('archived') !== ''
+  const billable = get('billable')
+  const choices: (Choice & { valuesOf: (row: T) => number[] })[] = (
+    [
+      ['clients', 'Clients', (row: T) => [row.clientId]],
+      ['projects', 'Projects', (row: T) => [row.projectId]],
+      [third.id, third.label, (row: T) => [third.valueOf(row)]],
+      ['people', 'Teammates', (row: T) => [row.personId]],
+      ['tags', 'Tags', (row: T) => row.tagIds],
+    ] as const
+  ).map(([id, label, valuesOf]) => {
+    const chosen = list(id).map(Number)
+    return { id, label, plural: label.toLowerCase(), options: options?.[id] ?? [], has: (value: number) => chosen.length === 0 || chosen.includes(value), valuesOf }
+  })
+  const found = rows.filter(
+    (row) => choices.every(({ id, has, valuesOf }) => list(id).length === 0 || valuesOf(row).some(has)) && (billable === '' || row.billable === (billable === 'yes')),
+  )
+  const dates = `${formatNumericDate(range.start)} – ${formatNumericDate(range.end)}`
+  const tools = (csv: () => Csv) => (
+    <div className="report-tools no-print">
+      <SaveReport />
+      <Menu
+        label="Export"
+        align="end"
+        items={[
+          { id: 'csv', label: 'CSV', disabled: found.length === 0, onSelect: () => downloadCsv(`${title.toLowerCase()} ${range.start} to ${range.end}`, csv()) },
+          { id: 'print', label: 'Print or save as PDF', onSelect: () => window.print() },
+        ]}
+      />
+      <IconButton variant="secondary" icon="printer" label="Print" onClick={() => window.print()} />
+    </div>
+  )
+  return (
+    <Page
+      title={title}
+      titleMore={`: ${dates}`}
+      actions={
+        <>
+          <NewReportMenu label={path === '/reports/expenses' ? 'Expense Report' : 'Time Report'} current={path} />
+          <Button aria-expanded={shown} onClick={() => setShown(!shown)}>
+            {shown ? 'Hide filters' : 'Show filters'}
+          </Button>
+        </>
+      }
+    >
+      {shown && (
+        <div className="report-filters no-print" role="group" aria-label="Filters">
+          <span aria-hidden="true">Timeframe</span>
+          <div className="stack">
+            <Select label="Timeframe" hideLabel className="report-timeframe" value={frame.value} options={timeframes} onChange={frame.choose} />
+            {frame.value === 'custom' && (
+              <div className="report-dates">
+                <DatePicker label="Start date" weekStart={weekStart} today={today} max={range.end} value={range.start} onChange={(start) => start && frame.setRange({ ...range, start })} />
+                <span aria-hidden="true">to</span>
+                <DatePicker label="End date" weekStart={weekStart} today={today} min={range.start} value={range.end} onChange={(end) => end && frame.setRange({ ...range, end })} />
+              </div>
+            )}
+            <Checkbox label="Include archived items in filters" checked={archived} onChange={(on) => change({ archived: on ? '1' : null })} />
+          </div>
+          {choices.map(({ id, label, plural, options: all }) => (
+            <Fragment key={id}>
+              <span aria-hidden="true">{label}</span>
+              <MultiCombobox
+                label={label}
+                hideLabel
+                placeholder={`All ${plural}`}
+                value={list(id)}
+                options={all
+                  .filter((option) => archived || !option.archived || list(id).includes(String(option.id)))
+                  .map((option) => ({ value: String(option.id), label: option.archived ? `${option.name} (archived)` : option.name }))}
+                onChange={(value) => change({ [id]: value })}
+              />
+            </Fragment>
+          ))}
+          <span aria-hidden="true">Billable</span>
+          <Select
+            label="Billable"
+            hideLabel
+            value={billable}
+            options={[{ value: '', label: 'Billable and non-billable' }, { value: 'yes', label: 'Billable only' }, { value: 'no', label: 'Non-billable only' }]}
+            onChange={(value) => change({ billable: value })}
+          />
+        </div>
+      )}
+      <div className="report-head">
+        <div>{figures(found)}</div>
+        <ul className="report-chosen" aria-label="Chosen">
+          {choices.map(({ id, plural, options: all }) => {
+            const names = list(id).map((value) => all.find((option) => String(option.id) === value)?.name ?? '')
+            return <li key={id}>{names.length === 0 ? `All ${plural}` : names.join(', ')}</li>
+          })}
+        </ul>
+      </div>
+      {children(found, tools)}
+    </Page>
+  )
+}
+
+function Figure({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div>
+      <p>{label}</p>
+      <p className="report-figure">{children}</p>
+    </div>
+  )
+}
+
 type TimeLine = DetailedTime['rows'][number]
-const timeFilters: Filter<TimeLine>[] = [
-  { id: 'client', label: 'Client', valueOf: ({ client }) => client },
-  { id: 'project', label: 'Project', valueOf: ({ project }) => project },
-  { id: 'task', label: 'Task', valueOf: ({ task }) => task },
-  { id: 'person', label: 'Person', valueOf: ({ person }) => person },
-  { id: 'billable', label: 'Billable', valueOf: ({ billable }) => yes(billable) },
-  { id: 'invoiced', label: 'Invoiced', valueOf: ({ invoiced }) => yes(invoiced) },
-]
 
 export function DetailedTimePage() {
-  const period = usePeriod('week')
-  const { start, end } = period.range
+  const frame = useTimeframe('this-week')
+  const { start, end } = frame.range
   const { status, data, error, reload } = useLoad<DetailedTime>(`reports/detailed?from=${start}&to=${end}`)
-  const { shown, bar } = useFilters(data?.rows ?? [], timeFilters)
-  const minutes = shown.reduce((sum, row) => sum + row.minutes, 0)
   const money = data?.showAmounts === true
   const columns: TableColumn<TimeLine>[] = [
     { id: 'date', header: 'Date', nowrap: true, cell: ({ spentOn }) => formatDate(spentOn), sortValue: ({ spentOn }) => spentOn },
     { id: 'project', header: 'Project', cell: ({ project, client }) => <span className="cell-two"><span className="strong">{project}</span><span className="cell-sub">{client}</span></span>, sortValue: ({ project }) => project },
     { id: 'task', header: 'Task', cell: ({ task, notes }) => <span className="cell-two"><span>{task}</span><span className="cell-sub">{notes}</span></span>, sortValue: ({ task }) => task },
-    { id: 'person', header: 'Person', cell: ({ person }) => person, sortValue: ({ person }) => person },
+    { id: 'person', header: 'Teammate', cell: ({ person }) => person, sortValue: ({ person }) => person },
     { id: 'hours', header: 'Hours', numeric: true, cell: (row) => formatHours(row.minutes), sortValue: (row) => row.minutes },
     ...(money ? [{ id: 'amount', header: 'Amount', numeric: true, cell: ({ amount, currency }: TimeLine) => (amount === null ? <span className="muted">-</span> : formatMoney(amount, currency)), sortValue: ({ amount }: TimeLine) => amount ?? 0 }] : []),
     { id: 'invoiced', header: 'Invoiced', cell: ({ billable, invoiced }) => (!billable ? <span className="muted">Non-billable</span> : invoiced ? <Badge tone="success">Invoiced</Badge> : <Badge>Open</Badge>) },
   ]
   return (
-    <Frame
-      title="Detailed time"
+    <Detailed
+      title="Detailed time report"
       path="/reports/detailed"
-      name={`detailed time ${start} to ${end}`}
-      empty={shown.length === 0}
-      csv={() => [
-        ['Date', 'Client', 'Project', 'Task', 'Person', 'Notes', 'Hours', 'Billable', 'Invoiced', ...(money ? ['Amount', 'Currency'] : [])],
-        ...shown.map((row) => [row.spentOn, row.client, row.project, row.task, row.person, row.notes, (row.minutes / 60).toFixed(2), yes(row.billable), yes(row.invoiced), ...(money ? [row.amount === null ? '' : moneyInput(row.amount, row.currency), row.currency] : [])]),
-      ]}
-    >
-      <PeriodBar period={period} />
-      {bar}
-      {data && (
-        <div className="tiles">
-          <StatTile label="Hours" value={formatHours(minutes)} detail={`${shown.length} entries`} />
-          <StatTile label="Billable hours" value={formatHours(shown.filter(({ billable }) => billable).reduce((sum, row) => sum + row.minutes, 0))} />
-          {money && <StatTile label="Billable amount" value={formatAmounts(sums(shown, ({ amount }) => amount ?? 0))} />}
-        </div>
+      frame={frame}
+      options={data?.options}
+      rows={data?.rows ?? []}
+      third={{ id: 'tasks', label: 'Tasks', valueOf: ({ taskId }) => taskId }}
+      sums={(shown) => (
+        <>
+          <Figure label="Total hours">{formatHours(shown.reduce((sum, { minutes }) => sum + minutes, 0))}</Figure>
+          <Figure label="Billable hours">{formatHours(shown.filter(({ billable }) => billable).reduce((sum, { minutes }) => sum + minutes, 0))}</Figure>
+          {money && <Figure label="Billable amount">{formatAmounts(sums(shown, ({ amount }) => amount ?? 0))}</Figure>}
+        </>
       )}
-      <Table caption="Detailed time" hideCaption status={status} error={error} onRetry={reload} rows={shown} rowKey={({ id }) => String(id)} rowLabel={({ spentOn, project }) => `${spentOn}, ${project}`} columns={columns} empty={{ icon: 'time', title: 'No time', description: 'Nothing was tracked that fits.' }} />
-    </Frame>
+    >
+      {(shown, tools) => (
+        <>
+          {tools(() => [
+            ['Date', 'Client', 'Project', 'Task', 'Person', 'Notes', 'Hours', 'Billable', 'Invoiced', ...(money ? ['Amount', 'Currency'] : [])],
+            ...shown.map((row) => [row.spentOn, row.client, row.project, row.task, row.person, row.notes, (row.minutes / 60).toFixed(2), yes(row.billable), yes(row.invoiced), ...(money ? [row.amount === null ? '' : moneyInput(row.amount, row.currency), row.currency] : [])]),
+          ])}
+          <Table caption="Detailed time" hideCaption status={status} error={error} onRetry={reload} rows={shown} rowKey={({ id }) => String(id)} rowLabel={({ spentOn, project }) => `${spentOn}, ${project}`} columns={columns} empty={{ icon: 'time', title: 'No time', description: 'Nothing was tracked that fits.' }} />
+        </>
+      )}
+    </Detailed>
   )
 }
 
 type ExpenseLine = ExpenseReport['rows'][number]
-const expenseFilters: Filter<ExpenseLine>[] = [
-  { id: 'client', label: 'Client', valueOf: ({ client }) => client },
-  { id: 'project', label: 'Project', valueOf: ({ project }) => project },
-  { id: 'category', label: 'Category', valueOf: ({ category }) => category },
-  { id: 'person', label: 'Person', valueOf: ({ person }) => person },
-  { id: 'billable', label: 'Billable', valueOf: ({ billable }) => yes(billable) },
+
+const expenseColumns: TableColumn<ExpenseLine>[] = [
+  { id: 'date', header: 'Date', nowrap: true, cell: ({ spentOn }) => formatDate(spentOn), sortValue: ({ spentOn }) => spentOn },
+  { id: 'category', header: 'Category', cell: ({ category, notes }) => <span className="cell-two"><span className="strong">{category}</span><span className="cell-sub">{notes}</span></span>, sortValue: ({ category }) => category },
+  { id: 'project', header: 'Project', cell: ({ project, client }) => <span className="cell-two"><span>{project}</span><span className="cell-sub">{client}</span></span>, sortValue: ({ project }) => project },
+  { id: 'person', header: 'Teammate', cell: ({ person }) => person, sortValue: ({ person }) => person },
+  { id: 'invoiced', header: 'Invoiced', cell: ({ billable, invoiced }) => (!billable ? <span className="muted">Non-billable</span> : invoiced ? <Badge tone="success">Invoiced</Badge> : <Badge>Open</Badge>) },
+  { id: 'amount', header: 'Amount', numeric: true, cell: ({ amount, currency }) => formatMoney(amount, currency), sortValue: ({ amount }) => amount },
 ]
 
 export function ExpenseReportPage() {
-  const period = usePeriod('month')
-  const { start, end } = period.range
+  const frame = useTimeframe('this-week')
+  const { start, end } = frame.range
   const { status, data, error, reload } = useLoad<ExpenseReport>(`reports/expenses?from=${start}&to=${end}`)
-  const { shown, bar } = useFilters(data?.rows ?? [], expenseFilters)
   return (
-    <Frame
-      title="Expenses report"
+    <Detailed
+      title="Detailed expense report"
       path="/reports/expenses"
-      name={`expenses ${start} to ${end}`}
-      empty={shown.length === 0}
-      csv={() => [
-        ['Date', 'Client', 'Project', 'Category', 'Person', 'Notes', 'Amount', 'Currency', 'Billable', 'Invoiced', 'Paying back'],
-        ...shown.map((row) => [row.spentOn, row.client, row.project, row.category, row.person, row.notes, moneyInput(row.amount, row.currency), row.currency, yes(row.billable), yes(row.invoiced), row.reimbursementStatus]),
-      ]}
-    >
-      <PeriodBar period={period} />
-      {bar}
-      {data && (
-        <div className="tiles">
-          <StatTile label="Total" value={formatAmounts(sums(shown, ({ amount }) => amount))} detail={shown.length === 1 ? '1 expense' : `${shown.length} expenses`} />
-          <StatTile label="Billable" value={formatAmounts(sums(shown.filter(({ billable }) => billable), ({ amount }) => amount))} />
-        </div>
+      frame={frame}
+      options={data?.options}
+      rows={data?.rows ?? []}
+      third={{ id: 'categories', label: 'Categories', valueOf: ({ categoryId }) => categoryId }}
+      sums={(shown) => (
+        <>
+          <Figure label="Total expenses">{formatAmounts(sums(shown, ({ amount }) => amount))}</Figure>
+          <Figure label="Billable expenses">{formatAmounts(sums(shown.filter(({ billable }) => billable), ({ amount }) => amount))}</Figure>
+        </>
       )}
-      <Table
-        caption="Expenses"
-        hideCaption
-        status={status}
-        error={error}
-        onRetry={reload}
-        rows={shown}
-        rowKey={({ id }) => String(id)}
-        rowLabel={({ spentOn, category }) => `${spentOn}, ${category}`}
-        columns={[
-          { id: 'date', header: 'Date', nowrap: true, cell: ({ spentOn }) => formatDate(spentOn), sortValue: ({ spentOn }) => spentOn },
-          { id: 'category', header: 'Category', cell: ({ category, notes }) => <span className="cell-two"><span className="strong">{category}</span><span className="cell-sub">{notes}</span></span>, sortValue: ({ category }) => category },
-          { id: 'project', header: 'Project', cell: ({ project, client }) => <span className="cell-two"><span>{project}</span><span className="cell-sub">{client}</span></span>, sortValue: ({ project }) => project },
-          { id: 'person', header: 'Person', cell: ({ person }) => person, sortValue: ({ person }) => person },
-          { id: 'invoiced', header: 'Invoiced', cell: ({ billable, invoiced }) => (!billable ? <span className="muted">Non-billable</span> : invoiced ? <Badge tone="success">Invoiced</Badge> : <Badge>Open</Badge>) },
-          { id: 'amount', header: 'Amount', numeric: true, cell: ({ amount, currency }) => formatMoney(amount, currency), sortValue: ({ amount }) => amount },
-        ]}
-        empty={{ icon: 'expenses', title: 'No expenses', description: 'Nothing was entered that fits.' }}
-      />
-    </Frame>
+    >
+      {(shown, tools) => (
+        <>
+          {tools(() => [
+            ['Date', 'Client', 'Project', 'Category', 'Person', 'Notes', 'Amount', 'Currency', 'Billable', 'Invoiced', 'Paying back'],
+            ...shown.map((row) => [row.spentOn, row.client, row.project, row.category, row.person, row.notes, moneyInput(row.amount, row.currency), row.currency, yes(row.billable), yes(row.invoiced), row.reimbursementStatus]),
+          ])}
+          <Table caption="Expenses" hideCaption status={status} error={error} onRetry={reload} rows={shown} rowKey={({ id }) => String(id)} rowLabel={({ spentOn, category }) => `${spentOn}, ${category}`} columns={expenseColumns} empty={{ icon: 'expenses', title: 'No expenses', description: 'Nothing was entered that fits.' }} />
+        </>
+      )}
+    </Detailed>
   )
 }
 

@@ -1,7 +1,7 @@
 /** What the server does by itself at set times. Each due run happens once, also with several servers and after restarts. */
 import { and, eq, inArray, isNotNull, lt } from 'drizzle-orm'
 import { remindersDue } from '../shared/calc'
-import { addDays, type IsoDate, startOfWeek, type Weekday } from '../shared/dates'
+import { addDays, type IsoDate, startOfWeek, type Weekday, weekdayOf } from '../shared/dates'
 import { instantAt, todayIn } from './clock'
 import type { AppContext } from './context'
 import { invoiceReminders, invoices, jobRuns, people, projectMembers, submissions } from './db/schema'
@@ -18,14 +18,14 @@ import { formatDate } from './work/text'
 interface Job {
   name: string
   /** Minutes after midnight, in the company's time zone. */
-  at: number
+  at: number | ((settings: Awaited<ReturnType<typeof getSettings>>) => number)
   run: (ctx: AppContext, today: IsoDate) => Promise<unknown>
 }
 
 const jobs: Job[] = [
   { name: 'recurring_invoices', at: 5 * 60, run: (ctx) => makeDueInvoices(ctx) },
   { name: 'invoice_reminders', at: 8 * 60, run: (ctx, today) => remindLateInvoices(ctx, today) },
-  { name: 'timesheet_reminders', at: 9 * 60, run: (ctx, today) => remindTimesheets(ctx, today) },
+  { name: 'timesheet_reminders', at: ({ reminderMinute }) => reminderMinute, run: (ctx, today) => remindTimesheets(ctx, today) },
   { name: 'budget_alerts', at: 7 * 60, run: (ctx) => noteBudgetAlerts(ctx) },
 ]
 
@@ -35,12 +35,13 @@ const cutOffMs = 30 * 60_000
 
 /** Runs what is due today and was not run yet. */
 export async function runDueJobs(ctx: AppContext): Promise<string[]> {
-  const { timeZone } = await getSettings(ctx.db)
+  const settings = await getSettings(ctx.db)
+  const { timeZone } = settings
   const now = ctx.now()
   const today = todayIn(timeZone, now)
   const ran: string[] = []
   for (const { name, at, run } of jobs) {
-    const dueAt = instantAt(today, at, timeZone)
+    const dueAt = instantAt(today, typeof at === 'number' ? at : at(settings), timeZone)
     if (now < dueAt || !(await claim(ctx, name, dueAt))) continue
     const mine = and(eq(jobRuns.job, name), eq(jobRuns.dueAt, dueAt))
     try {
@@ -102,21 +103,25 @@ export async function remindLateInvoices(ctx: AppContext, today: IsoDate): Promi
   return sent
 }
 
-const daysAfterWeek = 3
+/** The week to submit on a date: this week towards its end, and the one before at its beginning. */
+export function weekToSubmit(today: IsoDate, weekStart: Weekday): IsoDate {
+  const thisWeek = startOfWeek(today, weekStart)
+  return today >= addDays(thisWeek, 4) ? thisWeek : addDays(thisWeek, -7)
+}
 
-/** A few days after a week ends, whoever is on a project and did not submit it is reminded. */
+/** On the weekday the company chose, whoever is on a project and did not submit the week is reminded. */
 export async function remindTimesheets(ctx: AppContext, today: IsoDate): Promise<number> {
-  const { approvalEnabled, weekStartsOn } = await getSettings(ctx.db)
-  const thisWeek = startOfWeek(today, weekStartsOn as Weekday)
-  if (!approvalEnabled || today !== addDays(thisWeek, daysAfterWeek - 1)) return 0
-  const from = addDays(thisWeek, -7)
+  const { approvalEnabled, weekStartsOn, reminderWeekday } = await getSettings(ctx.db)
+  if (!approvalEnabled || weekdayOf(today) !== reminderWeekday) return 0
+  const from = weekToSubmit(today, weekStartsOn as Weekday)
+  const end = addDays(from, 6)
   const working = await ctx.db
     .selectDistinct({ id: people.id, capacity: people.weeklyCapacityMinutes, startedOn: people.startedOn })
     .from(people)
     .innerJoin(projectMembers, and(eq(projectMembers.personId, people.id), isCurrentMembership()))
     .where(eq(people.status, 'active'))
   const handed = await ctx.db.select({ personId: submissions.personId }).from(submissions).where(and(eq(submissions.periodStart, from), inArray(submissions.status, ['submitted', 'approved'])))
-  const missing = working.filter(({ id, capacity, startedOn }) => capacity > 0 && (startedOn === null || startedOn < thisWeek) && !handed.some(({ personId }) => personId === id))
+  const missing = working.filter(({ id, capacity, startedOn }) => capacity > 0 && (startedOn === null || startedOn <= end) && !handed.some(({ personId }) => personId === id))
   await notify(ctx, missing.map(({ id }) => id), {
     kind: 'timesheet_reminder', title: 'Please submit your week', body: `Your time for the week from ${formatDate(from)} has not been submitted yet.`, path: '/time',
   })

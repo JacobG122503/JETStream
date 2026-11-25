@@ -60,6 +60,7 @@ interface PersonPlan {
   email: string
   role: keyof RoleIds
   label: string
+  department?: string
   manager: PersonKey | null
   /** Company-currency billable and cost rate per hour, in dollars. */
   rate: number
@@ -71,44 +72,44 @@ interface PersonPlan {
 
 const peoplePlan: Record<PersonKey, PersonPlan> = {
   admin: {
-    name: 'Avery Test', email: 'admin@jet.demo', role: 'administrator', label: 'Billing', manager: null, rate: 95,
+    name: 'Avery Test', email: 'admin@jet.demo', role: 'administrator', label: 'Billing', department: 'Office', manager: null, rate: 95,
     cost: 48, work: { office: 8, training: 1, packaging: 1 },
   },
   lead: {
-    name: 'Jordan Test', email: 'lead@jet.demo', role: 'manager', label: 'Project lead', manager: 'admin', rate: 145,
+    name: 'Jordan Test', email: 'lead@jet.demo', role: 'manager', label: 'Project lead', department: 'Engineering', manager: 'admin', rate: 145,
     cost: 72, work: { turbine: 4, substation: 2, pumps: 3, coldStore: 3, office: 1 },
   },
   employee: {
-    name: 'Casey Test', email: 'employee@jet.demo', role: 'member', label: 'Engineer', manager: 'lead', rate: 110,
+    name: 'Casey Test', email: 'employee@jet.demo', role: 'member', label: 'Engineer', department: 'Engineering', manager: 'lead', rate: 110,
     cost: 52, work: { turbine: 4, substation: 3, pumps: 3, coldStore: 2, training: 1 },
   },
   priya: {
-    name: 'Priya Test', email: 'priya.test@jet.example', role: 'manager', label: 'Project lead', manager: 'admin',
+    name: 'Priya Test', email: 'priya.test@jet.example', role: 'manager', label: 'Project lead', department: 'Engineering', manager: 'admin',
     rate: 140, cost: 70, work: { controls: 4, assembly: 4, safety: 2, packaging: 1, office: 1 },
   },
   marcus: {
-    name: 'Marcus Test', email: 'marcus.test@jet.example', role: 'member', label: 'Engineer', manager: 'lead',
+    name: 'Marcus Test', email: 'marcus.test@jet.example', role: 'member', label: 'Engineer', department: 'Engineering', manager: 'lead',
     rate: 115, cost: 56, work: { turbine: 4, pumps: 3, coldStore: 3, quarry: 2, training: 1 },
   },
   elena: {
-    name: 'Elena Test', email: 'elena.test@jet.example', role: 'bookkeeper', label: 'Engineer', manager: 'priya',
+    name: 'Elena Test', email: 'elena.test@jet.example', role: 'bookkeeper', label: 'Engineer', department: 'Engineering', manager: 'priya',
     rate: 118, cost: 57, work: { controls: 4, assembly: 4, safety: 3, training: 1 },
   },
   tomas: {
-    name: 'Tomas Test', email: 'tomas.test@jet.example', role: 'member', label: 'Technician', manager: 'lead',
+    name: 'Tomas Test', email: 'tomas.test@jet.example', role: 'member', label: 'Technician', department: 'Field services', manager: 'lead',
     rate: 88, cost: 41, work: { substation: 5, pumps: 3, coldStore: 2, training: 1 },
   },
   dana: {
-    name: 'Dana Test', email: 'dana.test@contractors.example', role: 'member', label: 'Technician',
+    name: 'Dana Test', email: 'dana.test@contractors.example', role: 'member', label: 'Technician', department: 'Field services',
     manager: 'priya', rate: 98, cost: 64, work: { controls: 4, safety: 3, assembly: 3 }, kind: 'contractor',
     dayMinutes: hours(6),
   },
   owen: {
-    name: 'Owen Test', email: 'owen.test@jet.example', role: 'member', label: 'Drafter', manager: 'lead',
+    name: 'Owen Test', email: 'owen.test@jet.example', role: 'member', label: 'Drafter', department: 'Drafting', manager: 'lead',
     rate: 82, cost: 38, work: { turbine: 4, coldStore: 3, pumps: 2, quarry: 1, training: 1 },
   },
   lydia: {
-    name: 'Lydia Test', email: 'lydia.test@jet.example', role: 'member', label: 'Surveyor', manager: 'lead',
+    name: 'Lydia Test', email: 'lydia.test@jet.example', role: 'member', label: 'Surveyor', department: 'Field services', manager: 'lead',
     rate: 92, cost: 44, work: { quarry: 5, turbine: 2, office: 1 },
   },
   noah: {
@@ -292,6 +293,7 @@ export function addCompany(rows: DemoRows, dates: DemoDates, roles: RoleIds): Co
       phone: `(312) 555-01${String(10 + index)}`,
       status,
       kind: plan.kind ?? 'employee',
+      department: plan.department ?? '',
       roleId: roles[plan.role],
       weeklyCapacityMinutes: (plan.dayMinutes ?? hours(8)) * 5,
       startedOn: key === 'noah' ? null : dates.week(-60 - index * 9),

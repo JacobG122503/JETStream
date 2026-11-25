@@ -302,6 +302,9 @@ export interface ReportRow extends Named {
   billableMinutes: number
   /** Null where it may not be seen, or is in several currencies. */
   amount: number | null
+  /** Of people only: their photo, and the working time of the period. */
+  photoId?: number | null
+  capacityMinutes?: number
 }
 
 export interface TimeReport {
@@ -319,6 +322,57 @@ export interface TimeReport {
   byProject: ReportRow[]
   byTask: ReportRow[]
   byPerson: ReportRow[]
+  /** That can be chosen. */
+  departments: string[]
+}
+
+/** Something to filter by. */
+export interface ReportOption extends Named {
+  archived: boolean
+}
+
+export interface ReportOptions {
+  clients: ReportOption[]
+  projects: ReportOption[]
+  tasks: ReportOption[]
+  categories: ReportOption[]
+  tags: ReportOption[]
+  people: ReportOption[]
+}
+
+/** Earnings and costs, in company currency. */
+export interface ProfitRow extends Named {
+  sub?: string
+  minutes: number
+  revenue: number
+  cost: number
+}
+
+export interface ProfitReport {
+  currency: string
+  revenue: number
+  cost: number
+  minutes: number
+  byClient: ProfitRow[]
+  byProject: ProfitRow[]
+  byTask: ProfitRow[]
+  byPerson: ProfitRow[]
+  /** Left out, because the client has another currency. */
+  otherCurrencyMinutes: number
+  /** Counted without a cost, because no cost rate applies. */
+  withoutCostMinutes: number
+}
+
+export interface ContractorReport {
+  currency: string
+  showCosts: boolean
+  rows: (Named & { photoId: number | null; minutes: number; billableMinutes: number; cost: number | null; expenses: { currency: string; amount: number }[] })[]
+}
+
+export interface SavedReport extends Named {
+  /** Where it is, with what was chosen. */
+  path: string
+  createdAt: string
 }
 
 export interface HomeInfo {
@@ -388,6 +442,8 @@ export interface CompanySettingsInput {
   timeNotesRequired: boolean
   expenseNotesRequired: boolean
   approvalEnabled: boolean
+  reminderWeekday: number | null
+  reminderMinute: number
   lockAfterDays: number | null
   lockedThrough: IsoDate | null
   expensesEnabled: boolean
@@ -428,6 +484,7 @@ export interface PersonInput {
   name: string
   email: string
   phone: string | null
+  department: string
   kind: 'employee' | 'contractor'
   weeklyCapacityMinutes: number
   startedOn: IsoDate | null
@@ -447,6 +504,7 @@ export interface PersonRate {
 export interface PersonWork extends PersonInput {
   version: number
   status: string
+  knownDepartments: string[]
   canManage: boolean
   /** Why one may not archive or change the person; null when one may. */
   refusal: string | null
@@ -487,13 +545,54 @@ export interface ApprovalWeek {
   expenseRows: { id: number; spentOn: IsoDate; project: string; category: string; amount: number; currency: string; notes: string; mine: boolean }[]
 }
 
+/** `open`: not handed in, or sent back. */
+export type ApprovalStatus = 'open' | 'submitted' | 'approved'
+
+export interface ApprovalPerson extends Named {
+  photoId: number | null
+  department: string
+  labels: string[]
+  /** Whether a week of the period was not handed in. */
+  missing: boolean
+  /** Whether there is something that can be submitted for them. */
+  canSubmit: boolean
+  canRemind: boolean
+  /** Approved weeks that can be opened again. */
+  approved: { submissionId: number; from: IsoDate; to: IsoDate; decidedBy: string | null }[]
+}
+
+export interface ApprovalProject extends Named {
+  client: Named
+  tags: string[]
+}
+
+/** What one person did on one project, as far as it has this status. */
+export interface ApprovalLine {
+  personId: number
+  projectId: number
+  status: ApprovalStatus
+  minutes: number
+  billableMinutes: number
+  expenses: { currency: string; billable: number; other: number }[]
+}
+
+/** The time and expenses of a period that the actor decides about. */
 export interface Approvals {
-  pending: ApprovalWeek[]
-  /** Weeks nobody handed in, newest first. */
-  missing: { person: Named & { photoId: number | null }; from: IsoDate; to: IsoDate; minutes: number; capacityMinutes: number }[]
-  /** Approved lately, which can be opened again. */
-  approved: { submissionId: number; person: Named; from: IsoDate; to: IsoDate; minutes: number; decidedBy: string | null }[]
+  from: IsoDate
+  to: IsoDate
+  today: IsoDate
+  lock: { through: IsoDate | null; afterDays: number | null }
+  canLock: boolean
   canUnlock: boolean
+  /** When people are reminded by themselves; null for never. */
+  reminder: { weekday: number; minute: number } | null
+  people: ApprovalPerson[]
+  projects: ApprovalProject[]
+  lines: ApprovalLine[]
+  /** Weeks that wait, with what is in them. */
+  pending: ApprovalWeek[]
+  /** Weeks that wait outside the period. */
+  elsewhere: { from: IsoDate; to: IsoDate; count: number }[]
 }
 
 export interface ExpenseCategory extends Named {
@@ -517,13 +616,19 @@ export interface Receipt {
 export interface DetailedTime {
   showAmounts: boolean
   scope: 'own' | 'team'
+  options: ReportOptions
   rows: {
     id: number
     spentOn: IsoDate
+    clientId: number
     client: string
+    projectId: number
     project: string
+    taskId: number
     task: string
+    personId: number
     person: string
+    tagIds: number[]
     notes: string
     minutes: number
     billable: boolean
@@ -536,13 +641,19 @@ export interface DetailedTime {
 }
 
 export interface ExpenseReport {
+  options: ReportOptions
   rows: {
     id: number
     spentOn: IsoDate
+    clientId: number
     client: string
+    projectId: number
     project: string
+    categoryId: number
     category: string
+    personId: number
     person: string
+    tagIds: number[]
     notes: string
     amount: number
     currency: string

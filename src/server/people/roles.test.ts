@@ -61,8 +61,8 @@ describe('roles', () => {
     await make.person({ roleId: role.id })
     await make.person({ roleId: role.id, status: 'archived' })
     const all = await list()
-    expect(all.slice(0, 3).map(({ key, builtIn }) => [key, builtIn])).toEqual([['administrator', true], ['manager', true], ['member', true]])
-    for (const { description } of all.slice(0, 3)) expect(description).not.toBe('')
+    expect(all.slice(0, 7).map(({ key }) => key)).toEqual(['member', 'manager', 'people_admin', 'accounting', 'executive', 'administrator', null])
+    for (const { description } of all.slice(0, 6)) expect(description).not.toBe('')
     expect(all.find(({ id }) => id === role.id)).toEqual({ id: role.id, key: null, builtIn: false, name: role.name, description: 'Plans the weeks', people: 2 })
     expect(all.find(({ key }) => key === 'administrator')?.people).toBe(await database.db.$count(people, eq(people.roleId, roleIds.administrator ?? 0)))
   })
@@ -72,7 +72,7 @@ describe('roles', () => {
     expect(await read(roleIds.manager ?? 0)).toMatchObject({ grants: managerGrants(), refusal: 'Built-in roles cannot be changed.' })
     expect(await read(roleIds.member ?? 0)).toMatchObject({ grants: {} })
     const before = await stored()
-    for (const key of ['administrator', 'manager', 'member']) {
+    for (const key of ['administrator', 'manager', 'member', 'people_admin', 'accounting', 'executive']) {
       const role = await read(roleIds[key] ?? 0)
       expect((await save(role, { name: 'Renamed' })).status).toBe(403)
       expect((await remove(role, roleIds.member)).status).toBe(403)
@@ -107,7 +107,7 @@ describe('roles', () => {
     [{ grants: { 'time.fly': 'all' } }, 'grants'], [{ grants: { 'clients.manage': 'managed', 'clients.view': 'managed' } }, 'grants'],
     [{ grants: { 'time.approve': 'managed' } }, 'grants'], [{ grants: { 'time.approve': 'all', 'time.view': 'managed' } }, 'grants'],
     [{ grants: ['time.view:all'] }, 'grants'], [{ grants: undefined }, 'grants'], [{ grants: { 'time.view': 'own' } }, 'grants'],
-    [{ name: 'administrator' }, 'name'], [{ name: ' MEMBER ' }, 'name'], [{ name: 'Manager' }, 'name'], [{ name: ' ' }, 'name'], [{ name: 7 }, 'name'],
+    [{ name: 'administrator' }, 'name'], [{ name: ' MEMBER ' }, 'name'], [{ name: 'Manager' }, 'name'], [{ name: 'Executive Manager' }, 'name'], [{ name: ' ' }, 'name'], [{ name: 7 }, 'name'],
     [{ name: 'x'.repeat(61) }, 'name'], [{ name: 'a\u0007' }, 'name'], [{ description: 'x'.repeat(201) }, 'description'], [{ description: 7 }, 'description'],
   ])('refuse %j, naming the field, and store nothing', async (more, field) => {
     const role = await create()
@@ -212,7 +212,7 @@ describe('changing and deleting', () => {
     for (const { id } of [active, archived]) {
       expect((await database.db.select().from(people).where(eq(people.id, id)))[0]?.roleId).toBe(roleIds.manager)
       const [entry] = await database.db.select().from(activityLog).where(and(eq(activityLog.subjectId, id), eq(activityLog.action, 'access_changed')))
-      expect(entry).toMatchObject({ actorId: adminId, changes: { role: [role.name, 'Manager'] } })
+      expect(entry).toMatchObject({ actorId: adminId, changes: { role: [role.name, 'Project Manager'] } })
     }
     expect((await logOf(role.id)).map(({ action }) => action)).toEqual(['role_created', 'role_deleted'])
   })

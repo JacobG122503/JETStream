@@ -2,7 +2,7 @@
 import { and, eq } from 'drizzle-orm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { OutboxRow } from '../shared/notifications'
-import type { DetailedTime, ExpenseReport, PaymentReport, TimeReport } from '../shared/work'
+import type { ContractorReport, DetailedTime, ExpenseReport, PaymentReport, ProfitReport, SavedReport, TimeReport } from '../shared/work'
 import { createContext } from './app'
 import type { AppContext } from './context'
 import { loadConfig } from './config'
@@ -42,7 +42,7 @@ beforeEach(() => {
 describe('jobs', () => {
   it('run once a day, also when two servers look at the same time, and again after a failure', async () => {
     const ran = await Promise.all([runDueJobs(ctx), runDueJobs(ctx)])
-    expect(ran.flat().sort()).toEqual(['budget_alerts', 'invoice_reminders', 'recurring_invoices', 'timesheet_reminders'])
+    expect(ran.flat().sort()).toEqual(['budget_alerts', 'invoice_reminders', 'recurring_invoices'])
     expect(await runDueJobs(ctx)).toEqual([])
     await database.db.update(jobRuns).set({ status: 'failed' }).where(eq(jobRuns.job, 'budget_alerts'))
     expect(await runDueJobs(ctx)).toEqual(['budget_alerts'])
@@ -69,11 +69,21 @@ describe('jobs', () => {
     expect(messages).toEqual([])
   })
 
-  it('remind of a week that was not submitted, three days after it', async () => {
-    // Monday, with weeks from Saturday.
-    expect(await remindTimesheets(ctx, '2026-11-24')).toBe(0)
+  it('remind of a week that was not submitted, on the weekday and at the time that are set', async () => {
+    // Friday, the last day of a week from Saturday.
+    expect(await remindTimesheets(ctx, '2026-11-26')).toBe(0)
+    expect(await remindTimesheets(ctx, '2026-11-27')).toBeGreaterThan(0)
+    expect(messages.every(({ subject, text }) => subject === 'Please submit your week' && text.includes('November 21, 2026'))).toBe(true)
+    const friday = (time: string) => ({ ...ctx, now: () => new Date(`2026-11-27T${time}:00Z`) })
+    expect(await runDueJobs(friday('22:59'))).not.toContain('timesheet_reminders')
+    expect(await runDueJobs(friday('23:00'))).toContain('timesheet_reminders')
+    await database.db.update(companySettings).set({ reminderWeekday: null })
+    expect(await remindTimesheets(ctx, '2026-11-27')).toBe(0)
+    await database.db.update(companySettings).set({ reminderWeekday: 1 })
+    // At the beginning of a week it is about the one before.
+    messages.length = 0
     expect(await remindTimesheets(ctx, '2026-11-23')).toBeGreaterThan(0)
-    expect(messages.every(({ subject }) => subject === 'Please submit your week')).toBe(true)
+    expect(messages.every(({ text }) => text.includes('November 14, 2026'))).toBe(true)
   })
 
   it('tell of a budget once', async () => {
@@ -163,6 +173,53 @@ describe('reports', () => {
     expect((await read<PaymentReport>(admin, 'payments')).rows.length).toBeGreaterThan(0)
     expect((await lead.get(`/reports/payments?${range}`)).status).toBe(403)
     expect((await admin.get('/reports/detailed?from=2026-11-24&to=2026-01-01')).status).toBe(400)
+  })
+
+  it('offer to filter by what one sees, and by nothing else', async () => {
+    const all = (await read<DetailedTime>(admin, 'detailed')).options
+    expect(all.people.map(({ name }) => name)).toContain('Dana Test')
+    expect(all.people.find(({ name }) => name === 'Lydia Test')?.archived).toBe(true)
+    expect(all.clients.find(({ name }) => name === 'Old Quarry Materials')?.archived).toBe(true)
+    const { options, rows } = await read<ExpenseReport>(employee, 'expenses')
+    expect(options.people.map(({ name }) => name)).toEqual(['Casey Test'])
+    expect(options.projects.length).toBeLessThan(all.projects.length)
+    expect(options.categories.map(({ name }) => name)).toContain('Mileage')
+    for (const row of rows) expect(options.projects.map(({ id }) => id)).toContain(row.projectId)
+  })
+
+  it('show profit to those who see earnings and costs', async () => {
+    const profit = await read<ProfitReport>(admin, 'profitability')
+    for (const rows of [profit.byClient, profit.byProject, profit.byTask, profit.byPerson]) {
+      expect(rows.reduce((sum, { revenue }) => sum + revenue, 0)).toBe(profit.revenue)
+      expect(rows.reduce((sum, { cost }) => sum + cost, 0)).toBe(profit.cost)
+    }
+    expect([profit.currency, profit.cost > 0, profit.revenue > 0, profit.otherCurrencyMinutes > 0]).toEqual(['USD', true, true, true])
+    expect(profit.byProject.map(({ name }) => name)).not.toContain('Control system integration')
+    const fixed = (await admin.get(`/reports/profitability?${range}&fixed=1`)).body as ProfitReport
+    expect(fixed.byProject.map(({ name }) => name)).toContain('Control system integration')
+    for (const client of [lead, employee]) expect((await client.get(`/reports/profitability?${range}`)).status).toBe(403)
+  })
+
+  it('show contractors, with costs only to those who see them', async () => {
+    const all = await read<ContractorReport>(admin, 'contractors')
+    expect(all.rows.map(({ name }) => name)).toEqual(['Dana Test'])
+    expect(all.rows[0]?.cost).toBe(((all.rows[0]?.minutes ?? 0) / 60) * 6400)
+    const led = await read<ContractorReport>(lead, 'contractors')
+    expect(led.rows.every(({ cost }) => cost === null)).toBe(true)
+    expect((await employee.get(`/reports/contractors?${range}`)).status).toBe(403)
+  })
+
+  it('are saved for oneself, and lead nowhere else', async () => {
+    const path = '/reports/detailed?timeframe=last-week&people=3'
+    const saved = (await employee.post('/reports/saved', { name: 'Mine', path })).body as { reports: SavedReport[] }
+    expect(saved.reports).toMatchObject([{ name: 'Mine', path }])
+    for (const wrong of ['https://x.example', '//x.example', '/settings', '/reports/../settings', '/reports?x=<b>', 'javascript:alert(1)', '']) {
+      expect((await employee.post('/reports/saved', { name: 'Wrong', path: wrong })).status, wrong).toBe(400)
+    }
+    const id = saved.reports[0]?.id
+    expect(((await lead.get('/reports/saved')).body as { reports: SavedReport[] }).reports).toEqual([])
+    expect((await lead.delete(`/reports/saved/${id}`)).status).toBe(404)
+    expect((await employee.delete(`/reports/saved/${id}`)).body).toEqual({ reports: [] })
   })
 })
 

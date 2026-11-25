@@ -2,8 +2,8 @@
 import { createHash } from 'node:crypto'
 import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm'
 import type { AccessInfo, AccessInput, AccessPerson, AccessProject, PersonAccessDetails } from '../../shared/api'
-import { isAdministratorRole, managerExtras, managerGrants, problemWithExtras, roleGrants } from '../../shared/permissions'
-import { type Actor, actorId, type Holdings, type PersonAccess, readPersonAccess } from '../access/actor'
+import { builtInDescriptions, type BuiltInRole, isAdministratorRole, managerExtras, managerGrants, personGrants, problemWithExtras, roleGrants, writeGrants } from '../../shared/permissions'
+import { type Actor, actorId, type Holdings, isSystem, type PersonAccess, readPersonAccess } from '../access/actor'
 import { ownId, requirePermission, requireRecord } from '../access/decisions'
 import { checkGrant, checkHoldings, keepAnAdministrator, lockForAccessChange, refuse } from '../access/grants'
 import { endLostLinks, roleHoldings } from '../access/links'
@@ -15,6 +15,7 @@ import { clients, people, personExtras, personManagers, projectMembers, projects
 import { ApiError, NotFoundError } from '../errors'
 import { logActivity } from './activity'
 import { requireRole } from './lookup'
+import { rankOf } from './roles'
 import { isCurrentMembership } from './membership'
 
 interface Managing {
@@ -52,9 +53,9 @@ const idsOf = (list: { id: number }[]) => list.map(({ id }) => id)
 const managedOf = ({ projects: list }: Managing) => list.filter(({ isManager }) => isManager)
 
 /** Changes whenever the access does, whoever changes it. */
-function stateOf({ role, extras }: PersonAccess, managing: Managing): string {
+function stateOf({ role, extras, customized, grants }: PersonAccess, managing: Managing): string {
   const list = (ids: number[]) => [...ids].sort((a, b) => a - b).join(',')
-  const parts = [role.id, extras.join(','), list(idsOf(managing.people)), list(idsOf(managing.projects)), list(idsOf(managedOf(managing)))]
+  const parts = [role.id, extras.join(','), customized ? writeGrants(grants).join(',') : '-', list(idsOf(managing.people)), list(idsOf(managing.projects)), list(idsOf(managedOf(managing)))]
   return createHash('sha256').update(parts.join('|')).digest('hex').slice(0, 32)
 }
 
@@ -99,15 +100,17 @@ export async function readAccessOf(db: Db, actor: Actor, personId: number): Prom
     ...editableBy(actor, target),
     roleId: target.role.id,
     extras: target.extras,
+    permissions: target.customized ? target.grants : null,
+    held: isSystem(actor) ? {} : actor.grants,
     refusedExtras: managerExtras.filter((key) => {
       const level = managerGrants([key])[key]
       return checkHoldings(actor, { administrator: false, grants: { [key]: level } }) !== null
     }),
     managedPeople: managing.people,
     projects: managing.projects,
-    roles: allRoles.map((role) => ({
-      id: role.id, key: role.key, name: role.name, builtIn: role.builtIn, grants: roleGrants(role),
-      refusal: checkHoldings(actor, roleHoldings(role))?.message ?? null,
+    roles: [...allRoles].sort((a, b) => rankOf(a) - rankOf(b)).map((role) => ({
+      id: role.id, key: role.key, name: role.name, description: role.builtIn ? builtInDescriptions[role.key as BuiltInRole] : role.description, builtIn: role.builtIn,
+      grants: roleGrants(role), refusal: checkHoldings(actor, roleHoldings(role))?.message ?? null,
     })),
     people: candidates.map((person) => ({ ...person, active: true })),
   }
@@ -118,7 +121,7 @@ const difference = (a: readonly number[], b: readonly number[]) => [...a.filter(
 
 /** Changes someone's role, extras, managed people and manager flags, all or nothing. */
 export async function saveAccess(ctx: AppContext, actor: Actor, personId: number, input: AccessInput): Promise<void> {
-  const { roleId, extras, managedPersonIds, managedProjectIds } = input
+  const { roleId, extras, permissions, managedPersonIds, managedProjectIds } = input
   await runTransaction(ctx.db, async (tx) => {
     const editor = await lockForAccessChange(tx, actor, { people: [personId, ...managedPersonIds], roles: [roleId] })
     requirePermission(editor, 'roles.manage', 'all')
@@ -133,11 +136,18 @@ export async function saveAccess(ctx: AppContext, actor: Actor, personId: number
     const wrongExtras = problemWithExtras(extras)
     if (wrongExtras) throw invalidInput({ extras: wrongExtras })
 
-    const after: Holdings = { administrator: isAdministratorRole(role), grants: roleGrants(role, extras) }
+    if (permissions !== null && (isAdministratorRole(role) || extras.length > 0)) {
+      throw invalidInput({ permissions: 'Choose either extras or a list of permissions. Administrators hold everything.' })
+    }
+
+    const own = permissions === null ? null : writeGrants(permissions)
+    const after: Holdings = { administrator: isAdministratorRole(role), grants: personGrants(role, extras, own) }
+    const ownBefore = target.customized ? writeGrants(target.grants) : null
+    const ownChanged = JSON.stringify(ownBefore) !== JSON.stringify(own)
     const roleChanged = role.id !== target.role.id
     const extrasChanged = [...extras].sort().join() !== [...target.extras].sort().join()
     const changed = { people: difference(before.people, managedPersonIds), projects: difference(before.projects, managedProjectIds) }
-    const onlyFlags = !roleChanged && !extrasChanged && changed.people.length === 0
+    const onlyFlags = !roleChanged && !extrasChanged && !ownChanged && changed.people.length === 0
     refuse(checkGrant(editor, { personId, before: target, after, changed, onlyFlags }))
     if (target.person.status !== 'active') throw new ApiError(409, 'not_active', 'Only the access of active people can be changed.')
     if (stateOf(target, managing) !== input.state) {
@@ -151,7 +161,8 @@ export async function saveAccess(ctx: AppContext, actor: Actor, personId: number
     }
 
     if (roleChanged) await tx.update(people).set({ roleId }).where(eq(people.id, personId))
-    if (roleChanged || extrasChanged) {
+    if (ownChanged || roleChanged) await tx.update(people).set({ permissions: own }).where(eq(people.id, personId))
+    if (roleChanged || extrasChanged || ownChanged) {
       await tx.delete(personExtras).where(eq(personExtras.personId, personId))
       if (extras.length > 0) await tx.insert(personExtras).values(extras.map((permission) => ({ personId, permission })))
       await endLostLinks(tx, ctx.now(), new Map([[personId, target]]))
@@ -173,6 +184,7 @@ export async function saveAccess(ctx: AppContext, actor: Actor, personId: number
     const changes = {
       ...(roleChanged && { role: [target.role.name, role.name] }),
       ...(extrasChanged && { extras: [target.extras, extras] }),
+      ...(ownChanged && { permissions: [ownBefore, own] }),
       ...(changed.people.length > 0 && { managedPeople: [names(managing.people), names(now.people)] }),
       ...(changed.projects.length > 0 && { managedProjects: [names(managedOf(managing)), names(managedOf(now))] }),
     }

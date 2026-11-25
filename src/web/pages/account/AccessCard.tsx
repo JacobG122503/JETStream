@@ -2,7 +2,7 @@ import type { AccessInfo } from '../../../shared/api'
 import { useLoad } from '../../auth/useLoad'
 import { Card, ErrorState, LoadingState } from '../../ui'
 import { accessLines } from '../team/accessWords'
-import { AccessSummary } from '../team/PersonAccess'
+import { AccessSummary } from '../team/AccessSummary'
 import '../team/team.css'
 
 /** What one may do, to look at. */

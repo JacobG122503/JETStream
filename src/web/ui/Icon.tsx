@@ -33,6 +33,8 @@ const paths = {
   chevronRight: 'M9.5 6.5 15 12l-5.5 5.5',
   chevronsLeft: 'M11.5 6.5 6 12l5.5 5.5M18 6.5 12.5 12l5.5 5.5',
   chevronsRight: 'M12.5 6.5 18 12l-5.5 5.5M6 6.5l5.5 5.5L6 17.5',
+  arrowLeft: 'M19 12H5M11.5 5.5 5 12l6.5 6.5',
+  arrowRight: 'M5 12h14M12.5 5.5 19 12l-6.5 6.5',
   arrowUp: 'M12 19V5M6.5 10.5 12 5l5.5 5.5',
   arrowDown: 'M12 5v14M6.5 13.5 12 19l5.5-5.5',
   sort: 'M8.5 9.5 12 6l3.5 3.5M8.5 14.5 12 18l3.5-3.5',

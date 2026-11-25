@@ -209,6 +209,7 @@ export interface RoleChoice {
   id: number
   key: string | null
   name: string
+  description: string
   builtIn: boolean
   grants: Grants
   /** Why one may not give it; null when one may. */
@@ -239,6 +240,10 @@ export interface PersonAccessDetails {
   reason: string | null
   roleId: number
   extras: PermissionKey[]
+  /** A list of their own, in place of what the role gives; null without one. */
+  permissions: Grants | null
+  /** What the one who asks holds; more cannot be given. */
+  held: Grants
   /** Extras one may not give or take. */
   refusedExtras: PermissionKey[]
   managedPeople: AccessPerson[]
@@ -251,6 +256,7 @@ export interface PersonAccessDetails {
 export interface AccessInput {
   roleId: number
   extras: PermissionKey[]
+  permissions: Grants | null
   managedPersonIds: number[]
   managedProjectIds: number[]
   state: string

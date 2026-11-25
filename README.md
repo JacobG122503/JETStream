@@ -24,9 +24,9 @@ Open the address it prints. All people, clients and amounts are made up. Account
 ## Who does what
 
 - **Employees** use Timesheet (timer, hours by day, week or month) and Expenses (with receipts), then submit the week.
-- **Approvers** use Approvals: look at the details, approve, or send back with a comment. They can also remind people who have not submitted.
+- **Approvers** use Approvals: by week or any period, who has not submitted, what waits and what is approved. They look at the details, approve or send back with a comment, remind people, submit for them, and (administrators) lock a period.
 - **Billing** uses Invoices: make a draft of approved or unapproved hours and expenses, change its lines, send it or make a client link, print it or save it as PDF, record payments. There are also estimates, recurring invoices, retainers and client statements.
-- **Administrators** use Team, Clients, Projects, Tasks and Settings, give roles, and export everything as CSV.
+- **Administrators** use Team, Clients, Projects, Tasks and Settings, give people a profile with permissions on their page, and export everything as CSV.
 
 ## What works, and what does not yet
 
@@ -41,7 +41,7 @@ Open the address it prints. All people, clients and amounts are made up. Account
 | Payments, refunds, write-offs, retainers, statements | Works; recorded by hand, no money moves |
 | Recurring invoices, late reminders, timesheet reminders, budget alerts | Works; run by the server |
 | Estimates, accepted or declined by clients | Works |
-| Reports (time, detailed, expenses, budgets, uninvoiced, invoices, payments), CSV | Works |
+| Reports (time with utilization, detailed, expenses, profitability, contractors, budgets, uninvoiced, invoices, payments), saved reports, CSV | Works. Profitability leaves out clients with another currency |
 | Email over SMTP | Built and tested with a stand-in; **not yet tried with a real mail server** |
 | PostgreSQL | Built for it; **tested only with the embedded PostgreSQL (PGlite)**, not on a real server |
 | Online payment | Not built: clients pay as they do today |

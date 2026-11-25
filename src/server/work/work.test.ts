@@ -1,6 +1,6 @@
 // The demo pages' API, over the demo company.
 import type { Express } from 'express'
-import { eq } from 'drizzle-orm'
+import { and, eq, gte, isNull, lte, ne } from 'drizzle-orm'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { InvoiceDetails } from '../../shared/billing'
 import { addDays } from '../../shared/dates'
@@ -9,7 +9,7 @@ import type {
   TaskRow, TeamWeek, TimeReport, TimeWeek, UnbilledClient,
 } from '../../shared/work'
 import type { Database } from '../db'
-import { companySettings, invoiceTimeEntries, people, projectMembers, timeEntries } from '../db/schema'
+import { companySettings, expenses, invoiceExpenses, invoiceTimeEntries, people, projectMembers, projects, timeEntries } from '../db/schema'
 import { demoPassword } from '../demo/accounts'
 import { seedDemo } from '../demo'
 import { type Browser, signedIn, testApp, testClock } from '../testing/apiClient'
@@ -319,6 +319,42 @@ describe('reports and home', () => {
     const usd = (rows: TimeReport['amounts']) => rows.find(({ currency }) => currency === 'USD')?.amount ?? 0
     expect(usd(all.uninvoiced)).toBeGreaterThan(0)
     expect(usd(all.uninvoiced)).toBeLessThan(usd(all.amounts))
+  })
+
+  it('are by department, with the working time of people, and count fixed fees only where asked to', async () => {
+    const week = 'from=2026-10-31&to=2026-11-06'
+    const all = await get<TimeReport>(admin, `/reports/time?${week}`)
+    expect(all.departments).toEqual(['Drafting', 'Engineering', 'Field services', 'Office'])
+    expect(all.byPerson.every(({ capacityMinutes }) => capacityMinutes === 2400 || capacityMinutes === 1800)).toBe(true)
+    const field = await get<TimeReport>(admin, `/reports/time?${week}&department=Field%20services`)
+    expect(field.byPerson.map(({ name }) => name).sort()).toEqual(['Dana Test', 'Tomas Test'])
+    expect((await get<TimeReport>(employee, `/reports/time?${week}`)).departments).toEqual([])
+
+    const period = `from=${addDays(today, -60)}&to=${today}`
+    const [usual, fixed] = [await get<TimeReport>(admin, `/reports/time?${period}`), await get<TimeReport>(admin, `/reports/time?${period}&fixed=1`)]
+    expect(fixed.uninvoiced).toEqual(usual.uninvoiced)
+    expect(fixed.minutes).toBe(usual.minutes)
+    await database.db.update(projects).set({ rateMethod: 'person' }).where(eq(projects.code, 'FWU-202'))
+    const rated = await get<TimeReport>(admin, `/reports/time?${period}&fixed=1`)
+    expect(rated.byProject.find(({ name }) => name === 'Control system integration')?.amount).toBeGreaterThan(0)
+    expect(rated.uninvoiced).toEqual(usual.uninvoiced)
+    await database.db.update(projects).set({ rateMethod: 'none' }).where(eq(projects.code, 'FWU-202'))
+  })
+
+  it('uninvoiced has the billable expenses too', async () => {
+    const period = `from=${addDays(today, -60)}&to=${today}`
+    const usd = (report: TimeReport) => report.uninvoiced.find(({ currency }) => currency === 'USD')?.amount ?? 0
+    const before = usd(await get<TimeReport>(admin, `/reports/time?${period}`))
+    const [open] = await database.db
+      .select({ id: expenses.id, amount: expenses.amount })
+      .from(expenses)
+      .innerJoin(projects, eq(projects.id, expenses.projectId))
+      .leftJoin(invoiceExpenses, eq(invoiceExpenses.expenseId, expenses.id))
+      .where(and(eq(expenses.billable, true), eq(expenses.billedOutside, false), isNull(invoiceExpenses.lineId), ne(projects.type, 'fixed_fee'), eq(expenses.currency, 'USD'), gte(expenses.spentOn, addDays(today, -60)), lte(expenses.spentOn, today)))
+    expect(open).toBeDefined()
+    await database.db.update(expenses).set({ billable: false }).where(eq(expenses.id, open?.id ?? 0))
+    expect(usd(await get<TimeReport>(admin, `/reports/time?${period}`))).toBe(before - (open?.amount ?? 0))
+    await database.db.update(expenses).set({ billable: true }).where(eq(expenses.id, open?.id ?? 0))
   })
 
   it('refuse periods that make no sense', async () => {

@@ -1,6 +1,6 @@
 import { expect, test } from './fixtures'
 import { api } from './people'
-import { mainNav, open, sections } from './pages'
+import { dialog, mainNav, open, sections } from './pages'
 
 // What each demo account may open (005). Once is enough.
 test.skip(({ basePath }) => basePath !== '/', 'once is enough')
@@ -33,14 +33,18 @@ test('an extra reaches an open window at the next page, without signing in again
   await open(adminPage, 'team', 'Team')
   const { people } = await api<{ people: { id: number; email: string }[] }>(adminPage, 'GET', 'people')
   const lead = people.find(({ email }) => email === 'lead@jet.demo')
-  await open(adminPage, `team/${lead?.id}`, 'Jordan Test')
-  await adminPage.getByRole('checkbox', { name: 'Create, edit, send, delete invoices' }).check()
-  await adminPage.getByRole('button', { name: 'Save access' }).click()
-  await expect(adminPage.getByText('Access saved')).toBeVisible()
+  await open(adminPage, `team/${lead?.id}/permissions`, 'Jordan\u2019s permissions')
+  const invoices = adminPage.getByRole('checkbox', { name: 'Create, edit, send, delete invoices (only what they manage)' })
+  await adminPage.getByRole('button', { name: /^Invoices \d/ }).click()
+  await invoices.check()
+  await adminPage.getByRole('button', { name: 'Update permissions' }).click()
+  await expect(adminPage.getByText('Permissions updated')).toBeVisible()
   await mainNav(leadPage).getByRole('link', { name: 'Projects' }).click()
   await expect(mainNav(leadPage).getByRole('link', { name: 'Invoices' })).toBeVisible()
-  await adminPage.getByRole('checkbox', { name: 'Create, edit, send, delete invoices' }).uncheck()
-  await adminPage.getByRole('button', { name: 'Save access' }).click()
+  await adminPage.getByRole('button', { name: /^Invoices \d/ }).click()
+  await invoices.uncheck()
+  await adminPage.getByRole('button', { name: 'Update permissions' }).click()
+  await dialog(adminPage).getByRole('button', { name: 'Update permissions' }).click()
   await mainNav(leadPage).getByRole('link', { name: 'Clients' }).click()
   await expect(mainNav(leadPage).getByRole('link', { name: 'Invoices' })).toBeHidden()
 })

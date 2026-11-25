@@ -2,6 +2,7 @@
 export const notificationKinds = {
   approval: { label: 'Weeks waiting for my approval', email: true },
   approved: { label: 'My week was approved', email: false },
+  submitted_for: { label: 'My week was submitted for me', email: false },
   rejected: { label: 'My week was sent back', email: true },
   timesheet_reminder: { label: 'Reminders to submit my week', email: true },
   budget: { label: 'Budget alerts', email: true },

@@ -6,7 +6,7 @@ import { accept, accountButton, api, goodPassword, inviteLink, newBrowser, newEm
 
 test('each demo account is one press away, and signing out leaves nothing behind', async ({ page, context, appUrl, basePath }) => {
   await open(page, 'sign-in', 'Sign in')
-  for (const [label, role] of [['Employee', 'Member'], ['Project lead', 'Manager'], ['Administrator', 'Administrator']] as const) {
+  for (const [label, role] of [['Employee', 'Member'], ['Project lead', 'Project Manager'], ['Administrator', 'Administrator']] as const) {
     await page.getByRole('button', { name: new RegExp(`^${label}`) }).click()
     await expect(pageTitle(page)).toHaveText('Home')
     await expect(accountButton(page)).toHaveAccessibleName(new RegExp(`${role}$`))
@@ -88,7 +88,9 @@ test('someone asks for an account, waits, is approved with a client and a projec
   await adminPage.getByRole('tab', { name: 'Accounts' }).click()
   await adminPage.getByLabel('Search people').fill(email)
   await adminPage.getByRole('link', { name: 'Noor Fictional' }).click()
-  await expect(pageTitle(adminPage)).toHaveText('Noor Fictional')
+  await expect(pageTitle(adminPage)).toHaveText('Noor\u2019s basic info')
+  await adminPage.getByRole('link', { name: 'Assigned projects' }).click()
+  await expect(pageTitle(adminPage)).toHaveText('Noor\u2019s assigned projects')
   await expect(adminPage.getByRole('checkbox', { name: /^Pump station upgrade/ })).toBeChecked()
   await adminPage.getByRole('checkbox', { name: 'Fernhollow Water Utility', exact: true }).uncheck()
   await adminPage.getByRole('button', { name: 'Save assignments' }).click()
@@ -105,7 +107,7 @@ test('an invite is made, opened without a trace in the address, accepted once, a
   const box = dialog(adminPage, 'Invite someone')
   await box.getByRole('textbox', { name: /^Name/ }).fill('Robin Fictional')
   await box.getByRole('textbox', { name: /^Email/ }).fill(email)
-  await box.getByLabel(/^Role/).selectOption('Manager')
+  await box.getByLabel(/^Role/).selectOption('Project Manager')
   await box.getByRole('button', { name: 'Make invite link' }).click()
   const link = await dialog(adminPage, 'Invite link').getByLabel('Invite link').inputValue()
   expect(link).toMatch(new RegExp(`^${appUrl}invite#`))
@@ -116,11 +118,11 @@ test('an invite is made, opened without a trace in the address, accepted once, a
   await page.goto(link)
   await expect(pageTitle(page)).toHaveText('Accept your invite')
   await expect(page).toHaveURL(`${appUrl}invite`)
-  await expect(page.getByText('Manager')).toBeVisible()
+  await expect(page.getByText('Project Manager')).toBeVisible()
   await page.getByRole('textbox', { name: /^Password/ }).fill(goodPassword)
   await page.getByRole('button', { name: 'Accept and sign in' }).click()
   await expect(pageTitle(page)).toHaveText('Home')
-  await expect(accountButton(page)).toHaveAccessibleName(/Robin Fictional.*Manager$/)
+  await expect(accountButton(page)).toHaveAccessibleName(/Robin Fictional.*Project Manager$/)
   expect(requested.join()).not.toContain(link.split('#')[1])
 
   const other = await newBrowser(browser, appUrl)

@@ -38,6 +38,10 @@ export const companySettings = pgTable(
 
     signUpEnabled: boolean('sign_up_enabled').notNull().default(true),
     approvalEnabled: boolean('approval_enabled').notNull().default(true),
+    /** 0 is Sunday: when people are reminded to submit their week; null for never. */
+    reminderWeekday: integer('reminder_weekday').default(5),
+    /** Minutes after midnight. */
+    reminderMinute: integer('reminder_minute').notNull().default(1020),
     /** Locks a week this many days after it ends; null for no automatic lock. */
     lockAfterDays: integer('lock_after_days'),
     /** Locks everything up to this date. */
@@ -71,6 +75,8 @@ export const companySettings = pgTable(
     rule(t.id, 'single_row', sql`${t.id} = 1`),
     ...currencyCode(t.currency),
     rule(t.weekStartsOn, 'week_starts_on_range', sql`${t.weekStartsOn} between 0 and 6`),
+    rule(t.reminderWeekday, 'reminder_weekday_range', sql`${t.reminderWeekday} is null or ${t.reminderWeekday} between 0 and 6`),
+    rule(t.reminderMinute, 'reminder_minute_range', sql`${t.reminderMinute} between 0 and 1439`),
     rule(t.fiscalYearStartMonth, 'fiscal_year_range', sql`${t.fiscalYearStartMonth} between 1 and 12`),
     oneOf(t.dateFormat, dateFormats),
     oneOf(t.timeFormat, timeFormats),

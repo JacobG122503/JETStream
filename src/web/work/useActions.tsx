@@ -10,7 +10,7 @@ export interface Action {
   method?: 'POST' | 'PUT' | 'DELETE'
   route: string
   body?: object
-  /** Said when it is done. */
+  /** Said when it is done; empty where `then` says it. */
   done: string
   then: (answer: never) => void
 }
@@ -31,7 +31,7 @@ export function useActions() {
         if (!action) return
         try {
           const answer = await callApi(action.method ?? 'POST', action.route, action.body)
-          toast.success(action.done)
+          if (action.done) toast.success(action.done)
           action.then(answer as never)
         } catch (reason) {
           throw new Error(errorMessage(reason), { cause: reason })

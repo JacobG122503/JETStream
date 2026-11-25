@@ -42,8 +42,20 @@ export const allPages = [
   ['clients/1/statement', 'Statement'],
   ['estimates/1', 'Estimate EST-0001'],
   ['estimates/new?client=1', 'New estimate'],
-  ['reports/detailed', 'Detailed time'],
-  ['reports/expenses', 'Expenses report'],
+  ['approvals?status=submitted&from=2026-11-14', 'Approvals'],
+  ['reports?tab=byPerson', 'Reports'],
+  ['reports/detailed', 'Detailed time report'],
+  ['reports/expenses?from=2026-07-18&to=2026-07-24', 'Detailed expense report'],
+  ['reports/profitability', 'Profitability'],
+  ['reports/contractors', 'Contractor report'],
+  ['reports/activity', 'Activity log'],
+  ['reports/saved', 'Saved reports'],
+  ['team/3', 'Casey\u2019s basic info'],
+  ['team/3/rates', 'Casey\u2019s rates'],
+  ['team/3/projects', 'Casey\u2019s assigned projects'],
+  ['team/3/people', 'Casey\u2019s assigned people'],
+  ['team/6/permissions', 'Elena\u2019s permissions'],
+  ['team/3/security', 'Casey\u2019s security'],
   ['reports/budgets', 'Project budgets'],
   ['reports/uninvoiced', 'Uninvoiced'],
   ['reports/invoices', 'Invoices report'],
@@ -67,13 +79,19 @@ export const allPages = [
 export const phone = { width: 375, height: 812 }
 export const desktop = { width: 1440, height: 900 }
 
+/** Those of detailed reports go on with the dates. */
+export async function expectHeading(page: Page, heading: string) {
+  if (heading.startsWith('Detailed')) await expect(pageTitle(page)).toContainText(`${heading}: `)
+  else await expect(pageTitle(page)).toHaveText(heading)
+}
+
 /** Opens a page and waits until it is there and nothing is being requested. */
 export async function open(page: Page, path: string, heading?: string) {
   // What the page before still asks for would be cut off.
   await settled(page)
   await page.goto(path)
   const title = page.getByRole('heading', { level: 1 })
-  if (heading) await expect(title).toHaveText(heading)
+  if (heading) await expectHeading(page, heading)
   else await expect(title).toBeVisible()
   if (/^design\/?(?:[?#]|$)/.test(path)) await expect(page.getByText('Server connected')).toBeVisible()
   await page.evaluate(() => document.fonts.ready)

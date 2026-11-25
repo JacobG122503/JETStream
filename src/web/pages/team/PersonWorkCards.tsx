@@ -17,11 +17,21 @@ export const personFields: FieldSpec[] = [
   { name: 'weeklyCapacityMinutes', label: 'Hours per week', type: 'hours', required: true, half: true },
   { name: 'phone', label: 'Phone', type: 'text', half: true },
   { name: 'startedOn', label: 'Started', type: 'date', half: true },
-  { name: 'labels', label: 'Labels', type: 'names', hint: 'Such as Engineer, Technician. Separated by commas.' },
+  { name: 'department', label: 'Department', type: 'text', hint: 'Such as Engineering. To filter reports and approvals by.' },
+  { name: 'labels', label: 'Roles', type: 'names', hint: 'What they work as, such as Engineer, Technician. Separated by commas.' },
   { name: 'notes', label: 'Notes', type: 'area' },
 ]
 
-/** Details and rates of a person. */
+/** The rates of a person. */
+export function PersonRates({ id }: { id: number }) {
+  const { status, data, error, reload, setData } = useLoad<PersonWork>(`people/${id}/work`)
+  if (status === 'loading') return <LoadingState look="skeleton" label="Loading the rates" />
+  if (!data) return <ErrorState message={error} onRetry={reload} />
+  const shown = data.rates.length > 0 || data.mayEditRates.billable || data.mayEditRates.cost
+  return shown ? <Rates id={id} data={data} onChange={setData} /> : <p className="muted">There are no rates that you can see.</p>
+}
+
+/** Working details of a person. */
 export function PersonWorkCards({ id, onChange }: { id: number; onChange: () => void }) {
   const { status, data, error, reload, setData } = useLoad<PersonWork>(`people/${id}/work`)
   const [editing, setEditing] = useState(false)
@@ -86,7 +96,9 @@ export function PersonWorkCards({ id, onChange }: { id: number; onChange: () => 
           <dd>{data.kind === 'employee' ? 'Employee' : 'Contractor'}</dd>
           <dt>Hours per week</dt>
           <dd>{formatHours(data.weeklyCapacityMinutes)}</dd>
-          <dt>Labels</dt>
+          <dt>Department</dt>
+          <dd>{data.department || 'None'}</dd>
+          <dt>Roles</dt>
           <dd>{data.labels.join(', ') || 'None'}</dd>
           {data.phone && (
             <>
@@ -108,7 +120,6 @@ export function PersonWorkCards({ id, onChange }: { id: number; onChange: () => 
           )}
         </dl>
       </Card>
-      {(data.rates.length > 0 || data.mayEditRates.billable || data.mayEditRates.cost) && <Rates id={id} data={data} onChange={setData} />}
       {editing && (
         <FormDialog
           title={`Edit ${data.name}`}

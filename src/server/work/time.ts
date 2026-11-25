@@ -2,8 +2,8 @@
 import { and, asc, between, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, or, type SQL } from 'drizzle-orm'
 import { addDays, addMonths, type IsoDate, startOfWeek, type Weekday } from '../../shared/dates'
 import type { TimeEntry, TimeInput, TimeOptions, TimeProject, TimeWeek } from '../../shared/work'
-import type { Actor } from '../access/actor'
-import { can, holds, ownId, requirePermission, requireRecord } from '../access/decisions'
+import { type Actor, loadActor } from '../access/actor'
+import { can, forbidden, holds, ownId, requirePermission, requireRecord } from '../access/decisions'
 import { filterFor } from '../access/filters'
 import { invalidInput } from '../api/input'
 import { lockTimeEntryForEdit } from '../billing'
@@ -296,9 +296,11 @@ async function lockWeek(tx: Tx, personId: number, date: IsoDate) {
 }
 
 /** Hands in the week for approval, with its expenses. */
-export async function submitWeek(ctx: AppContext, actor: Actor, date: IsoDate): Promise<{ from: IsoDate; projectIds: number[] }> {
-  const personId = ownId(actor)
+export async function submitWeek(ctx: AppContext, actor: Actor, date: IsoDate, personId = ownId(actor)): Promise<{ from: IsoDate; projectIds: number[] }> {
+  const by = ownId(actor)
   return runTransaction(ctx.db, async (tx) => {
+    // Whoever decides about someone's time may hand it in for them.
+    if (personId !== by && !can(await loadActor(tx, by), 'time.approve', { type: 'person', personId })) throw forbidden()
     const { start, end, submission, inWeek, approvalEnabled } = await lockWeek(tx, personId, date)
     if (!approvalEnabled) throw new ApiError(409, 'approval_off', 'Weeks are not submitted here.')
     if (submission?.status === 'submitted' || submission?.status === 'approved') {
@@ -316,8 +318,9 @@ export async function submitWeek(ctx: AppContext, actor: Actor, date: IsoDate): 
       ? await tx.update(submissions).set(values).where(eq(submissions.id, submission.id)).returning()
       : await tx.insert(submissions).values({ personId, periodStart: start, periodEnd: end, ...values }).returning()
     if (!row) throw new Error('The week was not stored.')
-    await tx.insert(approvalEvents).values({ submissionId: row.id, actorId: personId, action: 'submitted' })
-    await logChange(tx, actor, { action: 'submitted', type: 'submission', id: row.id, summary: `Submitted the week from ${start}` })
+    await tx.insert(approvalEvents).values({ submissionId: row.id, actorId: by, action: 'submitted' })
+    const [person] = personId === by ? [] : await tx.select({ name: people.name }).from(people).where(eq(people.id, personId))
+    await logChange(tx, actor, { action: 'submitted', type: 'submission', id: row.id, summary: `Submitted the week from ${start}${person ? ` for ${person.name}` : ''}` })
     return { from: start, projectIds: [...new Set([...entries.map(({ projectId }) => projectId), ...spent.map(({ projectId }) => projectId)])] }
   })
 }

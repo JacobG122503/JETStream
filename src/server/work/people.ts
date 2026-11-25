@@ -34,7 +34,9 @@ export async function readPersonWork(db: Db, actor: Actor, id: number): Promise<
   return {
     version: person.version, name: person.name, email: person.email, phone: person.phone, kind: person.kind, status: person.status,
     weeklyCapacityMinutes: person.weeklyCapacityMinutes, startedOn: person.startedOn, notes: canManage ? person.notes : null,
+    department: person.department,
     labels: own.map(({ name }) => name),
+    knownDepartments: canManage ? await listDepartments(db) : [],
     canManage,
     refusal: canManage ? (checkOutranks(actor, access)?.message ?? (actor.kind === 'person' && actor.id === id ? 'You cannot archive or delete yourself.' : null)) : 'You do not have access to this',
     knownLabels: canManage ? (await db.select({ name: labels.name }).from(labels).orderBy(asc(labels.name))).map(({ name }) => name) : [],
@@ -42,6 +44,12 @@ export async function readPersonWork(db: Db, actor: Actor, id: number): Promise<
     rates: rates.map(({ id: rateId, version, kind, startsOn, rate }) => ({ id: rateId, version, kind, startsOn, rate })),
     mayEditRates: { billable: mayEdit(actor, 'billable'), cost: mayEdit(actor, 'cost') },
   }
+}
+
+/** The departments in use. */
+export async function listDepartments(db: Db): Promise<string[]> {
+  const rows = await db.selectDistinct({ name: people.department }).from(people).where(ne(people.department, '')).orderBy(asc(people.department))
+  return rows.map(({ name }) => name)
 }
 
 async function saveLabels(tx: Tx, personId: number, names: string[]): Promise<void> {

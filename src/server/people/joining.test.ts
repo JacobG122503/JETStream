@@ -210,19 +210,19 @@ describe('invites', () => {
     const guest = stranger()
     for (let i = 0; i < 2; i++) {
       expect((await guest.post('/invite/check', { token: tokenIn(link) })).body).toEqual({
-        company: 'JET Engineering', companyTimeZone: 'America/Chicago', name: 'Ivy Invited', email, role: 'Manager',
+        company: 'JET Engineering', companyTimeZone: 'America/Chicago', name: 'Ivy Invited', email, role: 'Project Manager',
       })
     }
     expect(summary(await accept(guest, link, { password: 'short' }))).toEqual([400, 'invalid_input'])
     expect(summary(await accept(guest, link, { password: email }))).toEqual([400, 'invalid_input'])
     const accepted = await accept(guest, link)
-    expect(accepted.body).toMatchObject({ person: { name: 'Ivy Accepted', email, role: { name: 'Manager' }, status: 'active', timeZone: 'Europe/Berlin' } })
+    expect(accepted.body).toMatchObject({ person: { name: 'Ivy Accepted', email, role: { name: 'Project Manager' }, status: 'active', timeZone: 'Europe/Berlin' } })
     expect((await guest.get('/account')).status).toBe(200)
     const person = await findPerson(email)
     expect(await isProjectMember(database.db, person?.id ?? 0, project.id)).toBe(true)
     expect(summary(await accept(stranger(), link))).toEqual(gone)
     expect(summary(await stranger().post('/invite/check', { token: tokenIn(link) }))).toEqual(gone)
-    expect(await rowsOf(office, email)).toMatchObject([{ status: 'accepted', invitedBy: admin.name, role: 'Manager' }])
+    expect(await rowsOf(office, email)).toMatchObject([{ status: 'accepted', invitedBy: admin.name, role: 'Project Manager' }])
     expect(await logOf(person?.id ?? 0)).toEqual([['invite_accepted', person?.id]])
     const invited = await database.db.select().from(activityLog).where(eq(activityLog.action, 'invited'))
     expect(invited.some(({ summary: text, actorId }) => text.includes(email) && actorId === admin.id)).toBe(true)

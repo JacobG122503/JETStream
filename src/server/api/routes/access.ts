@@ -2,7 +2,7 @@ import { requireActor } from '../../auth/access'
 import { readAccessOf, saveAccess } from '../../people/access'
 import { createRole, deleteRole, listRoles, readRole, updateRole } from '../../people/roles'
 import { jsonBody } from '../body'
-import { extras, grants, id, ids, optionalId, pathId, readInput, roleDescription, roleName, shortText, version } from '../input'
+import { extras, grants, id, optional, ids, optionalId, pathId, readInput, roleDescription, roleName, shortText, version } from '../input'
 import type { AddRoutes } from './types'
 
 /** Roles, and what each person may do. */
@@ -41,7 +41,7 @@ export const accessRoutes: AddRoutes = (api, access, ctx) => {
   api.put('/people/:id/access', access.permission('roles.manage'), jsonBody, async (req, res) => {
     const actor = requireActor(res)
     const personId = pathId(req.params.id)
-    const input = readInput(req.body, { roleId: id, extras, managedPersonIds: ids, managedProjectIds: ids, state: shortText })
+    const input = readInput(req.body, { roleId: id, extras, permissions: optional(grants), managedPersonIds: ids, managedProjectIds: ids, state: shortText })
     await saveAccess(ctx, actor, personId, input)
     res.json(await readAccessOf(ctx.db, actor, personId))
   })

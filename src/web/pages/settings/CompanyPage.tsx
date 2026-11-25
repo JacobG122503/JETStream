@@ -8,6 +8,7 @@ import { apiUrl } from '../../basePath'
 import { Button, Card, ErrorState, LoadingState, monthNames, useToast, weekdayNames } from '../../ui'
 import { currencies, taxFields, termFields } from '../../work/billing'
 import { Fields, type FieldSpec, useFields } from '../../work/FormDialog'
+import { showClock } from '../../work/format'
 import { SettingsLayout } from './SettingsLayout'
 
 export function CompanyPage() {
@@ -55,6 +56,11 @@ const groups: { title: string; fields: FieldSpec[] }[] = [
       { name: 'roundingMode', label: 'Rounding in reports and invoices', type: 'select', options: [{ value: 'off', label: 'Off' }, { value: 'up', label: 'Up' }, { value: 'nearest', label: 'Nearest' }, { value: 'down', label: 'Down' }], half: true },
       { name: 'roundingMinutes', label: 'Round to', type: 'id', options: [5, 6, 10, 15, 30].map((value) => ({ value: String(value), label: `${value} minutes` })), show: ({ roundingMode }) => roundingMode !== 'off' },
       { name: 'approvalEnabled', label: 'Weeks are submitted for approval', type: 'check' },
+      { name: 'reminderWeekday', label: 'Remind people to submit on', type: 'id', placeholder: 'Never', options: weekdayNames.map((label, value) => ({ value: String(value), label })), half: true, show: ({ approvalEnabled }) => approvalEnabled === true },
+      {
+        name: 'reminderMinute', label: 'Remind at', type: 'id', half: true, show: ({ approvalEnabled }) => approvalEnabled === true,
+        options: Array.from({ length: 24 }, (_, hour) => ({ value: String(hour * 60), label: showClock(hour * 60) })),
+      },
       { name: 'timeNotesRequired', label: 'Time needs notes', type: 'check' },
       { name: 'expenseNotesRequired', label: 'Expenses need notes', type: 'check' },
       { name: 'lockAfterDays', label: 'Lock a week this many days after it ends', type: 'whole', hint: 'Empty for never.', half: true },
@@ -90,9 +96,11 @@ function CompanyForm({ settings, onSaved, onReload }: { settings: CompanySetting
   const save = (event: FormEvent) => {
     event.preventDefault()
     void submit(async (result) => {
-      const { reminderText, roundingMinutes, ...rest } = result as unknown as Record<string, unknown> & { reminderText: string; roundingMinutes: number | null }
+      const { reminderText, roundingMinutes, reminderWeekday, reminderMinute, ...rest } = result as unknown as Record<string, unknown> & Pick<CompanySettings, 'reminderWeekday'> & { reminderText: string; roundingMinutes: number | null; reminderMinute: number | null }
+      // Without approval there are no such fields; what was chosen stays.
+      const reminder = { reminderWeekday: rest.approvalEnabled ? reminderWeekday : settings.reminderWeekday, reminderMinute: reminderMinute ?? settings.reminderMinute }
       const reminderDays = reminderText.split(/[\s,]+/).filter(Boolean).map(Number)
-      onSaved(await callApi<CompanySettings>('PUT', 'settings', { ...rest, timeOffEnabled: settings.timeOffEnabled, schedulingEnabled: settings.schedulingEnabled, roundingMinutes: roundingMinutes ?? settings.roundingMinutes, reminderDays, version: settings.version }))
+      onSaved(await callApi<CompanySettings>('PUT', 'settings', { ...rest, ...reminder, timeOffEnabled: settings.timeOffEnabled, schedulingEnabled: settings.schedulingEnabled, roundingMinutes: roundingMinutes ?? settings.roundingMinutes, reminderDays, version: settings.version }))
       toast.success('Settings saved')
       void refresh()
     })

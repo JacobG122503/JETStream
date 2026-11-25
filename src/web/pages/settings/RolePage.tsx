@@ -1,15 +1,17 @@
 import { type FormEvent, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { roleDescriptionLength, roleNameLength } from '../../../shared/accounts'
-import type { RoleDetails, RoleSummary } from '../../../shared/api'
-import { compareGrants, describePermission, everything, grantedKeys, type Grants, managerExtras, permissionOf } from '../../../shared/permissions'
+import type { RoleDetails } from '../../../shared/api'
+import { compareGrants, everything, grantedKeys, type Grants, managerExtras, permissionOf } from '../../../shared/permissions'
 import { callApi } from '../../api'
 import { useAuth, usePerson } from '../../auth/authContext'
 import { FormMessages } from '../../auth/FormMessages'
 import { useForm } from '../../auth/useForm'
 import { useLoad } from '../../auth/useLoad'
 import { Page } from '../../shell/Page'
-import { Button, Card, ConfirmDialog, Dialog, ErrorState, LinkButton, LoadingState, Notice, Select, TextArea, TextField, useToast } from '../../ui'
+import { Button, Card, ConfirmDialog, ErrorState, LinkButton, LoadingState, Notice, TextArea, TextField, useToast } from '../../ui'
+import { Changes } from './Changes'
+import { DeleteRole } from './DeleteRole'
 import { GrantsEditor } from './GrantsEditor'
 import './settings.css'
 
@@ -155,79 +157,7 @@ function RoleForm({ role, copy = false, onReload }: RoleFormProps) {
           }}
         />
       )}
-      {existing && deleting && <DeleteRole role={existing} onClose={() => setDeleting(false)} />}
+      {existing && deleting && <DeleteRole role={existing} onClose={() => setDeleting(false)} onDeleted={() => navigate('/settings/roles')} />}
     </Page>
-  )
-}
-
-function Changes({ title, grants }: { title: string; grants: Grants }) {
-  const keys = grantedKeys(grants)
-  if (keys.length === 0) return null
-  return (
-    <>
-      <p>{title}:</p>
-      <ul className="confirm-list">
-        {keys.map((key) => (
-          <li key={key}>{describePermission(key, grants[key] ?? 'managed')}</li>
-        ))}
-      </ul>
-    </>
-  )
-}
-
-const deleteFields = ['replacementId'] as const
-
-function DeleteRole({ role, onClose }: { role: RoleDetails; onClose: () => void }) {
-  const others = useLoad<{ roles: RoleSummary[] }>('roles')
-  const [replacement, setReplacement] = useState('')
-  const form = useForm('delete-role', deleteFields)
-  const navigate = useNavigate()
-  const toast = useToast()
-  const inUse = role.people + role.invites > 0
-  const remove = () =>
-    form.submit(
-      async () => {
-        await callApi('POST', `roles/${role.id}/delete`, { version: role.version, replacementId: inUse ? Number(replacement) : null })
-        toast.success('Role deleted')
-        navigate('/settings/roles')
-      },
-      { replacementId: inUse && replacement === '' ? 'Choose another role.' : null },
-    )
-  return (
-    <Dialog
-      open
-      onClose={onClose}
-      title={`Delete ${role.name}?`}
-      busy={form.busy}
-      footer={
-        <>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button variant="destructive" loading={form.busy} loadingLabel="Deleting the role" onClick={() => void remove()}>
-            Delete role
-          </Button>
-        </>
-      }
-    >
-      <div className="stack">
-        <FormMessages form={form} />
-        {inUse ? (
-          <>
-            <p>
-              {role.people} people and {role.invites} open invites use this role. Choose the role they get instead.
-            </p>
-            <Select
-              label="Other role"
-              placeholder="Choose a role"
-              value={replacement}
-              options={(others.data?.roles ?? []).filter(({ id }) => id !== role.id).map(({ id, name }) => ({ value: String(id), label: name }))}
-              onChange={setReplacement}
-              {...form.field('replacementId')}
-            />
-          </>
-        ) : (
-          <p>Nobody has this role.</p>
-        )}
-      </div>
-    </Dialog>
   )
 }

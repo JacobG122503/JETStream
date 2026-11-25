@@ -36,7 +36,7 @@ const project = {
 }
 const person = {
   name: personName, email: newEmail, phone: optionalText(60), kind: oneOf(...personKinds), weeklyCapacityMinutes: whole(0, 10_080), startedOn: optional(date),
-  notes: optionalText(5000), labels: names,
+  department: text(80), notes: optionalText(5000), labels: names,
 }
 const rate = { kind: oneOf(...rateKinds), startsOn: date, rate: money, version: optional(version) }
 const task = { name: thingName, billable: flag, common: flag }
@@ -44,7 +44,7 @@ const settings = {
   version, name: thingName, address: text(500), currency, timeZone, weekStartsOn: whole(0, 6), fiscalYearStartMonth: whole(1, 12), dateFormat: oneOf(...dateFormats),
   timeFormat: oneOf(...timeFormats), numberFormat: oneOf(...numberFormats), currencyPlacement: oneOf(...currencyPlacements), hourFormat: oneOf(...hourFormats),
   timeMode: oneOf(...timeModes), roundingMode: oneOf(...roundingModes), roundingMinutes: (value: unknown) => Number(oneOf('5', '6', '10', '15', '30')(String(value))) as 5 | 6 | 10 | 15 | 30,
-  timeNotesRequired: flag, expenseNotesRequired: flag, approvalEnabled: flag, lockAfterDays: optional(whole(0, 365)), lockedThrough: optional(date),
+  timeNotesRequired: flag, expenseNotesRequired: flag, approvalEnabled: flag, reminderWeekday: optional(whole(0, 6)), reminderMinute: whole(0, 1439), lockAfterDays: optional(whole(0, 365)), lockedThrough: optional(date),
   expensesEnabled: flag, invoicesEnabled: flag, estimatesEnabled: flag, timeOffEnabled: flag, schedulingEnabled: flag, ...tax, ...terms,
   invoiceNotes: text(2000), estimateNotes: text(2000), estimateValidDays: whole(0, 365), reminderDays: integers(0, 365),
 }

@@ -161,7 +161,7 @@ it('lists people with how they sign in', async () => {
   const list = async () => ((await office.get('/people')).body as { people: { id: number; signIn: string; status: string }[] }).people
   const [withPassword, without] = [await account('manager'), await make.person({ status: 'archived' })]
   const rows = await list()
-  expect(rows.find(({ id }) => id === withPassword.id)).toMatchObject({ signIn: 'password', status: 'active', role: 'Manager' })
+  expect(rows.find(({ id }) => id === withPassword.id)).toMatchObject({ signIn: 'password', status: 'active', role: 'Project Manager' })
   expect(rows.find(({ id }) => id === without.id)).toMatchObject({ signIn: 'none', status: 'archived' })
   expect(rows).toHaveLength(await database.db.$count(people))
   expect(JSON.stringify(rows)).not.toContain('scrypt')

@@ -44,7 +44,7 @@ const problem = async (work: () => Promise<unknown>): Promise<unknown> => {
 
 describe('services refuse by themselves', () => {
   type Service = (actor: Actor, ids: { person: number; role: number }) => Promise<unknown>
-  const access = { roleId: 1, extras: [], managedPersonIds: [], managedProjectIds: [], state: '' }
+  const access = { roleId: 1, extras: [], permissions: null, managedPersonIds: [], managedProjectIds: [], state: '' }
   const services: Record<string, [PermissionKey, Service]> = {
     listPeople: ['people.view', (actor) => listPeople(ctx.db, actor, ctx.now())],
     readPerson: ['people.view', (actor, { person }) => readPerson(ctx.db, actor, person, ctx.now())],

@@ -297,7 +297,7 @@ export async function acceptInvite(ctx: AppContext, req: Request, input: AcceptI
     let personId: number
     if (current.person) {
       personId = current.person.id
-      await tx.update(people).set({ name, timeZone, roleId }).where(eq(people.id, personId))
+      await tx.update(people).set({ name, timeZone, roleId, permissions: null }).where(eq(people.id, personId))
       await tx.delete(personExtras).where(eq(personExtras.personId, personId))
       if (before) await endLostLinks(tx, now, new Map([[personId, before]]))
     } else {

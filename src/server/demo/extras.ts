@@ -90,7 +90,7 @@ function addMessages(rows: DemoRows, dates: DemoDates, company: Company) {
 
   rows.add(savedReports, {
     ownerId: people.admin.id, name: 'Hours by client, this month', kind: 'time', visibility: 'shared',
-    definition: { groupBy: 'client', period: 'this-month' }, createdAt: dates.past(dates.week(-5), 15),
+    definition: { path: '/reports?period=month&tab=byClient' }, createdAt: dates.past(dates.week(-5), 15),
   })
 }
 
