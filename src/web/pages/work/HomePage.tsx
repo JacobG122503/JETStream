@@ -1,15 +1,15 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { HomeInfo } from '../../../shared/work'
-import { useAuth, useCan, usePerson } from '../../auth/authContext'
+import { useCan, usePerson } from '../../auth/authContext'
 import { useLoad } from '../../auth/useLoad'
 import { photoUrl } from '../../shell/photo'
 import { Page } from '../../shell/Page'
 import { StreamLines } from '../../shell/StreamLines'
 import { Avatar, BarChart, Button, Card, ErrorState, formatLongDate, Icon, type IconName, Legend, LinkButton, LoadingState, Meter, monthNames, partsOf, weekdayNames, weekdayOf } from '../../ui'
 import { Clock } from '../../work/Clock'
-import { formatAmounts, formatDecimalHours, formatHours, formatMoney, percentOf } from '../../work/format'
-import { BudgetBar, hourSeries } from '../../work/parts'
+import { formatDecimalHours, formatHours, formatMoney, percentOf } from '../../work/format'
+import { Amounts, BudgetBar, hourSeries } from '../../work/parts'
 import { useTimer } from '../../work/timerContext'
 import '../../work/work.css'
 
@@ -38,7 +38,6 @@ function greeting(timeZone: string, now: string): string {
 
 function Overview({ info }: { info: HomeInfo }) {
   const { name, timeZone } = usePerson()
-  const { info: session } = useAuth()
   const can = useCan()
   const { again, start, stop } = useTimer()
   const { week, capacityMinutes, running, recent, projects, money, team, today } = info
@@ -61,7 +60,7 @@ function Overview({ info }: { info: HomeInfo }) {
               </>
             ) : (
               <>
-                {session?.company.name}: {formatHours(total)} of {formatHours(capacityMinutes)} hours this week, {percentOf(billable, total)}% billable.
+                {percentOf(billable, total)}% of your week is billable so far, with {formatHours(Math.max(0, capacityMinutes - total))} hours to go.
               </>
             )}
           </p>
@@ -91,16 +90,16 @@ function Overview({ info }: { info: HomeInfo }) {
 
       {money && (
         <div className="tiles">
-          <Tile icon="dollar" label="Outstanding" value={formatAmounts(money.outstanding, { whole: true })} detail="on open invoices" to="/invoices?show=open" />
+          <Tile icon="dollar" label="Outstanding" value={<Amounts amounts={money.outstanding} />} detail="on open invoices" to="/invoices?show=open" />
           <Tile
             icon="warning"
             tone={money.late.length > 0 ? 'warning' : undefined}
             label="Past due"
-            value={formatAmounts(money.late, { whole: true })}
+            value={<Amounts amounts={money.late} />}
             detail={`${money.late.reduce((sum, { count }) => sum + count, 0)} late invoices`}
             to="/invoices?show=late"
           />
-          <Tile icon="time" label="Ready to invoice" value={formatAmounts(money.unbilled, { whole: true })} detail="hours and expenses not billed yet" to="/invoices/new" />
+          <Tile icon="time" label="Ready to invoice" value={<Amounts amounts={money.unbilled} />} detail="hours and expenses not billed yet" to="/invoices/new" />
           <Tile icon="edit" label="Drafts" value={String(money.drafts)} detail="waiting to be sent" to="/invoices?show=draft" />
         </div>
       )}
@@ -110,6 +109,7 @@ function Overview({ info }: { info: HomeInfo }) {
           <BarChart
             label="Your hours this week"
             series={hourSeries}
+            unit={60}
             format={formatDecimalHours}
             points={week.map(({ day, billable: hours, other }) => ({
               id: day, label: weekdayNames[weekdayOf(day)].slice(0, 3), title: formatLongDate(day), values: [hours, other], current: day === today,
@@ -207,7 +207,7 @@ const moneySeries = [
 interface TileProps {
   icon: IconName
   label: string
-  value: string
+  value: ReactNode
   detail: ReactNode
   to: string
   tone?: 'warning'

@@ -6,7 +6,7 @@ import { useLoad } from '../../auth/useLoad'
 import { Page } from '../../shell/Page'
 import { BarChart, Button, Card, type DateRange, DateRangePicker, ErrorState, formatDate, Legend, LoadingState, Meter, monthNames, partsOf, presetRange, StatTile, Table, type TableColumn, Tabs } from '../../ui'
 import { formatAmounts, formatDecimalHours, formatHours, formatMoney, percentOf } from '../../work/format'
-import { hourSeries } from '../../work/parts'
+import { Amounts, hourSeries } from '../../work/parts'
 import '../../work/work.css'
 
 const groups = [
@@ -29,7 +29,7 @@ export function ReportsPage() {
   return (
     <Page title="Reports" description={data?.scope === 'own' ? 'Your own hours.' : 'Hours and what they are worth.'}>
       <div className="report-head">
-        <DateRangePicker label="Period" value={range} onChange={setRange} today={today} />
+        <DateRangePicker label="Dates" value={range} onChange={setRange} today={today} />
       </div>
       {status === 'loading' && <LoadingState size="page" look="skeleton" label="Loading the report" />}
       {status === 'error' && <ErrorState size="page" headingLevel={2} message={error} onRetry={reload} />}
@@ -46,12 +46,13 @@ function Report({ report }: { report: TimeReport }) {
       <div className="tiles">
         <StatTile label="Hours" value={formatHours(minutes)} detail={`${formatDate(report.from)} to ${formatDate(report.to)}`} />
         <StatTile label="Billable" value={`${percentOf(billableMinutes, minutes)}%`} detail={`${formatHours(billableMinutes)} hours`} />
-        {showAmounts && <StatTile label="Billable amount" value={formatAmounts(amounts, { whole: true })} detail="hours billed at their rates" />}
+        {showAmounts && <StatTile label="Billable amount" value={<Amounts amounts={amounts} />} detail="hours billed at their rates" />}
       </div>
       <Card title="Hours over time" actions={<Legend series={hourSeries} />}>
         <BarChart
           label="Hours over time"
           series={hourSeries}
+          unit={60}
           format={formatDecimalHours}
           everyLabel={Math.max(1, Math.ceil(byDay.length / 10))}
           points={byDay.map(({ from, billable, other }) => {

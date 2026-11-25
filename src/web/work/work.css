@@ -88,7 +88,31 @@
 }
 
 .columns > .card {
+  display: flex;
+  flex-direction: column;
   height: 100%;
+}
+
+.columns > .card > .card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.columns > .card .budget-card {
+  flex: 1;
+}
+
+.amount-more {
+  color: var(--c-text-muted);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.table .person-cell {
+  flex-wrap: nowrap;
 }
 
 .tiles {
@@ -284,6 +308,11 @@
   padding-bottom: 0;
 }
 
+
+.resume .btn {
+  flex: none;
+}
+
 .resume-text {
   display: flex;
   flex-direction: column;
@@ -399,7 +428,7 @@
 }
 
 .stack-avatars > * + * {
-  margin-inline-start: -0.5em;
+  margin-inline-start: -0.3em;
 }
 
 .stack-avatars .avatar,
@@ -577,13 +606,13 @@
   text-align: end;
 }
 
-.days {
+.sheet-days {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: var(--space-2);
 }
 
-.day {
+.sheet-day {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -600,40 +629,40 @@
     border-color var(--motion-fast);
 }
 
-.day:hover {
+.sheet-day:hover {
   border-color: var(--c-border-strong);
 }
 
-.day-name,
-.day-hours {
+.sheet-day-name,
+.sheet-day-hours {
   color: var(--c-text-muted);
   font-size: var(--text-xs);
 }
 
-.day-number {
+.sheet-day-number {
   font-family: var(--font-display);
   font-size: var(--text-xl);
   font-weight: var(--weight-strong);
 }
 
-.day-hours {
+.sheet-day-hours {
   font-variant-numeric: tabular-nums;
 }
 
-.day.is-today .day-number {
+.sheet-day.is-today .sheet-day-number {
   color: var(--c-accent);
 }
 
-.day[aria-pressed='true'] {
+.sheet-day[aria-pressed='true'] {
   border-color: transparent;
   background: var(--g-hero);
   background-color: var(--c-nav-bg);
   color: var(--c-nav-strong);
 }
 
-.day[aria-pressed='true'] .day-name,
-.day[aria-pressed='true'] .day-hours,
-.day[aria-pressed='true'] .day-number {
+.sheet-day[aria-pressed='true'] .sheet-day-name,
+.sheet-day[aria-pressed='true'] .sheet-day-hours,
+.sheet-day[aria-pressed='true'] .sheet-day-number {
   color: var(--c-nav-strong);
 }
 
@@ -723,7 +752,7 @@
 }
 
 .report-head {
-  max-width: 34rem;
+  max-width: 46rem;
 }
 
 .pick-list {
@@ -740,7 +769,7 @@
 .sum {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--space-2) var(--space-6);
+  row-gap: var(--space-2);
   font-variant-numeric: tabular-nums;
 }
 
@@ -749,6 +778,7 @@
 }
 
 .sum dd {
+  padding-left: var(--space-6);
   text-align: end;
 }
 
@@ -832,6 +862,14 @@
   text-align: end;
 }
 
+.paper .table-scroll {
+  border-radius: 0;
+}
+
+.paper ~ .card {
+  max-width: 54rem;
+}
+
 .paper-lines {
   width: 100%;
   border-collapse: collapse;
@@ -875,7 +913,7 @@
     padding: var(--space-6) var(--space-5);
   }
 
-  .days {
+  .sheet-days {
     grid-template-columns: repeat(7, minmax(3.25rem, 1fr));
     overflow-x: auto;
   }

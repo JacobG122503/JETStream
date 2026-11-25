@@ -250,9 +250,9 @@
 
   .shell-header {
     padding-inline: var(--gutter);
-    border-bottom-color: transparent;
-    background: linear-gradient(var(--c-veil) 70%, transparent);
-    backdrop-filter: none;
+    border-bottom: 0;
+    background: transparent;
+    backdrop-filter: blur(16px);
   }
 
   .shell-main {

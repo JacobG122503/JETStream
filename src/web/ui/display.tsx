@@ -82,7 +82,7 @@ export function Card({ title, headingLevel = 2, actions, children }: CardProps) 
 
 export interface StatTileProps {
   label: string
-  value: string
+  value: ReactNode
   /** What the number is of, or how it changed. */
   detail?: ReactNode
 }

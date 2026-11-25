@@ -121,6 +121,7 @@ function Project({ project }: { project: ProjectDetails }) {
           <BarChart
             label="Hours per week"
             series={hourSeries}
+            unit={60}
             format={formatDecimalHours}
             everyLabel={2}
             points={weeks.map(({ from, billable, other }, index) => {

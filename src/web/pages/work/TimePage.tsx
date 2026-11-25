@@ -97,19 +97,19 @@ export function TimePage() {
                 label: 'Day',
                 content: (
                   <div className="stack">
-                    <div className="days" role="group" aria-label="Day">
+                    <div className="sheet-days" role="group" aria-label="Day">
                       {Array.from({ length: 7 }, (_, index) => addDays(data.from, index)).map((one) => (
                         <button
                           key={one}
                           type="button"
-                          className={classNames('day', one === data.today && 'is-today')}
+                          className={classNames('sheet-day', one === data.today && 'is-today')}
                           aria-pressed={one === day}
                           aria-label={`${formatLongDate(one)}, ${formatHours(minutesOn(one))}`}
                           onClick={() => setDay(one)}
                         >
-                          <span className="day-name">{weekdayNames[weekdayOf(one)].slice(0, 3)}</span>
-                          <span className="day-number">{partsOf(one).day}</span>
-                          <span className="day-hours">{minutesOn(one) > 0 ? formatHours(minutesOn(one)) : '-'}</span>
+                          <span className="sheet-day-name">{weekdayNames[weekdayOf(one)].slice(0, 3)}</span>
+                          <span className="sheet-day-number">{partsOf(one).day}</span>
+                          <span className="sheet-day-hours">{minutesOn(one) > 0 ? formatHours(minutesOn(one)) : '-'}</span>
                         </button>
                       ))}
                     </div>

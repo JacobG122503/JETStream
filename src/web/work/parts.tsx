@@ -31,6 +31,23 @@ export function BudgetBar({ project: { budget, currency } }: { project: Pick<Pro
   )
 }
 
+/** Amounts in several currencies, the largest first and biggest. */
+export function Amounts({ amounts }: { amounts: readonly { currency: string; amount: number }[] }) {
+  const sorted = [...amounts].sort((a, b) => b.amount - a.amount)
+  const [first = { currency: 'USD', amount: 0 }, ...rest] = sorted
+  return (
+    <>
+      {formatMoney(first.amount, first.currency, { whole: true })}
+      {rest.map(({ currency, amount }) => (
+        <span key={currency} className="amount-more">
+          {' '}
+          + {formatMoney(amount, currency, { whole: true })}
+        </span>
+      ))}
+    </>
+  )
+}
+
 const mostShown = 4
 
 export function AvatarStack({ people }: { people: ProjectRow['members'] }) {

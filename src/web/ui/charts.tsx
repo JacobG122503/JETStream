@@ -27,6 +27,8 @@ interface BarChartProps {
   format: (value: number) => string
   /** One bar on the other, or side by side. */
   look?: 'stacked' | 'grouped'
+  /** What the axis counts in, such as 60 for hours of minutes. */
+  unit?: number
   /** Shows every label, or only so many that they fit. */
   everyLabel?: number
 }
@@ -35,7 +37,7 @@ interface BarChartProps {
 function niceMaximum(value: number): number {
   if (value <= 0) return 1
   const power = 10 ** Math.floor(Math.log10(value))
-  const step = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find((candidate) => candidate * power >= value) ?? 10
+  const step = [1, 2, 3, 4, 5, 6, 8, 10].find((candidate) => candidate * power >= value) ?? 10
   return step * power
 }
 
@@ -55,9 +57,9 @@ export function Legend({ series }: { series: ChartSeries[] }) {
 }
 
 /** Columns over time. The figures are in a table for screen readers, and in the tooltips. */
-export function BarChart({ label, series, points, format, look = 'stacked', everyLabel = 1 }: BarChartProps) {
+export function BarChart({ label, series, points, format, look = 'stacked', unit = 1, everyLabel = 1 }: BarChartProps) {
   const heights = points.map(({ values }) => (look === 'stacked' ? values.reduce((sum, value) => sum + value, 0) : Math.max(0, ...values)))
-  const top = niceMaximum(Math.max(0, ...heights))
+  const top = niceMaximum(Math.max(0, ...heights) / unit) * unit
   return (
     <figure className="chart">
       <div className="chart-plot" aria-hidden="true">
@@ -94,29 +96,31 @@ export function BarChart({ label, series, points, format, look = 'stacked', ever
           </div>
         </div>
       </div>
-      <table className="sr-only">
-        <caption>{label}</caption>
-        <thead>
-          <tr>
-            <th scope="col">Period</th>
-            {series.map((item) => (
-              <th key={item.id} scope="col">
-                {item.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {points.map(({ id, title, values }) => (
-            <tr key={id}>
-              <th scope="row">{title}</th>
-              {series.map((item, position) => (
-                <td key={item.id}>{format(values[position] ?? 0)}</td>
+      <div className="sr-only">
+        <table>
+          <caption>{label}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Period</th>
+              {series.map((item) => (
+                <th key={item.id} scope="col">
+                  {item.label}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {points.map(({ id, title, values }) => (
+              <tr key={id}>
+                <th scope="row">{title}</th>
+                {series.map((item, position) => (
+                  <td key={item.id}>{format(values[position] ?? 0)}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   )
 }

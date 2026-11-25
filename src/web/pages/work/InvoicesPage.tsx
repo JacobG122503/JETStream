@@ -3,7 +3,7 @@ import type { InvoiceList, InvoiceRow } from '../../../shared/work'
 import { useLoad } from '../../auth/useLoad'
 import { Page } from '../../shell/Page'
 import { LinkButton, StatTile, Table, Tabs } from '../../ui'
-import { formatAmounts } from '../../work/format'
+import { Amounts } from '../../work/parts'
 import { invoiceColumns } from './invoiceColumns'
 import '../../work/work.css'
 
@@ -39,8 +39,8 @@ export function InvoicesPage() {
     >
       {data && (
         <div className="tiles">
-          <StatTile label="Outstanding" value={formatAmounts(dueByCurrency(open), { whole: true })} detail={`${open.length} open invoices`} />
-          <StatTile label="Past due" value={formatAmounts(dueByCurrency(late), { whole: true })} detail={`${late.length} late invoices`} />
+          <StatTile label="Outstanding" value={<Amounts amounts={dueByCurrency(open)} />} detail={`${open.length} open invoices`} />
+          <StatTile label="Past due" value={<Amounts amounts={dueByCurrency(late)} />} detail={`${late.length} late invoices`} />
           <StatTile label="Drafts" value={String(invoices.filter((invoice) => invoice.status === 'draft').length)} detail="not sent yet" />
         </div>
       )}
