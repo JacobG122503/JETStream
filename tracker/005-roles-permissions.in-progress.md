@@ -109,7 +109,7 @@ Everyone at JET Engineering sees and can do exactly what their job needs: the bi
 **A person's access**
 20. **AC20** The person page has an Access section for people with `roles.manage`: role, extras (only for Manager, each with a one-line explanation, nothing preselected, needs handled as in AC18), managed people (search, active people, not themselves) and, for each active project membership, a "Manages" switch. It is saved in one transaction with a stale check. Where the grant rule forbids it, the section is read-only and says why; on one's own page: "You cannot change your own access".
 21. **AC21** Below it a summary lists in words what the person can do, and on which projects and people. Changing the role from Manager removes extras, after a confirmation naming them; managed people and flags are kept, have no effect while the role holds no `managed` permission, and are shown as such.
-22. **AC22** Account has a read-only "Your access" with the role, the same summary, and that an administrator can change it. The header shows the role name, custom ones included.
+22. **AC22** Account has a read-only "Your access" with the role, the same summary, and that an administrator can change it. The header shows the role name, custom ones included. On phones it keeps room (027 finding): at 320 and 305 px wide, signed in, the brand name is whole and on one line, at least 8 px lie between its text and the avatar, the content of the account button lies inside the button, and there is no sideways scroll, in both modes. The button keeps its accessible name and its height.
 23. **AC23** Created, changed and deleted roles and every change of a person's role, extras, managed people and flags are written to the activity log with who, whom, when, before and after, in the same transaction.
 
 **The web app mirrors the server**
@@ -159,6 +159,7 @@ Everyone at JET Engineering sees and can do exactly what their job needs: the bi
 - Filters must be part of the query (pagination and totals are wrong otherwise).
 - 026 (two-factor reset) and 008 must use the outranking rule and last-administrator guard; expose both.
 - AC14: in 004 a void link works again when its maker is administrator again (`statusOf` in `people/invites.ts`, `requireReset` in `people/resets.ts`; 004 had no way to take a role away). A test in `people/joining.test.ts` relies on it when it gives the role back, and has to change. An ended invite must still be renewable with New link, so `revokedAt` alone does not fit.
+- AC22, phone header: at 320 px the account button (`.account-button`, `min-width: 0`) shrinks to 39 px, less than its content, and the avatar begins about 2 px after the brand name; at 305 px (320 px window with a classic scrollbar) they touch. A smaller gap or no caret at this width may be enough; `e2e/brand.spec.ts` measures the name and can be extended.
 - PGlite runs transactions in turn, so concurrency tests prove results only (003 AC23); use 003's optional real-server setup for AC15 and AC16, and say what was not run.
 
 ### Size
@@ -178,3 +179,5 @@ _PM fills this in after QA passes._
 - 2026-11-24 PM: groomed
 - 2026-11-24 ORCH: todo -> groomed
 - 2026-11-24 PM: AC14, scenario 9 and an engineer note extended (from 004 acceptance: void links stay void)
+- 2026-11-24 PM: AC22 and an engineer note extended (from 027 acceptance: room in the phone header)
+- 2026-11-24 ORCH: groomed -> in-progress

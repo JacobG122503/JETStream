@@ -165,3 +165,4 @@ Everything else is done.
 - 2026-11-24 QA: pass
 - 2026-11-24 ORCH: qa -> review
 - 2026-11-24 PM: accepted
+- 2026-11-24 committed 8c0e233
